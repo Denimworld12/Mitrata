@@ -1,0 +1,152 @@
+/* ========================================================================= */
+/* 1. Page Layout — Match Middle Dashboard */
+/* ========================================================================= */
+.searchPageContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+/* ========================================================================= */
+/* 2. Search Bar — Matching Dashboard Box */
+/* ========================================================================= */
+.searchBarContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 80%;                          /* SAME width as createPostContainer */
+    height: 60px;
+    padding: 0 1rem;
+    gap: 1rem;
+
+    background: rgb(255, 251, 212);      /* SAME light yellow background */
+    border-radius: 15px;
+    border: 1px solid #eae19d;           /* very soft matching border */
+    box-shadow: 0 0 4px rgba(0,0,0,0.08);
+    position: relative;
+}
+
+.searchInput {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    padding-right: 3rem;
+    font-size: 1rem;
+
+    background: #fafafa;                 /* MATCH textarea background */
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    outline: none;
+}
+
+.searchInput:focus {
+    border-color: #999;
+}
+
+.searchIcon {
+    position: absolute;
+    right: 1.5rem;
+    width: 1.4rem;
+    height: 1.4rem;
+    color: #555;
+}
+
+/* ========================================================================= */
+/* 3. Results Container — Match Post Cards Width */
+/* ========================================================================= */
+.resultsContainer {
+    display: flex;
+    flex-direction: column;
+    width: 80%;                           /* SAME width as feed cards */
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.resultsHeader {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 0.3rem;
+}
+
+.userList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.loadingText, .noResultsText {
+    text-align: center;
+    color: #777;
+    padding: 1.5rem;
+    justify-content: center; 
+    margin-right: 8rem;
+    
+}
+
+/* ========================================================================= */
+/* 4. User Card (Match singlePost card layout style) */
+/* ========================================================================= */
+.userCard {
+    width: 100%;
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    background: #fff;
+    border-radius: 14px;
+    padding: 0.9rem 1.1rem;
+    border: 1px solid #eaeaea;
+    box-shadow: 0 0 4px rgba(0,0,0,0.08);
+    width: 80%;
+    transition: 0.2s;
+}
+
+.userCard:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+}
+
+.userProfilePicture {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid #eee;
+}
+
+.userInfo {
+    display: flex;
+    flex-direction: column;
+}
+
+.userName {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #222;
+}
+
+.userUsername {
+    font-size: 0.85rem;
+    color: #888;
+}
+
+.actionButton {
+    margin-left: auto;
+    background: #2e89ff;
+    color: #fff;
+    padding: 0.45rem 1rem;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.actionButton:hover {
+    background: #1a65d6;
+}

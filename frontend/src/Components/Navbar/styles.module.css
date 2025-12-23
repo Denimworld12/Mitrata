@@ -1,0 +1,38 @@
+.container {
+    padding: 1.2rem;
+    
+}
+.navbar{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-inline: 2rem;
+    height: 8vh;
+    /* box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); */
+}
+.navbarOptionContainer{
+    display: flex;
+}
+.buttonJoin{
+     background:#162ea5;
+    color: rgb(255, 255, 255);
+    padding: 0.7rem 1.5rem;
+    border-radius: 0.4rem;
+    font-size: 0.7rem;
+    cursor: pointer;
+    user-select: none;
+    font-weight: bold;
+    
+    &:hover{
+        background: #160599;
+    }           
+
+}
+
+.namePallet{
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+
+}

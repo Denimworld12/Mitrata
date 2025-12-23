@@ -1,0 +1,119 @@
+.homeContainer {
+    display: flex;
+}
+
+.homeContainer>div:nth-child(odd) {
+    flex: 0.2;
+
+}
+
+.homeContainer>div:nth-child(even) {
+    flex: 0.6;
+}
+
+.homeContainer_leftBar {
+    display: flex;
+    flex-direction: column;
+}
+
+.SideOptions {
+    margin-left: 3.4rem;
+    display: flex;
+    align-items: start;
+    font-size: 22px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    gap: 0.5rem;
+    align-items: center;
+    max-width: 80%;
+    transition: all 0.1s;
+    overflow: hidden;
+}
+
+.SideOptions:hover {
+    transform: scale(1.02);
+    color: -webkit-linear-gradient(45deg, #060dc8, #761800);
+
+}
+
+.SideOptions>svg {
+    
+    height: 1.2em;
+    min-width: fit-content;
+}
+
+.optionName {
+    display: flex;
+}
+
+/* --- Top Profiles Section (Compact + Light + Subtle) --- */
+
+.topTitle {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #444;
+    margin-left: 1rem;
+    opacity: 0.9; /* slightly subtle */
+}
+
+.topProfilesList {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-left: 1rem;
+}
+
+/* SMALL & LIGHT CARDS */
+.topProfileCard {
+    width: 92%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 10px;
+    border-radius: 10px;
+
+    background: #f8f8f8;
+    border: 1px solid #e5e5e5;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+
+    transition: all 0.18s ease-in-out;
+    cursor: pointer;
+
+    opacity: 0.95;  /* less visual weight */
+}
+
+.topProfileCard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.08);
+    opacity: 1;
+}
+
+.topProfileImg {
+    width: 36px;        /* smaller pic */
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #ccc;
+}
+
+.topProfileInfo {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+}
+
+/* SMALLER TEXT */
+.topProfileName {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+}
+
+.topProfileUsername {
+    font-size: 12px;
+    color: #777;
+    opacity: 0.9;
+}
