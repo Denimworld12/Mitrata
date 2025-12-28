@@ -7,6 +7,7 @@ import { useRouter } from 'next/router'
 import { useDispatch, useSelector } from 'react-redux'
 import { getAllPosts } from '@/config/redux/action/postAction'
 import { downloadResume, getConnectionRequest, sendConnectionRequest } from '@/config/redux/action/authAction'
+import serverAxios from '@/config/serverAxios'
 
 export default function viewProfilePage({ userProfile }) {
     const router = useRouter()
@@ -188,8 +189,24 @@ export default function viewProfilePage({ userProfile }) {
 }
 
 export async function getServerSideProps(context) {
-    const req = await clientServer.get('/user/get_user_based_on_username', {
-        params: { username: context.query.username }
-    })
-    return { props: { userProfile: req.data.profile } }
+    try {
+        // Ensure this path matches EXACTLY what worked in your Postman/Local tests
+        const req = await serverAxios.get('/user/get_user_based_on_username', {
+            params: { username: context.query.username }
+        });
+        
+        return { 
+            props: { 
+                userProfile: req.data.profile || null 
+            } 
+        };
+    } catch (error) {
+        console.error("Profile Fetch Error:", error.response?.status);
+        return {
+            props: { 
+                userProfile: null,
+                error: "Profile not found" 
+            }
+        };
+    }
 }

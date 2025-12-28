@@ -22,22 +22,24 @@ export default function Search() {
 
     // Filter users based on search input
     // Filter users based on search input AND exclude current user
-    const filteredUsers = authState.all_user?.filter((item) => {
-        // 1. Check if this is the current logged-in user
-        // Replace 'authState.user?._id' with the actual path to your logged-in user's ID
-        const isCurrentUser = item?.userId?._id === authState.user?._id;
+    // Filter users based on search input AND exclude current user
+const filteredUsers = authState.all_user?.filter((item) => {
+    // 1. Get IDs safely
+    const loggedInId = authState.user?.userId?._id || authState.user?._id;
+    const itemUserId = item?.userId?._id;
 
-        if (isCurrentUser) return false; // Skip this user
+    // 2. Double Check: Exclude by ID OR by Username (Extra Safe)
+    const isMe = (itemUserId === loggedInId) || (item?.userId?.username === authState.user?.userId?.username);
 
-        // 2. Existing Search Logic
-        const name = item?.userId?.name?.toLowerCase() || "";
-        const username = item?.userId?.username?.toLowerCase() || "";
+    if (isMe) return false; 
 
-        return (
-            name.includes(searchTerm.toLowerCase()) ||
-            username.includes(searchTerm.toLowerCase())
-        );
-    }) || [];
+    // 3. Search Logic
+    const name = item?.userId?.name?.toLowerCase() || "";
+    const username = item?.userId?.username?.toLowerCase() || "";
+    const search = searchTerm.toLowerCase();
+
+    return name.includes(search) || username.includes(search);
+}) || [];
 
     return (
         <UserLayout>
