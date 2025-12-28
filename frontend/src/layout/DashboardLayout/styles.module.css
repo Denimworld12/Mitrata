@@ -1,173 +1,152 @@
+/* Main Layout Container */
 .homeContainer {
     display: flex;
-    margin-top:  100px;;
+    margin-top: 5px; /* Aligns content exactly below your 40px navbar */
+    min-height: calc(100vh - 40px);
+    width: 100%;
 }
 
-.homeContainer>div:nth-child(odd) {
-    flex: 0.2;
-
-}
-
-.homeContainer>div:nth-child(even) {
-    flex: 0.6;
-}
-
+/* Left Sidebar (Fixed/Sticky) */
 .homeContainer_leftBar {
+    flex: 0.2; /* Your 20% ratio */
     display: flex;
     flex-direction: column;
+    
+    /* Using sticky instead of fixed allows it to respect the 2-6-2 grid 
+       while remaining pinned as you scroll the feed */
+    position: sticky;
+    top: 40px; 
+    height: calc(100vh - 40px);
+    
+    background-color: #fff;
+    border-right: 1px solid #e5e5e5;
+    z-index: 10;
 }
 
+/* Middle Feed (Scrolling) */
+.homeContainer_feedContainer {
+    flex: 0.6; /* Your 60% ratio */
+    width: 100%;
+    min-height: 100vh;
+    padding: 0 10px;
+}
+
+/* Right Sidebar (Scrolling) */
+.homeContainer_extraContainer {
+    flex: 0.2; /* Your 20% ratio */
+    padding: 20px;
+}
+
+/* --- Sidebar Navigation Items --- */
 .SideOptions {
-    margin-left: 3.4rem;
+    margin-left: 2rem;
     display: flex;
-    align-items: start;
-    font-size: 22px;
-    margin-bottom: 10px;
-    cursor: pointer;
-    gap: 0.5rem;
     align-items: center;
-    max-width: 80%;
-    transition: all 0.1s;
-    overflow: hidden;
+    font-size: 18px; /* Slightly reduced for better fit */
+    margin-bottom: 12px;
+    cursor: pointer;
+    gap: 0.8rem;
+    transition: all 0.2s ease;
 }
 
 .SideOptions:hover {
-    transform: scale(1.02);
-    color: -webkit-linear-gradient(45deg, #060dc8, #761800);
-
+    transform: translateX(5px);
+    color: #060dc8;
 }
 
-.SideOptions>svg {
-    
-    height: 1.2em;
-    min-width: fit-content;
+.SideOptions svg {
+    height: 1.4rem;
+    width: 1.4rem;
 }
 
 .optionName {
     display: flex;
+    font-weight: 500;
 }
 
-/* --- Top Profiles Section (Compact + Light + Subtle) --- */
-
+/* --- Top Profiles Section --- */
 .topTitle {
     font-size: 15px;
     font-weight: 600;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
     color: #444;
-    margin-left: 1rem;
-    opacity: 0.9; /* slightly subtle */
 }
 
-.topProfilesList {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-left: 1rem;
-}
-
-/* SMALL & LIGHT CARDS */
 .topProfileCard {
-    width: 92%;
+    width: 100%;
     display: flex;
     align-items: center;
-    gap: 10px;
-
+    gap: 12px;
     padding: 10px;
-    border-radius: 10px;
-
-    background: #f8f8f8;
-    border: 1px solid #e5e5e5;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-
-    transition: all 0.18s ease-in-out;
+    border-radius: 12px;
+    background: #fdfdfd;
+    border: 1px solid #eee;
+    margin-bottom: 8px;
+    transition: all 0.2s;
     cursor: pointer;
-
-    opacity: 0.95;  /* less visual weight */
 }
 
 .topProfileCard:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 3px 6px rgba(0,0,0,0.08);
-    opacity: 1;
+    background: #f0f2ff;
+    border-color: #060dc8;
 }
 
 .topProfileImg {
-    width: 36px;        /* smaller pic */
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     object-fit: cover;
-    border: 1px solid #ccc;
 }
 
 .topProfileInfo {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    gap: 2px;
 }
 
-/* SMALLER TEXT */
 .topProfileName {
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     color: #333;
 }
 
 .topProfileUsername {
     font-size: 12px;
-    color: #777;
-    opacity: 0.9;
+    color: #888;
 }
 
-
-/* ... Keep all your existing CSS above ... */
-
-.homeContainer_feedContainer {
-    /* Desktop Fix: Prevents the fixed top navbar from covering the content */
-   
-    width: 100%;
-    min-height: 100vh;
-}
-
-/* --- RESPONSIVE DESIGN (Mobile < 600px) --- */
-
-@media (max-width: 600px) {
+/* --- RESPONSIVE DESIGN (< 1024px) --- */
+@media (max-width: 1224px) {
     .homeContainer {
         flex-direction: column;
+        margin-top: 5px;
     }
 
-    /* Hide Top Profiles on Mobile */
     .homeContainer_extraContainer {
         display: none !important;
     }
 
-    /* Adjust Feed Container for Mobile */
-    .homeContainer_feedContainer {
-          /* Space for fixed top navbar */
-         /* Space for fixed bottom navigation bar */
-        width: 100% !important;
-        flex: 1 !important;
-    }
-
-    /* Bottom Navigation Bar Logic */
     .homeContainer_leftBar {
-        display: flex !important;
-        flex-direction: row !important;
         position: fixed;
         bottom: 0;
+        top: auto;
         left: 0;
         width: 100%;
         height: 65px;
-        background: #ffffff;
-        border-top: 1px solid #e5e5e5;
+        flex-direction: row !important;
         justify-content: space-around;
-        align-items: center;
-        z-index: 1000;
-        padding: 0;
-        margin: 0;
+        border-right: none;
+        border-top: 1px solid #e5e5e5;
+        z-index: 2000;
+        padding-top: 0;
     }
 
-    /* Show only icons on Mobile as requested */
+    .homeContainer_feedContainer {
+        flex: 1;
+        width: 100%;
+        margin-left: 0;
+        padding-bottom: 80px; /* Prevents content hiding behind bottom nav */
+    }
+
     .optionName {
         display: none !important;
     }
@@ -176,72 +155,5 @@
         margin: 0 !important;
         flex: 1;
         justify-content: center;
-    }
-
-    .SideOptions > svg {
-        height: 1.6rem;
-        width: 1.6rem;
-    }
-}
-
-/* --- TABLET & MOBILE RESPONSIVENESS (< 1024px) --- */
-
-@media (max-width: 1224px) {
-    .homeContainer {
-        flex-direction: column;
-        align-items: center;
-    }
-
-    /* 1. Hide Top Profiles (Right Sidebar) on Tablet/Mobile */
-    .homeContainer_extraContainer {
-        display: none !important;
-    }
-
-    /* 2. Transform Left Sidebar into a Bottom Nav Bar */
-    .homeContainer_leftBar {
-        display: flex !important;
-        flex-direction: row !important;
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        height: 70px;
-        background: #ffffff;
-        border-top: 1px solid #e5e5e5;
-        justify-content: space-around;
-        align-items: center;
-        z-index: 2000; /* Ensure it stays above content */
-        padding: 0;
-        margin: 0;
-    }
-
-    /* 3. Center the Main Feed and make it wider */
-    .homeContainer > div:nth-child(even) {
-        flex: 1;
-        width: 100%;
-        max-width: 800px; /* Limits width on tablets for readability */
-        padding-top: 100px; /* Adjust for Fixed Navbar */
-        padding-bottom: 90px; /* Adjust for Bottom Nav */
-    }
-
-    /* 4. UI Polish for Bottom Nav Items */
-    .SideOptions {
-        margin: 0 !important;
-        flex: 1;
-        flex-direction: column;
-        gap: 4px;
-        align-items: center;
-        justify-content: center;
-    }
-
-    /* Hide text on smaller widths to avoid overlap */
-    @media (max-width: 768px) {
-        .optionName {
-            display: none !important;
-        }
-        .SideOptions > svg {
-            height: 1.8rem;
-            width: 1.8rem;
-        }
     }
 }
