@@ -1,2 +1,6 @@
 .env
-node_modules
+.env.local
+node_modules/
+dist/
+logs/
+backend/uploads/
