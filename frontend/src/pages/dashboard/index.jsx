@@ -83,7 +83,20 @@ export default function Dashboard() { // Renamed export to Dashboard for Next.js
             dispatch(getAboutUser({ token: localStorage.getItem('token') }))
         }
     }, [authState.isTokenThere, dispatch])
+    useEffect(() => {
+        if (postState.postId !== "") {
+            // Disable scroll on the main page
+            document.body.style.overflow = "hidden";
+        } else {
+            // Re-enable scroll
+            document.body.style.overflow = "unset";
+        }
 
+        // Cleanup function to ensure scroll is re-enabled if component unmounts
+        return () => {
+            document.body.style.overflow = "unset";
+        };
+    }, [postState.postId]);
 
     // --- Render ---
     if (authState.user) {

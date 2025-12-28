@@ -17,8 +17,8 @@ const upload = multer({storage:storage})
 
 router.route("/register").post(register);
 router.route('/login').post(login)
-router.route('/update_profile_picture').post(upload.single('profile_picture'),uploadProfilePicture)
-router.route('/user_update' ).post (updateUserProfile);
+router.route('/user/update_profile_picture').post(upload.single('profilePicture'),uploadProfilePicture)
+router.route('/user/setting/user_update' ).post (updateUserProfile);
 router.route('/get_user_and_profile').get(getUserAndProfile);
 router.route('/update_profile').post (updateProfileData)
 router.route('/user/findinguser').get(findSearchUser)
@@ -26,7 +26,7 @@ router.route('/user/download_resume').get(downloadProfile)
 router.route('/user/send_connection_request').post(sendconnectionrequest)
 router.route('/user/get_connection_request').get(getMyConnectionRequest)
 router.route('/user/get_my_connections').get(whatAreMyConnection)
-router.route('/user/is_accepted_connection_request').get(acceptConnectionRequest)
+router.route('/user/is_accepted_connection_request').post(acceptConnectionRequest)
 
 router.route('/user/get_user_based_on_username').get(getAllUserBasedOnUsername)
 // router.route('/sendconnectionrequest').get()

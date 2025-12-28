@@ -1,0 +1,831 @@
+    /* ========================================================================= */
+/* BASE STYLES */
+/* ========================================================================= */
+
+.container {
+  padding: 1.5rem 0;
+  background: #f3f6f8;
+  min-height: 100vh; /* Ensure full height */
+}
+
+/* Wrapper makes absolute positioning work */
+.coverWrapper {
+  position: relative;
+  width: 80vw;
+  max-width: 1200px; /* Added max-width for better control */
+  margin: auto;
+  margin-bottom: 2rem;
+}
+
+/* Cover image */
+.backDropContainer {
+  width: 100%;
+  height: 30vh;
+  /* Use your actual image here */
+  background: url("https://images.pexels.com/photos/19819250/pexels-photo-19819250.jpeg?auto=compress&cs=tinysrgb&w=1260&h750&dpr=1");
+  background-size: cover;
+  background-position: center;
+  border-radius: 12px;
+}
+
+/* Profile avatar */
+.profileImageContainer {
+    position: absolute;
+    bottom: -70px; /* Aligns half-on, half-off the cover */
+    left: 3rem;
+    z-index: 5;
+}
+
+.imageWrapper {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    overflow: hidden; /* Clips the overlay to a circle */
+    border: 5px solid #fff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    background: #fff;
+}
+
+.profileImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* --- The Hover Overlay --- */
+
+/* Container for the overlay */
+.imageOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+    opacity: 0; /* Hidden by default */
+    transition: opacity 0.3s ease;
+    z-index: 10;
+}
+
+/* Show on hover */
+.imageWrapper:hover .imageOverlay {
+    opacity: 1;
+}
+
+/* The Label styling */
+.labeledImageOverlay {
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* Slightly darker for better contrast */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    cursor: pointer;
+}
+
+.labeledImageOverlay svg {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 5px;
+    fill: white; /* Force the color */
+}
+
+.labeledImageOverlay span {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+
+.imageOverlay svg {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 4px;
+}
+
+.imageOverlay span {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+/* ========================================================================= */
+/* TWO-COLUMN LAYOUT */
+/* ========================================================================= */
+
+.profileContentWrapper {
+     /* Space for the overlapped profile image */
+    display: flex;
+    gap: 2rem; /* Space between columns */
+    width: 80vw;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-top: 1rem; /* Padding after the cover/profile image overlap */
+}
+
+/* LEFT COLUMN: Main Profile Details */
+.profileDetails {
+    flex: 2; /* Takes up 2/3 of the space */
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    min-height: 60vh; /* Ensure it's visually substantial */
+}
+
+/* RIGHT COLUMN: Recent Posts/Activity Sidebar */
+.userActivitySidebar {
+    flex: 1; /* Takes up 1/3 of the space */
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* ========================================================================= */
+/* LEFT COLUMN STYLES */
+/* ========================================================================= */
+
+.profileDetails_userName {
+    /* Use grid or flex for alignment if needed, but flex is simpler here */
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end; /* Align button to the bottom if content is tall */
+    padding-top: 70px; /* Pushes content down past the profile image */
+    margin-bottom: 1rem;
+}
+
+.profileNameDetails {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.profileNameDetails h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    color: #1c1e21;
+}
+
+.profileUsername p {
+    font-size: 1rem;
+    color: #65676b;
+    margin: 0;
+}
+
+.profileBio {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.profileBio h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+/* Button Styling */
+.connectButton, .connectedButton {
+    padding: 0.5rem 1.5rem;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.connectButton {
+    background: #2e89ff;
+    color: white;
+    border: none;
+}
+
+.connectedButton {
+    background: #e7f3ff;
+    color: #2e89ff;
+    border: 1px solid #2e89ff;
+}
+.pendingButton {
+    background-color: #f3f3f3;
+    color: #666666;
+    padding: 8px 24px;
+    border-radius: 20px;
+    font-weight: 600;
+    border: 1px solid #666666;
+    cursor: not-allowed; /* Shows the user they can't click it again */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+/* ========================================================================= */
+/* RIGHT COLUMN STYLES (Activity/Posts) */
+/* ========================================================================= */
+/* --- SHOW ALL ACTIVITY BUTTON --- */
+.showAllActivityBtn {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    background: transparent;
+    border: none;
+    border-top: 1px solid #f1f5f9; /* Subtle divider */
+    color: #0a66c2; /* Professional blue */
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.2s ease;
+    border-radius: 0 0 12px 12px; /* Matches sidebar corners */
+}
+
+.showAllActivityBtn:hover {
+    background: #f0f7ff;
+    text-decoration: underline;
+}
+
+.showAllActivityBtn svg {
+    transition: transform 0.2s ease;
+}
+
+.showAllActivityBtn:hover svg {
+    transform: translateX(4px); /* Subtle arrow animation */
+}
+.userActivitySidebar h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    color: #1c1e21;
+}
+
+.recentPostList {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.sidebarPostCard {
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f7f9fb;
+    border: 1px solid #eee;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.sidebarPostImage {
+    width: 100%;
+    height: auto;
+    max-height: 150px;
+    object-fit: cover;
+}
+
+.sidebarPostText {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+    color: #555;
+    margin: 0;
+}
+
+.showAllButton {
+    background: transparent;
+    border: 1px solid #2e89ff;
+    color: #2e89ff;
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: background-color 0.2s;
+}
+
+.showAllButton:hover {
+    background: #e7f3ff;
+}
+
+.noPostsMessage {
+    color: #777;
+    text-align: center;
+    padding: 1rem;
+    font-style: italic;
+}
+
+/* ========================================================================= */
+/* POST CARD STYLES (Removed as they will likely be in the main content section) */
+/* ========================================================================= */
+/* Removed your original .userposts and nested post styles */
+
+/* Add media queries for responsive design */
+@media (max-width: 768px) {
+    .profileContentWrapper {
+        margin-top: 60px; /* Adjust for smaller profile image on mobile */
+        flex-direction: column;
+        gap: 1.5rem;
+        width: 90vw;
+    }
+
+    .profileDetails {
+        /* Reset padding for smaller screens if necessary */
+        padding-top: 1.5rem;
+    }
+    
+    .profileDetails_userName {
+        padding-top: 70px; /* Keep padding to clear avatar */
+    }
+}
+
+
+
+
+.headline {
+    font-size: 1.1rem;
+    color: #444;
+    margin: 4px 0;
+}
+
+.actionButtons {
+    display: flex;
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.resumeButton {
+    background: #fff;
+    color: #0a66c2;
+    border: 1px solid #0a66c2;
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    justify-content: space-between;
+}
+.resumeButton > svg 
+{
+    color: rgb(34, 52, 67);
+    width: 1.4rem;
+}
+.resumeButton:hover {
+    background: #f0f7ff;
+}
+
+.infoSection {
+    margin-top: 25px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+.infoItem {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.5rem;
+    background-color: #ffffff;
+    border-radius: 8px;
+    /* Softer, more modern shadow */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); 
+    width: 100%; /* Or fit-content if you prefer */
+    transition: transform 0.2s ease;
+}
+
+.infoItem:hover {
+    transform: translateY(-2px); /* Subtle lift on hover */
+}
+
+.infoItem h4 {
+    margin: 0;
+    color: #1c1e21;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.infoItem p {
+    margin: 6px 0 0 0;
+    color: #4b4f56;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    /* Remove the box-shadow and padding from here */
+}
+
+.noDataText {
+    font-style: italic;
+    color: #999;
+}
+
+
+
+/* Update these specific classes in your index.module.css */
+
+.profileImageContainer {
+    position: absolute;
+    bottom: -60px;
+    left: 3rem;
+    display: flex;
+    align-items: flex-end;
+}
+
+.editPictureBtn {
+    position: absolute;
+    right: 0;
+    bottom: 10px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 50%;
+    padding: 6px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.editPictureBtn svg {
+    width: 20px;
+    height: 20px;
+    color: #666;
+}
+
+.profileNameSection h2 {
+    margin-bottom: 0;
+}
+
+.loader {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 50vh;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.connectionStats {
+    margin-top: 5px;
+    color: #0a66c2;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.connectionStats:hover {
+    text-decoration: underline;
+}
+
+
+
+
+
+/* Floating Edit Button */
+.floatingEditBtn {
+    position: absolute;
+    right: -10px;
+    bottom: -5px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 15;
+    transition: transform 0.2s;
+}
+
+.floatingEditBtn:hover {
+    transform: scale(1.1);
+    background: #f8f9fa;
+}
+
+/* Modal Overlay */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modalContent {
+    background: white;
+    width: 90%;
+    max-width: 500px;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.closeBtn {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: #666;
+}
+
+/* Form Styles */
+.editForm {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.formGroup label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #444;
+}
+
+.formGroup input, .formGroup textarea {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-family: inherit;
+}
+
+.modalFooter {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.saveBtn {
+    background: #0a66c2;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.cancelBtn {
+    background: #eee;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+
+.scrollableForm {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: 10px;
+    margin-bottom: 20px;
+}
+
+.divider {
+    border: 0;
+    border-top: 1px solid #eee;
+    margin: 20px 0;
+}
+
+.sectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.sectionHeader h4 {
+    margin: 0;
+    color: #0a66c2;
+}
+
+.addBtn {
+    background: #e7f3ff;
+    color: #0a66c2;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.arrayInputGroup {
+    background: #f9f9f9;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid #eee;
+}
+
+.removeBtn {
+    background: transparent;
+    color: #dc3545;
+    border: none;
+    font-size: 0.8rem;
+    cursor: pointer;
+    text-align: right;
+    margin-top: 5px;
+}
+
+.editIconBtn {
+    background: #0a66c2;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 15px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+
+/* Glassmorphism Overlay */
+.modalOverlay {
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(5px);
+}
+
+/* Card-style sections for Experience/Education */
+.cardInputGroup {
+    position: relative;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    padding: 1.25rem;
+    border-radius: 12px;
+    margin-bottom: 1.2rem;
+    transition: all 0.2s ease;
+}
+
+.cardInputGroup:hover {
+    border-color: #3b82f6;
+    background: #fff;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+/* Modern Inline Inputs */
+.rowInputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+/* Redesigned Trash/Delete Button */
+.trashBtn {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #ef4444;
+    color: white;
+    border: 2px solid white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 10;
+}
+
+.trashBtn:hover {
+    transform: scale(1.1);
+    background: #dc2626;
+}
+
+/* Redesigned Add Button */
+.addBtn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f0f9ff;
+    color: #0369a1;
+    border: 1.5px dashed #0369a1;
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.addBtn:hover {
+    background: #0369a1;
+    color: white;
+    border-style: solid;
+}
+
+.addBtn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Save Button Disabled State */
+.saveBtn:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.headerTitle p {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+
+/* ... keep all existing code ... */
+
+/* Ensures button stays right of name */
+.nameRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+/* TABLET FIX ( catch 912px Surface / iPad ) */
+@media (max-width: 1024px) {
+    .container {
+        padding-top: 10px; /* DashboardLayout handles top padding */
+        width: 100%;
+    }
+
+    .coverWrapper, .profileContentWrapper {
+        width: 95vw;
+        max-width: none;
+    }
+
+    .profileImageContainer {
+        left: 2rem;
+        bottom: -60px;
+    }
+
+    .imageWrapper {
+        width: 120px;
+        height: 120px;
+    }
+}
+
+/* MOBILE FIX (< 768px) */
+@media (max-width: 768px) {
+    .profileContentWrapper {
+        flex-direction: column;
+        padding: 0 10px;
+    }
+
+    .profileDetails, .userActivitySidebar {
+        width: 100%;
+        flex: none;
+    }
+
+    .nameRow h2 {
+        font-size: 1.5rem;
+    }
+
+    /* Keep edit button visible and clean on mobile */
+    .editIconBtn {
+        padding: 4px 10px;
+        font-size: 0.75rem;
+    }
+
+    .profileDetails_userName {
+        padding-top: 65px; /* Clearance for overlapped avatar */
+    }
+
+    .backDropContainer {
+        height: 25vh;
+        border-radius: 0;
+    }
+}

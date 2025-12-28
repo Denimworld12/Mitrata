@@ -1,38 +1,114 @@
 .container {
-    padding: 1.2rem;
-    
+    position: fixed;
+    top: 0;
+    width: 100%;
+    padding: 0.5rem 1.2rem;
+    z-index: 2000;
+    transition: transform 0.3s ease-in-out;
+    background: white;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
 }
-.navbar{
+
+/* Hide/Show Classes */
+
+
+.navbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-inline: 2rem;
-    height: 8vh;
-    /* box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); */
+    max-width: 1200px;
+    margin: 0 auto;
+    height: 40px;
 }
-.navbarOptionContainer{
-    display: flex;
-}
-.buttonJoin{
-     background:#162ea5;
-    color: rgb(255, 255, 255);
-    padding: 0.7rem 1.5rem;
-    border-radius: 0.4rem;
-    font-size: 0.7rem;
+
+.logo {
     cursor: pointer;
-    user-select: none;
+    font-size: 1.5rem;
     font-weight: bold;
-    
-    &:hover{
-        background: #160599;
-    }           
-
+    color: #162ea5;
 }
 
-.namePallet{
+.namePallet {
     display: flex;
-    gap: 15px;
-    justify-content: center;
+    gap: 20px;
     align-items: center;
+}
 
+.navItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.miniAvatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #ddd;
+}
+
+.logoutBtn {
+    background: #f1f5f9;
+    color: #ef4444;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.logoutBtn:hover { background: #fee2e2; }
+
+/* Mobile Notch / Three-dot Toggle */
+.mobileToggle {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    cursor: pointer;
+    padding: 10px;
+}
+
+.mobileToggle span {
+    width: 5px;
+    height: 5px;
+    background: #333;
+    border-radius: 50%;
+}
+
+@media (max-width: 768px) {
+    .mobileToggle { display: flex; }
+
+    .navbarOptionContainer {
+        position: absolute;
+        top: 70px;
+        right: 20px;
+        background: white;
+        flex-direction: column;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        display: none; /* Hidden by default */
+        width: 200px;
+    }
+
+    .menuOpen { display: flex; }
+
+    .namePallet {
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+    }
+
+    .welcomeText {
+        border-bottom: 1px solid #eee;
+        width: 100%;
+        padding-bottom: 10px;
+        margin-bottom: 5px;
+    }
 }

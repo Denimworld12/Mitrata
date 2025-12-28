@@ -5,7 +5,6 @@
     align-items: center;
     width: 100%;
     gap: 1rem;
-    margin-top: 1rem;
     overflow-y: auto;
 }
 .scrollcomponent::-webkit-scrollbar {
@@ -459,4 +458,242 @@
     font-size: 0.9rem;
     color: #1c1e21;
     word-wrap: break-word;
+}
+
+
+/* --- RESPONSIVE DASHBOARD (Tablet & Mobile) --- */
+
+@media (max-width: 1024px) {
+    .createPostContainer {
+        width: 95%; /* Take more width on smaller screens */
+        height: auto; /* Allow container to grow with content */
+        padding: 1rem;
+    }
+
+    .commentsPopup {
+        width: 80vw; /* Wider modal for tablets */
+    }
+}
+
+@media (max-width: 600px) {
+    .createPostContainer {
+        flex-direction: column; /* Stack items vertically */
+        height: auto;
+        width: 100%;
+        margin: 10px 0;
+        border-radius: 0; /* Full width look on mobile */
+    }
+
+    /* Fixed: Move preview box below text area to keep textarea large */
+    .previewBox {
+        margin-left: 0 !important;
+        margin-top: 15px !important;
+        width: 100%; /* Full width preview on mobile */
+        height: 200px; /* Larger preview height */
+    }
+
+    .previewImage {
+        width: 100%;
+        height: 100%;
+        object-fit: contain; /* Don't crop the image preview */
+        background: #eee;
+    }
+
+    .postTextarea {
+        font-size: 14px;
+        min-height: 60px; /* Give more space to type */
+    }
+
+    .singleCard {
+        border-radius: 0; /* Mobile feed standard */
+        margin-bottom: 10px;
+        border-left: none;
+        border-right: none;
+    }
+
+    /* Comments Modal for Mobile */
+    .commentsPopup {
+        width: 100vw; /* Full width */
+        height: 100vh; /* Full height */
+        border-radius: 0;
+    }
+
+    .commentsOverlay {
+        align-items: flex-end; /* Slide up from bottom */
+    }
+
+    @keyframes slideUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
+
+    .postActions span {
+        display: none; /* Hide labels like "Likes", "Comments" to save space, icons only */
+    }
+    
+    .actionBtn {
+        padding: 0.8rem;
+    }
+
+    .uploadButton {
+        bottom: 10px;
+        right: 10px;
+    }
+}
+
+/* Optimization for very small screens */
+@media (max-width: 400px) {
+    .singleCard_profileContainer {
+        padding: 0.8rem;
+    }
+    .userProfile {
+        width: 40px;
+        height: 40px;
+    }
+    .userName {
+        font-size: 0.9rem;
+    }
+}
+/* --- CRITICAL FIX FOR OVERLAY VISIBILITY --- */
+.commentsOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.75); /* Darker backdrop for focus */
+    backdrop-filter: blur(10px); /* Heavy blur to hide the background sidebar */
+    
+    /* Ensure this is higher than any Sidebar or Navbar */
+    z-index: 10000 !important; 
+    
+    display: flex;
+    justify-content: center;
+    align-items: center; /* Center for Tablet/Desktop */
+    padding: 20px;
+}
+
+.commentsPopup {
+    width: 500px;
+    height: 85vh; /* Taller to show more comments */
+    background: #ffffff;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+/* --- MOBILE & TABLET OVERRIDES --- */
+
+@media (max-width: 1024px) {
+    .commentsOverlay {
+        padding: 40px 20px; /* Add top padding to move it away from screen edges */
+    }
+    
+    .commentsPopup {
+        width: 85vw;
+        height: 80vh;
+    }
+}
+
+@media (max-width: 600px) {
+    .commentsOverlay {
+        align-items: flex-start; /* PUSH TO TOP on mobile */
+        padding: 0; /* Remove padding to use full width */
+    }
+
+    .commentsPopup {
+        width: 100%;
+        height: 100%; /* Full screen on mobile to avoid sidebar overlap */
+        border-radius: 0; /* Full screen look */
+    }
+
+    /* Fixed: Ensure the header is visible below the top notch */
+    .commentsHeader {
+        padding-top: 50px; /* Space for the phone's status bar/camera notch */
+        background: #f8f9fa;
+    }
+
+    /* Fixed: Ensure input bar is above the bottom navigation bar */
+    .commentInputBar {
+        padding: 15px;
+        padding-bottom: 40px; /* Extra space to clear the bottom nav bar */
+        border-top: 2px solid #eee;
+        background: white;
+    }
+}/* --- ENHANCED RESPONSIVE COMMENTS & ACTIONS --- */
+
+@media (max-width: 1024px) {
+    /* Tablet Mode for Comments Popup */
+    .commentsPopup {
+        width: 70vw; 
+        height: 70vh;
+    }
+}
+
+@media (max-width: 600px) {
+    /* 1. Fix for Likes not showing perfectly */
+    .postActions {
+        justify-content: space-between; /* Spread them out */
+        padding: 0.8rem 1rem;
+    }
+
+    .actionBtn {
+        gap: 4px; /* Tighten gap */
+        padding: 0.5rem;
+        flex: 1; /* Equal width for all 3 buttons */
+        justify-content: center;
+    }
+
+    .actionBtn span {
+        display: inline-block !important; /* Force labels to show */
+        font-size: 0.75rem; /* Make text smaller to fit */
+    }
+
+    /* 2. Mobile Comment Modal Adjustments */
+    .commentsOverlay {
+        align-items: flex-end; /* Mobile feel: slide from bottom */
+    }
+
+    .commentsPopup {
+        width: 100%;
+        height: 85vh; /* Don't cover 100% so user sees they can swipe/click down to close */
+        border-radius: 20px 20px 0 0; /* Rounded top corners like modern apps */
+    }
+
+    .commentsHeader {
+        padding: 0.8rem 1.2rem;
+    }
+
+    /* 3. Comment Input Bar on Mobile */
+    .commentInputBar {
+        padding: 10px;
+        position: sticky;
+        bottom: 0;
+        background: white;
+        padding-bottom: env(safe-area-inset-bottom); /* Fix for iPhone notches */
+    }
+
+    .commentInputBar input {
+        font-size: 14px; /* Prevent iOS auto-zoom on focus */
+        padding: 12px;
+    }
+
+    /* 4. Single Comment Bubble on Mobile */
+    .singleComment {
+        max-width: 85%; /* Give more room to the text */
+        padding: 8px 12px;
+    }
+}
+
+/* Fix for very narrow phones (e.g., iPhone SE) */
+@media (max-width: 360px) {
+    .actionBtn span {
+        font-size: 0.65rem;
+    }
+    
+    .actionBtn svg {
+        width: 1.1rem;
+    }
 }

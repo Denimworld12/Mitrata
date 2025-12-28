@@ -1,0 +1,271 @@
+.container {
+    padding: 2rem;
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    max-width: 900px;
+    margin: auto;
+}
+
+/* ---------------- Tabs ---------------- */
+
+.tabHeader {
+    display: flex;
+    gap: 24px;
+    border-bottom: 1px solid #e6e6e6;
+    margin-bottom: 1.8rem;
+}
+
+.tabBtn {
+    padding: 12px 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #666;
+    position: relative;
+}
+
+.activeTab {
+    padding: 12px 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+   
+}
+
+.activeTab::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    width: 100%;
+    height: 3px;
+    border-radius: 3px;
+}
+
+/* ---------------- Lists ---------------- */
+
+.connectionsList,
+.requestsList {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+/* 
+h3 {
+    margin-bottom: 0.8rem;
+    color: #333;
+    font-size: 1.1rem;
+} */
+
+/* ---------------- User Card ---------------- */
+
+.userCard {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    background: #fafafa;
+    border-radius: 12px;
+    transition: all 0.25s ease;
+    border: 1px solid #eee;
+    cursor: pointer;
+}
+
+.userCard:hover {
+    background: #ffffff;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+}
+
+/* Profile Image */
+.userCard img {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 14px;
+    border: 1px solid #ddd;
+}
+
+/* User Info */
+.userInfo {
+    flex-grow: 1;
+}
+
+.userInfo h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #222;
+}
+
+.userInfo p {
+    margin: 4px 0 0;
+    color: #777;
+    font-size: 0.85rem;
+}
+
+/* ---------------- Message Button ---------------- */
+
+.msgBtn {
+    border: 1px solid #0a66c2;
+    color: #0a66c2;
+    background: #fff;
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.msgBtn:hover {
+    background: #0a66c2;
+    color: #fff;
+}
+
+/* ---------------- Circle Buttons ---------------- */
+
+.circleButtons {
+    display: flex;
+    gap: 12px;
+}
+
+.acceptCircle,
+.rejectCircle {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+/* Accept */
+.acceptCircle {
+    border: 2px solid #057642;
+    color: #057642;
+    background: #ffffff;
+}
+
+.acceptCircle:hover {
+    background: #057642;
+    color: #ffffff;
+}
+
+/* Reject */
+.rejectCircle {
+    border: 2px solid #cc1016;
+    color: #cc1016;
+    background: #ffffff;
+}
+
+.rejectCircle:hover {
+    background: #cc1016;
+    color: #ffffff;
+}
+
+/* ---------------- Empty State ---------------- */
+
+/* p {
+    color: #777;
+    font-size: 0.9rem;
+} */
+/* --- MY NETWORK RESPONSIVE ADJUSTMENTS --- */
+
+@media (max-width: 1024px) {
+    .container {
+        width: 95%; /* Take more width on tablets */
+        padding: 1.5rem;
+    }
+    
+    .userCard img {
+        width: 48px; /* Slightly smaller avatar */
+        height: 48px;
+    }
+}
+
+@media (max-width: 600px) {
+    .container {
+        width: 100%;
+        border-radius: 0; /* Full width look for mobile */
+        padding: 1rem;
+        box-shadow: none; /* Cleaner look for small screens */
+        margin-top: 0;
+    }
+
+    .tabHeader {
+        gap: 15px; /* Tighter gap for tabs */
+        justify-content: space-around; /* Equal spacing */
+    }
+
+    .tabBtn, .activeTab {
+        font-size: 0.85rem;
+        padding: 10px 0;
+    }
+
+    /* 1. User Card Layout on Mobile */
+    .userCard {
+        padding: 10px;
+        gap: 10px;
+        border-radius: 10px;
+    }
+
+    .userCard img {
+        width: 42px;
+        height: 42px;
+        margin-right: 0; /* Handled by gap */
+    }
+
+    /* 2. Text Scaling */
+    .userInfo h4 {
+        font-size: 0.9rem; /* Smaller name */
+    }
+
+    .userInfo p {
+        font-size: 0.75rem; /* Smaller username */
+    }
+
+    /* 3. Button Adjustments */
+    .msgBtn {
+        padding: 5px 12px;
+        font-size: 0.75rem;
+    }
+
+    .circleButtons {
+        gap: 8px;
+    }
+
+    .acceptCircle, .rejectCircle {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+    }
+
+    /* 4. Spacing */
+    .connectionsList h3, .requestsList h3 {
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Optimization for extremely narrow devices (under 360px) */
+@media (max-width: 360px) {
+    .userInfo h4 {
+        max-width: 100px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .tabHeader {
+        gap: 10px;
+    }
+}

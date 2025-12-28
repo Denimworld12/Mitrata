@@ -20,7 +20,7 @@ function LoginComponent() {
 
   useEffect(() => {
     console.log("Auth State Changed:", authState);
-    emptyMessage();
+    dispatch(emptyMessage());
   }, [userLoginMethod]);
 
   useEffect(() => {

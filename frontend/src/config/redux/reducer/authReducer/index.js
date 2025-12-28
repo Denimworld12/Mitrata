@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { getAboutUser, loginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, acceptConnectionRequest } from "../../action/authAction/index";
+import { getAboutUser, loginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, acceptConnectionRequest, downloadResume, updateUserProfile } from "../../action/authAction/index";
 import { accessedDynamicData } from "next/dist/server/app-render/dynamic-rendering";
 import { all, get } from "axios";
 
@@ -11,7 +11,7 @@ const initialState = {
     isLoading: false,
     loggedIn: false,
     message: "",
-    isTokenThere:  typeof window !== "undefined" && localStorage.getItem("token") ? true : false,
+    isTokenThere: typeof window !== "undefined" && localStorage.getItem("token") ? true : false,
     profileFetched: false,
     connection: [],
     all_user: [],
@@ -106,7 +106,7 @@ const authSlice = createSlice({
             })
             .addCase(getConnectionRequest.fulfilled, (state, action) => {
                 state.isError = false,
-                state.connection= action.payload
+                    state.connection = action.payload.connections || action.payload
             })
             .addCase(getConnectionRequest.rejected, (state, action) => {
                 state.isError = true;
@@ -117,7 +117,9 @@ const authSlice = createSlice({
             })
             .addCase(getMyConnectionRequests.fulfilled, (state, action) => {
                 state.isError = false,
-                state.connectionRequest= action.payload
+                    state.connectionRequest = Array.isArray(action.payload.myConnections)
+                        ? action.payload.myConnections
+                        : [];
             })
             .addCase(getMyConnectionRequests.rejected, (state, action) => {
                 state.isError = true;
@@ -128,7 +130,7 @@ const authSlice = createSlice({
             })
             .addCase(acceptConnectionRequest.fulfilled, (state, action) => {
                 state.isError = false,
-                state.message= action.payload.message
+                state.message = action.payload.message
             })
             .addCase(acceptConnectionRequest.rejected, (state, action) => {
                 state.isError = true;
@@ -137,8 +139,31 @@ const authSlice = createSlice({
             .addCase(acceptConnectionRequest.pending, (state) => {
                 state.isLoading = true
             })
-    } 
-}); 
-    
+
+            .addCase(downloadResume.fulfilled, (state, action) => {
+                state.message = action.payload
+                state.isError = false,
+                    state.isLoading = false
+
+            })
+            .addCase(updateUserProfile.fulfilled, (state, action) => {
+                state.isLoading = false,
+                    state.isError = false,
+                    state.isSuccess = true,
+                    state.message = action.payload?.message || "Profile updated successfully"
+            })
+            .addCase(updateUserProfile.rejected, (state, action) => {
+                state.isLoading = false,
+                    state.isError = true,
+                    state.isSuccess = false,
+                    state.message = action.payload?.message || "Profile not updated"
+            })  
+            .addCase(updateUserProfile.pending, (state) => {
+                state.isLoading = true
+            })
+
+    }
+});
+
 export const { emptyMessage, handleLoginUser, reset, setTokenNotThere, setTokenThere } = authSlice.actions
 export default authSlice.reducer

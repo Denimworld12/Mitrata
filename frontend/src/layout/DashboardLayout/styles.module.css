@@ -1,5 +1,6 @@
 .homeContainer {
     display: flex;
+    margin-top:  100px;;
 }
 
 .homeContainer>div:nth-child(odd) {
@@ -116,4 +117,131 @@
     font-size: 12px;
     color: #777;
     opacity: 0.9;
+}
+
+
+/* ... Keep all your existing CSS above ... */
+
+.homeContainer_feedContainer {
+    /* Desktop Fix: Prevents the fixed top navbar from covering the content */
+   
+    width: 100%;
+    min-height: 100vh;
+}
+
+/* --- RESPONSIVE DESIGN (Mobile < 600px) --- */
+
+@media (max-width: 600px) {
+    .homeContainer {
+        flex-direction: column;
+    }
+
+    /* Hide Top Profiles on Mobile */
+    .homeContainer_extraContainer {
+        display: none !important;
+    }
+
+    /* Adjust Feed Container for Mobile */
+    .homeContainer_feedContainer {
+          /* Space for fixed top navbar */
+         /* Space for fixed bottom navigation bar */
+        width: 100% !important;
+        flex: 1 !important;
+    }
+
+    /* Bottom Navigation Bar Logic */
+    .homeContainer_leftBar {
+        display: flex !important;
+        flex-direction: row !important;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 65px;
+        background: #ffffff;
+        border-top: 1px solid #e5e5e5;
+        justify-content: space-around;
+        align-items: center;
+        z-index: 1000;
+        padding: 0;
+        margin: 0;
+    }
+
+    /* Show only icons on Mobile as requested */
+    .optionName {
+        display: none !important;
+    }
+
+    .SideOptions {
+        margin: 0 !important;
+        flex: 1;
+        justify-content: center;
+    }
+
+    .SideOptions > svg {
+        height: 1.6rem;
+        width: 1.6rem;
+    }
+}
+
+/* --- TABLET & MOBILE RESPONSIVENESS (< 1024px) --- */
+
+@media (max-width: 1224px) {
+    .homeContainer {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* 1. Hide Top Profiles (Right Sidebar) on Tablet/Mobile */
+    .homeContainer_extraContainer {
+        display: none !important;
+    }
+
+    /* 2. Transform Left Sidebar into a Bottom Nav Bar */
+    .homeContainer_leftBar {
+        display: flex !important;
+        flex-direction: row !important;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 70px;
+        background: #ffffff;
+        border-top: 1px solid #e5e5e5;
+        justify-content: space-around;
+        align-items: center;
+        z-index: 2000; /* Ensure it stays above content */
+        padding: 0;
+        margin: 0;
+    }
+
+    /* 3. Center the Main Feed and make it wider */
+    .homeContainer > div:nth-child(even) {
+        flex: 1;
+        width: 100%;
+        max-width: 800px; /* Limits width on tablets for readability */
+        padding-top: 100px; /* Adjust for Fixed Navbar */
+        padding-bottom: 90px; /* Adjust for Bottom Nav */
+    }
+
+    /* 4. UI Polish for Bottom Nav Items */
+    .SideOptions {
+        margin: 0 !important;
+        flex: 1;
+        flex-direction: column;
+        gap: 4px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Hide text on smaller widths to avoid overlap */
+    @media (max-width: 768px) {
+        .optionName {
+            display: none !important;
+        }
+        .SideOptions > svg {
+            height: 1.8rem;
+            width: 1.8rem;
+        }
+    }
 }

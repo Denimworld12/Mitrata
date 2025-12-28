@@ -48,3 +48,64 @@
         background: #160599;
     }           
 }
+
+/* ... keep your existing desktop code above ... */
+
+/* --- RESPONSIVE TABLET & MOBILE --- */
+
+@media (max-width: 1024px) {
+    .mainContainer {
+        flex-direction: column; /* Stack vertically */
+        height: auto;           /* Let content determine height */
+        padding-top: 100px;     /* Space for fixed Navbar */
+        text-align: center;
+        gap: 2rem;
+    }
+
+    .mainContainer_left, .mainContainer_right {
+        flex: 1;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .mainContainer_left > p:nth-child(1) {
+        font-size: 2.2rem; /* Scale down title */
+    }
+
+    .mainContainer_right img {
+        height: 300px !important; /* Scale down image for tablets */
+        width: auto;
+    }
+}
+
+@media (max-width: 600px) {
+    .container {
+        padding: 1rem;
+    }
+
+    .mainContainer {
+        padding-inline: 1rem;
+        padding-top: 80px; /* Tighter space for mobile nav */
+    }
+
+    .mainContainer_left > p:nth-child(1) {
+        font-size: 1.8rem; /* Smaller title for phones */
+        line-height: 1.2;
+    }
+
+    .mainContainer_left > p:nth-child(2) {
+        font-size: 1.1rem; /* Smaller subtitle */
+    }
+
+    .mainContainer_left > div.buttonJoin {
+        font-size: 1.1rem; /* Compact button */
+        width: 100%;       /* Full width button on mobile */
+        text-align: center;
+    }
+
+    .mainContainer_right img {
+        height: 220px !important; /* Smallest image for phones */
+    }
+}
