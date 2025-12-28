@@ -1,7 +1,7 @@
 const { default: axios } = require("axios");
 
+export const Base_Url = "http://localhost:9080"
 
-
-const clientserver = axios.create({
-    baseURL:"http//:localhost:90"
+export const clientServer = axios.create({
+    baseURL: Base_Url
 })

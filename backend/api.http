@@ -1,0 +1,76 @@
+POST /register HTTP/1.1
+Host: localhost:9080
+Content-Type: application/json
+
+{
+  "username": "nikhil",
+  "password": "123456",
+  "email": "nikhil@example.com",
+  "name": "nikhil"
+}
+
+###
+
+
+POST /login HTTP/1.1
+Host: localhost:9080
+Content-Type: application/json
+
+{
+  "email": "nikhil@example.com",
+  "password": "123456"
+}
+###
+GET /user/findinguser HTTP/1.1
+Host: localhost:9080
+Content-Type: application/json
+
+
+###
+GET  http://localhost:9080/get_user_and_profile HTTP/1.1
+Content-Type: application/json
+
+{
+  "token": "cbe402b3463438f8659ae25393cf7fe59ae708a400543840b673811b1ebcc38c"
+}
+###
+GET http://localhost:9080/posts HTTP/1.1
+content-type: application/json
+
+{
+    "token": "cbe402b3463438f8659ae25393cf7fe59ae708a400543840b673811b1ebcc38c"
+}
+###
+GET http://localhost:9080/get_user_and_profile HTTP/1.1
+Content-Type: application/json
+
+{
+  "token":"b70982bb4efa45fe1662f981a1412899784b10c24b5635b10ab25d629b877f40"
+}
+###
+POST http://localhost:9080/update_profile HTTP/1.1
+Content-Type: application/json
+
+
+{
+    "token": "ab812821e5bbef345e48a0860521988e6b2981cef1f1cd4dfb79bc32cc67f259",
+    "bio": "",
+    "currentPost": "CTO",
+    "pastWork": [
+      {
+        "company": "google",
+        "position": "SDE",
+        "years": "2+"
+      }
+    ],
+    "education": [
+      {
+        "school": "Rhit",
+        "degree": "B Tech",
+        "feildStudy": "2015-2019"
+      }
+    ]
+  }
+
+###
+GET http://localhost:9080/findinguser HTTP/1.1

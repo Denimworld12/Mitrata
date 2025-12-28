@@ -1,0 +1,216 @@
+.container{
+    display: flex;
+    justify-content: center;
+    height: 90svh;
+    align-items: center;
+    background-color: #fbffe8 ;
+    margin-top: 50px;
+}
+.cardContainer {
+    height: 80vh;
+    display: flex;  
+    justify-content: center;
+    overflow: hidden;
+    width: 80vw;
+    background: white;
+    /* align-items: center; */
+    border-radius: 10px;
+    box-shadow: 10px  10px 30px rgba(0, 0, 0, 0.1)  ;
+}
+
+
+.cardContainer_left {
+    flex:0.6;
+    padding: 2rem;
+    text-align: center;
+}
+    .cardHeading{
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+    .inputField{
+        width: 100%;
+        padding: 0.5rem;
+        margin: 1rem 0;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 1rem;
+    }
+    .inputRow{
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        width: fit-content;
+    }
+    .inputContainer{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 2rem;
+        width: 100%;
+        justify-content: center;
+        padding-top: 2rem;
+        max-width: 400px;
+        margin: 0 auto ;
+
+    }
+    .buttonWithOutline{
+        font-weight: bold;
+        font-size:x-large;
+        background-color: transparent;
+        border: none;
+        color: rgb(0, 60, 128);
+        cursor: pointer;
+        font-size: 1rem;
+        margin-top: 1rem;
+        background-color: rgb(234, 232, 232);
+        margin: 12px;
+        padding: 15px;
+        border-radius: 25px;
+        width: 100%;
+        cursor: pointer;
+    }
+.cardContainer_right {
+    flex:0.4;
+    height: 100%;
+    background-color: #044e9c;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-self: center;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    font-size: 1.2rem;
+    font-weight: bold;
+   
+}
+
+.accButton{
+   background-color: rgb(255, 255, 255);
+    margin-top: 10px;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    
+}
+
+
+
+
+/* ... keep all your existing code above ... */
+
+/* Responsive for Tablet and Mobile */
+@media (max-width: 992px) {
+    .cardContainer {
+        width: 90vw; /* Take more width on smaller screens */
+        height: auto; /* Let the content define the height */
+        min-height: 70vh;
+        flex-direction: column; /* Stack left and right vertically */
+    }
+
+    .cardContainer_left {
+        flex: 1; /* Take full space */
+        width: 100%;
+        padding: 1.5rem;
+    }
+
+    .cardContainer_right {
+        flex: none; /* Don't grow/shrink */
+        width: 100%;
+        padding: 2rem 1rem;
+        height: auto;
+        border-radius: 0; /* Optional: adjust if you want round bottom */
+    }
+
+    .inputRow {
+        flex-direction: column; /* Stack Username and Name vertically on mobile */
+        width: 100%;
+        gap: 0;
+    }
+
+    .inputContainer {
+        margin-top: 1rem;
+        padding-top: 1rem;
+    }
+}
+
+/* Specific for Mobile Phones */
+@media (max-width: 480px) {
+    .container {
+        height: auto;
+        padding: 20px 0;
+        min-height: 100svh;
+    }
+
+    .cardContainer {
+        width: 95vw;
+        border-radius: 15px;
+    }
+
+    .cardHeading {
+        font-size: 1.2rem;
+    }
+
+    .buttonWithOutline {
+        font-size: 0.9rem;
+        padding: 12px;
+    }
+}
+
+/* ... keep all your existing code ... */
+
+/* --- TABLET & MOBILE FIX --- */
+@media (max-width: 1024px) {
+    .container {
+        /* Add enough top padding to clear the 70px-80px navbar */
+        padding-top: 100px; 
+        height: auto; /* Allow the page to scroll */
+        min-height: 100vh;
+        align-items: flex-start; /* Start from top instead of centering vertically */
+    }
+
+    .cardContainer {
+        flex-direction: column; /* Stack blue box below the form */
+        height: auto;
+        width: 90vw;
+        margin-bottom: 50px; /* Space at the bottom */
+    }
+
+    .cardContainer_left {
+        flex: 1;
+        padding: 2.5rem 1.5rem;
+    }
+
+    .cardContainer_right {
+        flex: none;
+        width: 100%;
+        padding: 2rem;
+        height: auto;
+        /* Keep the blue box visible and not too tall */
+    }
+
+    /* Fix the Username/Name row for tablet widths */
+    .inputRow {
+        flex-direction: row; /* Keep side-by-side on wide tablets */
+        width: 100%;
+    }
+
+    .inputRow .inputField {
+        width: 50%; /* Each takes half width */
+    }
+}
+
+/* --- MOBILE SPECIFIC (< 600px) --- */
+@media (max-width: 600px) {
+    .inputRow {
+        flex-direction: column; /* Stack inputs only on small mobile */
+    }
+    
+    .inputRow .inputField {
+        width: 100%;
+    }
+
+    .cardHeading {
+        font-size: 1.8rem;
+    }
+}

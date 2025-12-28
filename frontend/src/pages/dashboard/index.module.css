@@ -1,0 +1,699 @@
+.scrollcomponent{
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: 1rem;
+    overflow-y: auto;
+}
+.scrollcomponent::-webkit-scrollbar {
+    display: none;
+}
+.createPostContainer{
+    display: flex;
+    height: 70px;
+    width: 80%;
+    padding-left:0.6rem;
+    padding-right:.5rem;
+    padding: inline 0.8rem ;
+    gap: 1.0rem;
+    align-items: center;
+    background: rgb(255, 251, 212);
+    margin: 12px;
+    border-radius: 15px;
+    outline: none;
+    position: relative;
+}
+.uploadButton{
+    position: absolute;
+    right: 0px;
+    bottom: -19px;
+    background-color: rgba(255, 255, 255, 0);
+    border: none;
+}
+.uploadButton >svg
+{
+    width: 1.9rem;
+    margin-right: 0.5rem;
+
+
+}
+.userProfile{
+
+    border-radius: 100%;
+    height: 60%;
+    /* width: 50%; */
+}
+.createPostContainer >textarea{
+    width: 100%;
+}
+
+.fab{ 
+    
+    display: flex;
+    justify-content: center;
+}
+.fab > svg{
+   
+    width:1.4rem ;
+     
+}
+
+.postTextarea {
+    width: 100%;
+    min-height: 40px;
+    max-height: 180px; 
+    resize: none;
+    overflow-y: auto;              /* ENABLE SCROLL WHEN NEEDED */
+
+    /* HIDE SCROLLBAR */
+    scrollbar-width: none;         /* Firefox */
+}
+.postTextarea::-webkit-scrollbar { /* Chrome, Edge, Safari */
+    display: none;
+}
+
+.postTextarea {
+    padding: 0.6rem 0.8rem;
+    font-size: 16px;
+    background: #fafafa;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    outline: none;
+    transition: border 0.2s ease;
+}
+
+.postTextarea:focus {
+    border-color: #999;
+}
+
+.previewBox {
+    position: relative;
+    width: 90px;
+    height: 90px;
+    margin-left: 10px;
+}
+
+.previewImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+}
+
+.removeImageBtn {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #ff4d4d;
+    border: none;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 14px;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+
+
+
+
+/* ---------------------------------- */
+.singleCard_top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* DELETE BUTTON */
+.deleteBtn {
+    background: transparent;
+    border: none;
+    padding: 0.4rem;
+    cursor: pointer;
+    transition: 0.2s;
+    margin-right: 1rem;
+}
+
+.deleteBtn:hover {
+    background: #e74646;
+    border-radius: 6px;
+}
+/* Main card */
+.singleCard {
+    width: 100%;
+    background: #fff;
+    border-radius: 14px;
+    margin-bottom: 1.4rem;
+    border: 1px solid #eaeaea;
+    overflow: hidden;
+    box-shadow: 0 0 4px rgba(0,0,0,0.08);
+}
+
+/* Profile container */
+.singleCard_profileContainer {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1.1rem 1.3rem;
+}
+
+/* Profile image */
+.userProfile {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #eee;
+}
+
+/* Name + Time */
+.userName {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.postTime {
+    font-size: 0.79rem;
+    color: #777;
+}
+
+/* Post body text */
+.postBody {
+    padding: 0 1.3rem 1rem 1.3rem;
+}
+
+
+/* Post media image */
+.postImage {
+    width: 100%;
+    border-radius: 12px;
+    margin-top: 0.8rem;
+    object-fit: cover;
+    max-height: 420px;
+    background: #f1f1f1;
+}
+
+/* Actions section */
+.postActions {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0.8rem 0;
+    border-top: 1px solid #eaeaea;
+    background: #fafafa;
+}
+
+.actionBtn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    padding: 0.4rem 0.8rem; 
+    flex-direction: row;
+    transition: 0.2s;
+}
+.actionBtn >svg {
+    width: 1.3rem;
+    
+}
+
+.actionBtn:hover {
+    background: #efefef;
+    border-radius: 6px;
+}
+.postText {
+    font-size: 1rem;
+    color: #333;
+    line-height: 1.4rem;
+    max-height: 2.8rem;       /* = 2 lines x line-height */
+    overflow: hidden;
+    position: relative;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;  
+    -webkit-box-orient: vertical;
+}
+
+.showMore {
+    color: #007bff;
+    font-weight: 500;
+    cursor: pointer;
+    margin-left: 4px;
+}
+
+.fullText {
+    line-height: 1.4rem;
+}
+
+.icon {
+    width: 1.5rem;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+.icon:hover {
+    transform: scale(1.1);
+    opacity: 0.7;
+}
+
+.commentsSection{
+    width: 100vw;
+    height: 100vh;
+    left: 0;
+    overflow: hidden;
+    justify-content: center;
+    display: flex;
+    align-items: center;
+
+    background: #00000053;
+    margin-top: 1rem;
+    padding: 1rem;
+    position: fixed;
+    top: 0  ;
+    z-index: 2;
+    
+}
+.allCommentsContainer{
+    width: 40vw;
+    height: 80vh;
+    background: #fff;
+    border-radius: 12px;
+    position: relative;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+/* OVERLAY BLUR */
+.commentsOverlay {
+    width: 100vw;
+    height: 100vh;
+    background: #00000060;
+    backdrop-filter: blur(4px);
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 50;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* WHITE POPUP BOX */
+.commentsPopup {
+    width: 40vw;
+    height: 80vh;
+    background: #fff;
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(40px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+/* HEADER */
+.commentsHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid #ececec;
+}
+
+.closeBtn {
+    font-size: 1.3rem;
+    cursor: pointer;
+}
+
+/* COMMENTS LIST */
+.commentsList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.noCommentsText {
+    text-align: center;
+    color: #777;
+    margin-top: 2rem;
+}
+
+/* SINGLE COMMENT */
+.singleComment {
+    padding: 0.9rem;
+    background: #f7f7f7;
+    border-radius: 10px;
+    margin-bottom: 0.8rem;
+}
+
+.commentUser {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.commentMsg {
+    margin-top: 4px;
+    font-size: 0.95rem;
+}
+
+/* BOTTOM FIXED INPUT BAR */
+.commentInputBar {
+    display: flex;
+    gap: 0.8rem;
+    padding: 0.8rem 1rem;
+    border-top: 1px solid #e6e6e6;
+    background: #fff;
+}
+
+.commentInputBar input {
+    flex: 1;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    outline: none;
+    font-size: 0.95rem;
+}
+
+.commentInputBar button {
+    background: #2f80ed;
+    color: white;
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.2s;
+}
+
+.commentInputBar button:hover {
+    background: #1a65d6;
+}
+
+
+
+/* ========================================================================= */
+/* 4. Comments Popup - New/Modified Styles */
+/* ========================================================================= */
+
+/* NEW: Wrapper for the whole comment row (Image + Bubble) */
+.singleCommentContainer {
+    display: flex;
+    align-items: flex-start; /* Align image and bubble to the top */
+    gap: 8px; /* Space between profile image and comment bubble */
+    margin-bottom: 0.8rem;
+}
+
+/* NEW: Profile Picture Style for Comments */
+.commentUserProfile {
+    width: 32px; /* Smaller size for comment avatars */
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0; /* Ensures the image doesn't shrink */
+}
+
+/* MODIFIED: Comment Bubble Style */
+.singleComment {
+    /* Adjusted styles to make it purely the bubble */
+    flex-grow: 1; /* Allow the bubble to expand */
+    max-width: calc(100% - 40px); /* Adjust max width based on image size and gap */
+    
+    /* Bubble appearance */
+    padding: 0.7rem 1rem;
+    background: #f0f2f5; 
+    border-radius: 18px; 
+    position: relative;
+    
+    /* Removed margin-bottom here, now handled by .singleCommentContainer */
+    margin-bottom: 0; 
+}
+
+.commentUser {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #1c1e21;
+    margin-bottom: 2px;
+    display: block; /* Ensure username is on its own line */
+}
+
+.commentMsg {
+    margin-top: 0;
+    font-size: 0.9rem;
+    color: #1c1e21;
+    word-wrap: break-word;
+}
+
+
+/* --- RESPONSIVE DASHBOARD (Tablet & Mobile) --- */
+
+@media (max-width: 1024px) {
+    .createPostContainer {
+        width: 95%; /* Take more width on smaller screens */
+        height: auto; /* Allow container to grow with content */
+        padding: 1rem;
+    }
+
+    .commentsPopup {
+        width: 80vw; /* Wider modal for tablets */
+    }
+}
+
+@media (max-width: 600px) {
+    .createPostContainer {
+        flex-direction: column; /* Stack items vertically */
+        height: auto;
+        width: 100%;
+        margin: 10px 0;
+        border-radius: 0; /* Full width look on mobile */
+    }
+
+    /* Fixed: Move preview box below text area to keep textarea large */
+    .previewBox {
+        margin-left: 0 !important;
+        margin-top: 15px !important;
+        width: 100%; /* Full width preview on mobile */
+        height: 200px; /* Larger preview height */
+    }
+
+    .previewImage {
+        width: 100%;
+        height: 100%;
+        object-fit: contain; /* Don't crop the image preview */
+        background: #eee;
+    }
+
+    .postTextarea {
+        font-size: 14px;
+        min-height: 60px; /* Give more space to type */
+    }
+
+    .singleCard {
+        border-radius: 0; /* Mobile feed standard */
+        margin-bottom: 10px;
+        border-left: none;
+        border-right: none;
+    }
+
+    /* Comments Modal for Mobile */
+    .commentsPopup {
+        width: 100vw; /* Full width */
+        height: 100vh; /* Full height */
+        border-radius: 0;
+    }
+
+    .commentsOverlay {
+        align-items: flex-end; /* Slide up from bottom */
+    }
+
+    @keyframes slideUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
+
+    .postActions span {
+        display: none; /* Hide labels like "Likes", "Comments" to save space, icons only */
+    }
+    
+    .actionBtn {
+        padding: 0.8rem;
+    }
+
+    .uploadButton {
+        bottom: 10px;
+        right: 10px;
+    }
+}
+
+/* Optimization for very small screens */
+@media (max-width: 400px) {
+    .singleCard_profileContainer {
+        padding: 0.8rem;
+    }
+    .userProfile {
+        width: 40px;
+        height: 40px;
+    }
+    .userName {
+        font-size: 0.9rem;
+    }
+}
+/* --- CRITICAL FIX FOR OVERLAY VISIBILITY --- */
+.commentsOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.75); /* Darker backdrop for focus */
+    backdrop-filter: blur(10px); /* Heavy blur to hide the background sidebar */
+    
+    /* Ensure this is higher than any Sidebar or Navbar */
+    z-index: 10000 !important; 
+    
+    display: flex;
+    justify-content: center;
+    align-items: center; /* Center for Tablet/Desktop */
+    padding: 20px;
+}
+
+.commentsPopup {
+    width: 500px;
+    height: 85vh; /* Taller to show more comments */
+    background: #ffffff;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+/* --- MOBILE & TABLET OVERRIDES --- */
+
+@media (max-width: 1024px) {
+    .commentsOverlay {
+        padding: 40px 20px; /* Add top padding to move it away from screen edges */
+    }
+    
+    .commentsPopup {
+        width: 85vw;
+        height: 80vh;
+    }
+}
+
+@media (max-width: 600px) {
+    .commentsOverlay {
+        align-items: flex-start; /* PUSH TO TOP on mobile */
+        padding: 0; /* Remove padding to use full width */
+    }
+
+    .commentsPopup {
+        width: 100%;
+        height: 100%; /* Full screen on mobile to avoid sidebar overlap */
+        border-radius: 0; /* Full screen look */
+    }
+
+    /* Fixed: Ensure the header is visible below the top notch */
+    .commentsHeader {
+        padding-top: 50px; /* Space for the phone's status bar/camera notch */
+        background: #f8f9fa;
+    }
+
+    /* Fixed: Ensure input bar is above the bottom navigation bar */
+    .commentInputBar {
+        padding: 15px;
+        padding-bottom: 40px; /* Extra space to clear the bottom nav bar */
+        border-top: 2px solid #eee;
+        background: white;
+    }
+}/* --- ENHANCED RESPONSIVE COMMENTS & ACTIONS --- */
+
+@media (max-width: 1024px) {
+    /* Tablet Mode for Comments Popup */
+    .commentsPopup {
+        width: 70vw; 
+        height: 70vh;
+    }
+}
+
+@media (max-width: 600px) {
+    /* 1. Fix for Likes not showing perfectly */
+    .postActions {
+        justify-content: space-between; /* Spread them out */
+        padding: 0.8rem 1rem;
+    }
+
+    .actionBtn {
+        gap: 4px; /* Tighten gap */
+        padding: 0.5rem;
+        flex: 1; /* Equal width for all 3 buttons */
+        justify-content: center;
+    }
+
+    .actionBtn span {
+        display: inline-block !important; /* Force labels to show */
+        font-size: 0.75rem; /* Make text smaller to fit */
+    }
+
+    /* 2. Mobile Comment Modal Adjustments */
+    .commentsOverlay {
+        align-items: flex-end; /* Mobile feel: slide from bottom */
+    }
+
+    .commentsPopup {
+        width: 100%;
+        height: 85vh; /* Don't cover 100% so user sees they can swipe/click down to close */
+        border-radius: 20px 20px 0 0; /* Rounded top corners like modern apps */
+    }
+
+    .commentsHeader {
+        padding: 0.8rem 1.2rem;
+    }
+
+    /* 3. Comment Input Bar on Mobile */
+    .commentInputBar {
+        padding: 10px;
+        position: sticky;
+        bottom: 0;
+        background: white;
+        padding-bottom: env(safe-area-inset-bottom); /* Fix for iPhone notches */
+    }
+
+    .commentInputBar input {
+        font-size: 14px; /* Prevent iOS auto-zoom on focus */
+        padding: 12px;
+    }
+
+    /* 4. Single Comment Bubble on Mobile */
+    .singleComment {
+        max-width: 85%; /* Give more room to the text */
+        padding: 8px 12px;
+    }
+}
+
+/* Fix for very narrow phones (e.g., iPhone SE) */
+@media (max-width: 360px) {
+    .actionBtn span {
+        font-size: 0.65rem;
+    }
+    
+    .actionBtn svg {
+        width: 1.1rem;
+    }
+}

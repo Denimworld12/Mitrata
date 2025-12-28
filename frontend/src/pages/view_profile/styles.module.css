@@ -1,0 +1,415 @@
+    /* ========================================================================= */
+/* BASE STYLES */
+/* ========================================================================= */
+
+.container {
+  padding: 1.5rem 0;
+  background: #f3f6f8;
+  min-height: 100vh; /* Ensure full height */
+}
+
+/* Wrapper makes absolute positioning work */
+.coverWrapper {
+  position: relative;
+  width: 80vw;
+  max-width: 1200px; /* Added max-width for better control */
+  margin: auto;
+}
+
+/* Cover image */
+.backDropContainer {
+  width: 100%;
+  height: 30vh;
+  /* Use your actual image here */
+  background: url("https://images.pexels.com/photos/19819250/pexels-photo-19819250.jpeg?auto=compress&cs=tinysrgb&w=1260&h750&dpr=1");
+  background-size: cover;
+  background-position: center;
+  border-radius: 12px;
+}
+
+/* Profile avatar */
+.profileImage {
+  width: 140px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 5px solid #fff; /* Thicker border */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+
+  position: absolute;
+  bottom: -70px;
+  left: 3rem; /* Slightly further from the edge */
+  background: #fff;
+}
+
+/* ========================================================================= */
+/* TWO-COLUMN LAYOUT */
+/* ========================================================================= */
+
+.profileContentWrapper {
+    display: flex;
+    gap: 2rem; /* Space between columns */
+    width: 80vw;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-top: 1rem; /* Padding after the cover/profile image overlap */
+}
+
+/* LEFT COLUMN: Main Profile Details */
+.profileDetails {
+    flex: 2; /* Takes up 2/3 of the space */
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    min-height: 60vh; /* Ensure it's visually substantial */
+}
+
+/* RIGHT COLUMN: Recent Posts/Activity Sidebar */
+.userActivitySidebar {
+    flex: 1; /* Takes up 1/3 of the space */
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* ========================================================================= */
+/* LEFT COLUMN STYLES */
+/* ========================================================================= */
+
+.profileDetails_userName {
+    /* Use grid or flex for alignment if needed, but flex is simpler here */
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end; /* Align button to the bottom if content is tall */
+    padding-top: 70px; /* Pushes content down past the profile image */
+    margin-bottom: 1rem;
+}
+
+.profileNameDetails {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.profileNameDetails h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    color: #1c1e21;
+}
+
+.profileUsername p {
+    font-size: 1rem;
+    color: #65676b;
+    margin: 0;
+}
+
+.profileBio {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.profileBio h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+/* Button Styling */
+.connectButton, .connectedButton {
+    padding: 0.5rem 1.5rem;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.connectButton {
+    background: #2e89ff;
+    color: white;
+    border: none;
+}
+
+.connectedButton {
+    background: #e7f3ff;
+    color: #2e89ff;
+    border: 1px solid #2e89ff;
+}
+.pendingButton {
+    background-color: #f3f3f3;
+    color: #666666;
+    padding: 8px 24px;
+    border-radius: 20px;
+    font-weight: 600;
+    border: 1px solid #666666;
+    cursor: not-allowed; /* Shows the user they can't click it again */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+/* ========================================================================= */
+/* RIGHT COLUMN STYLES (Activity/Posts) */
+/* ========================================================================= */
+
+.userActivitySidebar h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    color: #1c1e21;
+}
+
+.recentPostList {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.sidebarPostCard {
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f7f9fb;
+    border: 1px solid #eee;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.sidebarPostImage {
+    width: 100%;
+    height: auto;
+    max-height: 150px;
+    object-fit: cover;
+}
+
+.sidebarPostText {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+    color: #555;
+    margin: 0;
+}
+
+.showAllButton {
+    background: transparent;
+    border: 1px solid #2e89ff;
+    color: #2e89ff;
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: background-color 0.2s;
+}
+
+.showAllButton:hover {
+    background: #e7f3ff;
+}
+
+.noPostsMessage {
+    color: #777;
+    text-align: center;
+    padding: 1rem;
+    font-style: italic;
+}
+
+
+
+
+.headline {
+    font-size: 1.1rem;
+    color: #444;
+    margin: 4px 0;
+}
+
+.actionButtons {
+    display: flex;
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.resumeButton {
+    background: #fff;
+    color: #0a66c2;
+    border: 1px solid #0a66c2;
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    justify-content: space-between;
+}
+.resumeButton > svg 
+{
+    color: rgb(34, 52, 67);
+    width: 1.4rem;
+}
+.resumeButton:hover {
+    background: #f0f7ff;
+}
+
+.infoSection {
+    margin-top: 25px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+.infoItem {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.5rem;
+    background-color: #ffffff;
+    border-radius: 8px;
+    /* Softer, more modern shadow */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); 
+    width: 100%; /* Or fit-content if you prefer */
+    transition: transform 0.2s ease;
+}
+
+.infoItem:hover {
+    transform: translateY(-2px); /* Subtle lift on hover */
+}
+
+.infoItem h4 {
+    margin: 0;
+    color: #1c1e21;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.infoItem p {
+    margin: 6px 0 0 0;
+    color: #4b4f56;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    /* Remove the box-shadow and padding from here */
+}
+
+.noDataText {
+    font-style: italic;
+    color: #999;
+}
+
+
+/* Update these responsive rules in your existing styles.module.css */
+
+@media (max-width: 1024px) {
+    .container {
+        padding: 0; /* Remove extra padding since DashboardLayout handles it */
+        width: 100%;
+        max-width: 100vw;
+    }
+
+    .coverWrapper, .profileContentWrapper {
+        width: 95vw; /* Make sections wider on tablets */
+    }
+
+    .profileImage {
+        width: 120px; /* Scale down profile image slightly */
+        height: 120px;
+        left: 2rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .profileContentWrapper {
+        flex-direction: column; /* Stack sidebar under profile on mobile */
+        gap: 1rem;
+        width: 100vw;
+        padding: 10px;
+    }
+
+    .profileDetails, .userActivitySidebar {
+        width: 100%; /* Take full width on mobile */
+        flex: none;
+    }
+
+    .coverWrapper {
+        width: 100%;
+        border-radius: 0;
+    }
+
+    .backDropContainer {
+        border-radius: 0; /* Full bleed image on mobile */
+    }
+
+    .profileImage {
+        width: 100px;
+        height: 100px;
+        bottom: -50px;
+        left: 1.5rem;
+    }
+
+    .profileDetails_userName {
+        padding-top: 55px; /* Adjust spacing for smaller profile image */
+    }
+}
+
+/* --- Desktop (Fixed Navbar clearance) --- */
+.container {
+    padding-top: 2rem; /* Initial desktop padding */
+}
+
+/* --- Responsive (CLEARANCE FOR FIXED NAVBAR) --- */
+@media (max-width: 1024px) {
+    .container {
+        /* Since DashboardLayout adds top padding (e.g. 85px), 
+           we reset the internal container padding to avoid double spacing */
+        padding-top: 10px; 
+        width: 100%;
+        background: transparent; /* Let DashboardLayout background show through */
+    }
+
+    .coverWrapper {
+        width: 100% !important; /* Force full width to cover screen edges */
+        max-width: none;
+    }
+
+    .profileImage {
+        width: 110px;
+        height: 110px;
+        bottom: -55px; /* Adjust overlap */
+    }
+}
+
+@media (max-width: 768px) {
+    .profileContentWrapper {
+        flex-direction: column;
+        padding: 10px;
+        gap: 15px;
+    }
+
+    .backDropContainer {
+        height: 25vh; /* Shorter cover on small mobile */
+        border-radius: 0;
+    }
+
+    .profileDetails_userName {
+        padding-top: 60px; /* Space for profile image overlap */
+    }
+}
+
+
+/* --- TABLET SPECIFIC (912px and below) --- */
+@media (max-width: 1024px) {
+    .profileContentWrapper {
+        /* On tablets, we want to start stacking or widening the columns */
+        width: 95vw; 
+        gap: 1.5rem;
+    }
+
+    .profileDetails {
+        flex: 1.5; /* Give the main info more room */
+    }
+
+    .userActivitySidebar {
+        flex: 1;
+    }
+}
+
