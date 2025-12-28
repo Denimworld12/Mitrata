@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import styles from "./styles.module.css"
 import { useRouter } from 'next/router'
 import { useDispatch, useSelector } from 'react-redux';
-import { setTokenNotThere, setTokenThere } from '@/config/redux/reducer/authReducer';
+import {  setTokenThere } from '@/config/redux/reducer/authReducer';
 import { getAllPosts } from '@/config/redux/action/postAction';
 import { getAllUser } from '@/config/redux/action/authAction';
 import { Base_Url } from '@/config';

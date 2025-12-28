@@ -3,7 +3,7 @@ import styles from "./index.module.css"
 import React, { useEffect, useState, useMemo } from 'react'
 import { Base_Url, clientServer } from '@/config'
 import { useDispatch, useSelector } from 'react-redux'
-import { getAboutUser, getConnectionRequest, sendConnectionRequest, updateUserProfile } from '@/config/redux/action/authAction'
+import { getAboutUser, getConnectionRequest,  updateUserProfile } from '@/config/redux/action/authAction'
 import { useRouter } from 'next/router'
 import { getAllPosts } from '@/config/redux/action/postAction'
 import DashboardLayout from '@/layout/DashboardLayout' // Added for Tablet/Mobile logic

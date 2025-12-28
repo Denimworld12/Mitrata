@@ -1,7 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { getAboutUser, loginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, acceptConnectionRequest, downloadResume, updateUserProfile } from "../../action/authAction/index";
-import { accessedDynamicData } from "next/dist/server/app-render/dynamic-rendering";
-import { all, get } from "axios";
+
 
 
 const initialState = {

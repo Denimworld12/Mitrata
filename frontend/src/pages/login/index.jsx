@@ -1,10 +1,9 @@
 import UserLayout from '@/layout/userLayout'
 import { useRouter } from 'next/router'
-import React, { use, useEffect, useState } from 'react'
+import React, {  useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import styles from './styles.module.css'
 import { loginUser, registerUser } from '@/config/redux/action/authAction'
-import { UNSTABLE_REVALIDATE_RENAME_ERROR } from 'next/dist/lib/constants'
 import { emptyMessage } from '@/config/redux/reducer/authReducer'
 function LoginComponent() {
   const authState = useSelector((state) => state.auth)
