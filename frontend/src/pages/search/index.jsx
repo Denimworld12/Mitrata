@@ -4,7 +4,6 @@ import UserLayout from '@/layout/userLayout';
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import styles from './index.module.css';
-import SearchBar from './SearchBar';
 import { Base_Url } from '@/config';
 import { useRouter } from 'next/router';
 
