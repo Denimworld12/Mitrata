@@ -21,7 +21,15 @@ export default function Search() {
     }, [authState.all_profile_fetched]);
 
     // Filter users based on search input
+    // Filter users based on search input AND exclude current user
     const filteredUsers = authState.all_user?.filter((item) => {
+        // 1. Check if this is the current logged-in user
+        // Replace 'authState.user?._id' with the actual path to your logged-in user's ID
+        const isCurrentUser = item?.userId?._id === authState.user?._id;
+
+        if (isCurrentUser) return false; // Skip this user
+
+        // 2. Existing Search Logic
         const name = item?.userId?.name?.toLowerCase() || "";
         const username = item?.userId?.username?.toLowerCase() || "";
 
@@ -53,9 +61,9 @@ export default function Search() {
                 {filteredUsers.length > 0 ? (
                     filteredUsers.map((user) => (
                         <div
-                        onClick={()=>{
-                            router.push('/view_profile/'+user.userId?.username)
-                        }}
+                            onClick={() => {
+                                router.push('/view_profile/' + user.userId?.username)
+                            }}
                             key={user.userId?._id || user._id}
                             className={styles.userCard}
                         >
