@@ -1,13 +1,16 @@
 import express from "express";
+import dotenv from "dotenv"; // Import first
+dotenv.config();           // Load variables IMMEDIATELY
+
+// NOW import everything else
 import cors from "cors";
-import dotenv from "dotenv";
 import mongoose from "mongoose";
-import postRoutes from "./routes/post.routes.js"
-import userRoute from "./routes/user.routes.js"
+import postRoutes from "./routes/post.routes.js";
+import userRoute from "./routes/user.routes.js";
 
 const app = express();
 
-dotenv.config();
+// dotenv.config();
 
 app.use(cors());
 

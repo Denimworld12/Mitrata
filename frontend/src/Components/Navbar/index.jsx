@@ -4,7 +4,6 @@ import { useRouter } from 'next/router'
 import { useDispatch, useSelector } from 'react-redux';
 import { getAboutUser } from '@/config/redux/action/authAction';
 import { reset, setTokenNotThere, setTokenThere } from '@/config/redux/reducer/authReducer';
-import { Base_Url } from '@/config';
 
 export default function Navbar() {
     const router = useRouter();
@@ -75,7 +74,7 @@ export default function Navbar() {
                             {/* Profile with Icon */}
                             <div onClick={() => {router.push("/profile"); setIsMenuOpen(false)}} className={styles.navItem}>
                                 <img 
-                                    src={authState.user?.userId?.profilePicture ? `${Base_Url}/${authState.user.userId.profilePicture}` : "/default-avatar.png"} 
+                                    src={authState.user?.userId?.profilePicture || "/default-avatar.png"} 
                                     className={styles.miniAvatar} 
                                     alt="pfp" 
                                 />

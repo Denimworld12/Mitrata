@@ -6,54 +6,54 @@ import styles from './styles.module.css'
 import { loginUser, registerUser } from '@/config/redux/action/authAction'
 import { emptyMessage } from '@/config/redux/reducer/authReducer'
 function LoginComponent() {
-  const authState = useSelector((state) => state.auth)
-  const router = useRouter()
-  // CONSOLE_LOGGER('authState on login page', authState)
-  const [userLoginMethod, setUserLoginMethod] = useState(false)
-
-  useEffect(() => {
-    if (authState.loggedIn) {
-      router.push('/dashboard')
-    }
-  }, [authState.loggedIn])
-
-  useEffect(() => {
-    console.log("Auth State Changed:", authState);
-    dispatch(emptyMessage());
-  }, [userLoginMethod]);
-
-  useEffect(() => {
-    if (localStorage.getItem("token")) {
-      router.push('/dashboard')
-    }
-  }, [])
-
+  const authState = useSelector((state) => state.auth);
+  const router = useRouter();
   const dispatch = useDispatch();
+
+  const [userLoginMethod, setUserLoginMethod] = useState(false);
+  const [isChecking, setIsChecking] = useState(true); // New: prevents form flicker
+
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
 
-  const handleRegister = () => {
-    console.log("register clicked");
-    console.log({ username, name, email, password }); // log user input
+  // EFFECT 1: Run once on mount to check if user is already authenticated
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      router.replace('/dashboard'); // Use replace to prevent "Back" button loop
+    } else {
+      setIsChecking(false); // Only show the UI if no token exists
+    }
+  }, []);
 
-    dispatch(registerUser({
-      username,
-      name,
-      email,
-      password
-    }))
-  }
+  // EFFECT 2: Reset error messages when switching between Login and Signup
+  useEffect(() => {
+    dispatch(emptyMessage());
+  }, [userLoginMethod, dispatch]);
 
-  const handleLogin = () => {
-    console.log("login clicked");
-    dispatch(loginUser({
-      email,
-      password
-    }))
-  }
+  // HANDLER: Login with immediate navigation
+  const handleLogin = async () => {
+    const result = await dispatch(loginUser({ email, password }));
+    // If login is successful, jump to dashboard immediately 
+    // instead of waiting for another useEffect to fire
+    if (loginUser.fulfilled.match(result)) {
+      router.push('/dashboard');
+    }
+  };
 
+  const handleRegister = async () => {
+    const result = await dispatch(registerUser({ username, name, email, password }));
+    if (registerUser.fulfilled.match(result)) {
+      // If registration auto-logs in, go to dashboard. 
+      // If not, switch to login view.
+      setUserLoginMethod(true);
+    }
+  };
+
+  // Hide everything while checking localStorage to make it feel fast
+  if (isChecking) return null;
   return (
     <UserLayout>
       <div className={styles.container}>

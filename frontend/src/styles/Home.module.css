@@ -1,111 +1,120 @@
-
-.container{
-    font-family: "poppins";
+.container {
+    font-family: "Poppins", sans-serif;
     padding: 1.2rem;
+    overflow-x: hidden;
 }
-.mainContainer{
+
+.mainContainer {
     display: flex;
     align-items: center;
     justify-content: space-evenly;
-    
     gap: 4rem;
-    padding-inline: 2rem;
-    height: 80vh;
-    
+    padding-inline: 4rem;
+    height: calc(100vh - 100px); /* Adjusts height based on viewport */
+    max-width: 1400px;
+    margin: 0 auto;
 }
-.mainContainer_left{
-    flex: 0.9;
+
+.mainContainer_left {
+    flex: 1.2;
 }
-.mainContainer_right{
-    flex: 0.5;
+
+.mainContainer_right {
+    flex: 0.8;
+    display: flex;
+    justify-content: center;
 }
-.mainContainer_left > p:nth-child(1){
-    font-size: 2.9rem;
+
+.heroImage {
+    height: 420px;
+    width: auto;
+    object-fit: contain;
+}
+
+.mainContainer_left > p:nth-child(1) {
+    font-size: 3.5rem;
     background: -webkit-linear-gradient(45deg, #060dc8, #d55c16);
     -webkit-background-clip: text;
     background-clip: text;
-    font-weight: 600;
+    font-weight: 700;
     -webkit-text-fill-color: transparent;
-    margin-bottom: 1rem;
-}
-.mainContainer_left > p:nth-child(2){
-    font-size: 1.7rem;
-    color: #4d4d4d;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
 }
 
-.mainContainer_left > div.buttonJoin{
+.mainContainer_left > p:nth-child(2) {
+    font-size: 1.4rem;
+    color: #5c5c5c;
+    line-height: 1.6;
+}
+
+.buttonJoin {
     width: fit-content;
     cursor: pointer;
     user-select: none;
-    margin-top: 1.5rem;
-    transition: all 0.3s ;
-    font-size: 1.5rem;
-    background:#162ea5;
+    margin-top: 2rem;
+    transition: all 0.3s ease;
+    font-size: 1.2rem;
+    font-weight: 600;
+    background: #162ea5;
     color: white;
-    padding: 0.7rem 1.5rem;
-    border-radius: 0.4rem;
-    &:hover{
-        background: #160599;
-    }           
+    padding: 1rem 2.5rem;
+    border-radius: 50px; /* Modern pill shape */
+    box-shadow: 0 4px 15px rgba(22, 46, 165, 0.3);
 }
 
-/* ... keep your existing desktop code above ... */
+.buttonJoin:hover {
+    background: #111f7a;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(22, 46, 165, 0.4);
+}
 
-/* --- RESPONSIVE TABLET & MOBILE --- */
-
+/* --- RESPONSIVE TABLET (1024px) --- */
 @media (max-width: 1024px) {
     .mainContainer {
-        flex-direction: column; /* Stack vertically */
-        height: auto;           /* Let content determine height */
-        padding-top: 100px;     /* Space for fixed Navbar */
-        text-align: center;
-        gap: 2rem;
-    }
-
-    .mainContainer_left, .mainContainer_right {
-        flex: 1;
-        width: 100%;
-        display: flex;
         flex-direction: column;
-        align-items: center;
+        height: auto;
+        padding-top: 120px;
+        padding-bottom: 50px;
+        text-align: center;
+        gap: 3rem;
     }
 
     .mainContainer_left > p:nth-child(1) {
-        font-size: 2.2rem; /* Scale down title */
+        font-size: 2.8rem;
     }
 
-    .mainContainer_right img {
-        height: 300px !important; /* Scale down image for tablets */
-        width: auto;
+    .heroImage {
+        height: 320px !important;
+    }
+
+    .buttonJoin {
+        margin-inline: auto;
     }
 }
 
+/* --- RESPONSIVE MOBILE (600px) --- */
 @media (max-width: 600px) {
-    .container {
-        padding: 1rem;
-    }
-
     .mainContainer {
-        padding-inline: 1rem;
-        padding-top: 80px; /* Tighter space for mobile nav */
+        padding-inline: 1.5rem;
+        padding-top: 100px;
     }
 
     .mainContainer_left > p:nth-child(1) {
-        font-size: 1.8rem; /* Smaller title for phones */
-        line-height: 1.2;
+        font-size: 2rem;
     }
 
     .mainContainer_left > p:nth-child(2) {
-        font-size: 1.1rem; /* Smaller subtitle */
+        font-size: 1rem;
     }
 
-    .mainContainer_left > div.buttonJoin {
-        font-size: 1.1rem; /* Compact button */
-        width: 100%;       /* Full width button on mobile */
-        text-align: center;
+    .buttonJoin {
+        width: 100%; /* Full width for easier mobile clicking */
+        font-size: 1.1rem;
+        padding: 0.8rem 1rem;
     }
 
-    .mainContainer_right img {
-        height: 220px !important; /* Smallest image for phones */
+    .heroImage {
+        height: 250px !important;
     }
 }

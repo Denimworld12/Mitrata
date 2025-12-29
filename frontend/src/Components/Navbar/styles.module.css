@@ -8,7 +8,42 @@
     background: white;
     box-shadow: 0 2px 10px rgba(0,0,0,0.05);
 }
+/* Login / Join Button styling */
+.buttonJoin {
+    background: #162ea5; /* Using your logo color */
+    color: white;
+    padding: 8px 20px;
+    border-radius: 50px; /* Pill shape */
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    border: 1px solid #162ea5;
+    white-space: nowrap;
+}
 
+.buttonJoin:hover {
+    background: #111f7a; /* Darker blue on hover */
+    box-shadow: 0 4px 12px rgba(22, 46, 165, 0.2);
+    transform: translateY(-1px);
+}
+
+/* Fix for Mobile: Ensure the button takes full width in the dropdown */
+@media (max-width: 768px) {
+    .navbarOptionContainer .buttonJoin {
+        width: 100%;
+        margin-top: 10px;
+        padding: 12px;
+    }
+}
+.navVisible {
+    transform: translateY(0);
+}
+
+.navHidden {
+    transform: translateY(-100%);
+}
 .navbar {
     display: flex;
     align-items: center;

@@ -306,7 +306,75 @@
     z-index: 50;
     animation: fadeIn 0.2s ease;
 }
+/* --- Professional Image Management --- */
+.mediaContainer {
+    width: 100%;
+    /* Limits height of portrait images to 450px to keep feed scrollable */
+    max-height: 450px; 
+    background: #f3f2f1; /* Professional light gray backdrop for contain mode */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    margin-top: 0.8rem;
+    border-radius: 8px;
+    border: 1px solid #f0f2f5;
+}
 
+.postImage {
+    width: 100%;
+    height: auto;
+    max-height: 450px;
+    /* 'contain' ensures the full image is visible without cropping.
+       Use 'cover' if you prefer uniform square-cropped LinkedIn style. */
+    object-fit: contain; 
+    display: block;
+}
+
+/* --- X-Direction Scroll Fix (Horizontal Fix) --- */
+.singleCard {
+    width: 100%;
+    box-sizing: border-box;
+    /* Prevents long strings of text or URLs from pushing card width */
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+}
+
+.postBody {
+    padding: 0 1.3rem 1rem 1.3rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* --- Mobile UIUX Optimizations --- */
+@media (max-width: 600px) {
+    .mediaContainer {
+        max-height: 350px; /* Shorter containers on small mobile screens */
+        border-radius: 0; /* Full-bleed look for images on mobile */
+    }
+
+    .postImage {
+        max-height: 350px;
+    }
+
+    .singleCard {
+        margin-bottom: 0.8rem;
+        border-radius: 0; /* Modern social media feed style */
+        border-left: none;
+        border-right: none;
+    }
+}
+
+/* Ensure the comments popup input doesn't cause horizontal overflow */
+.commentInputBar {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.commentInputBar input {
+    min-width: 0; /* Flexbox fix for input width */
+}
 @keyframes fadeIn {
     from { opacity: 0; }
     to   { opacity: 1; }

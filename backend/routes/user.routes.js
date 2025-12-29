@@ -2,7 +2,7 @@
 import multer from "multer";
 import { acceptConnectionRequest, downloadProfile, findSearchUser, getAllUserBasedOnUsername, getMyConnectionRequest, getUserAndProfile, login, register, sendconnectionrequest, updateProfileData, updateUserProfile, uploadProfilePicture, whatAreMyConnection } from "../controllers/user.controller.js";
 import {Router} from "express"
-
+import { Storage } from "../config/cloudinary.js";
 const router = Router();
 const storage = multer.diskStorage({
     destination:(req, file , cb)=>{
@@ -13,7 +13,7 @@ const storage = multer.diskStorage({
     },
 
 })
-const upload = multer({storage:storage})
+const upload = multer({storage:Storage})
 
 router.route("/register").post(register);
 router.route('/login').post(login)

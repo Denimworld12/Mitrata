@@ -4,7 +4,6 @@ import UserLayout from '@/layout/userLayout';
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import styles from './index.module.css';
-import { Base_Url } from '@/config';
 import { useRouter } from 'next/router';
 
 export default function Search() {
@@ -70,7 +69,7 @@ const filteredUsers = authState.all_user?.filter((item) => {
                             className={styles.userCard}
                         >
                             <img
-                                src={`${Base_Url}/${user.userId?.profilePicture}`}
+                                src={user.userId?.profilePicture || "/default-avatar.png"}
                                 alt={`${user.userId?.username}`}
                                 className={styles.userProfilePicture}
                             />

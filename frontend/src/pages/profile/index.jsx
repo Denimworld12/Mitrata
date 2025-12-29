@@ -168,7 +168,7 @@ export default function Profile() {
           <div className={styles.imageWrapper}>
             <img
               className={styles.profileImage}
-              src={`${Base_Url}/${userProfile.userId?.profilePicture}`}
+              src={userProfile.userId?.profilePicture}
               alt="profile"
             />
             {isOwner && (
@@ -236,7 +236,7 @@ export default function Profile() {
               {recentPosts.map((post) => (
                 <div key={post._id} className={styles.sidebarPostCard}>
                   {post.media ? (
-                    <img src={`${Base_Url}/${post.media}`} className={styles.sidebarPostImage} alt="post" />
+                    <img src={post.media} className={styles.sidebarPostImage} alt="post" />
                   ) : (
                     <p className={styles.sidebarPostText}>{post.body?.substring(0, 60)}...</p>
                   )}
@@ -244,17 +244,17 @@ export default function Profile() {
               ))}
 
               {/* --- NEW: SHOW ALL ACTIVITY BUTTON --- */}
-              {hasMorePosts && (
+              
                 <button
                   className={styles.showAllActivityBtn}
-                  onClick={() => router.push(`/profile/activity`)}
+                  onClick={() => router.push(`/activity/${userProfile.userId.username}`)}
                 >
                   Show all activity ({userPosts.length})
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="16">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                   </svg>
                 </button>
-              )}
+             
             </>
           ) : (
             <p className={styles.noDataText}>No activity yet.</p>

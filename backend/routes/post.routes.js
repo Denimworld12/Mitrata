@@ -3,18 +3,18 @@ import { Router } from "express";
 import { activecheck, commentPost, createPost, delete_Comments, deletePost, getAllPosts, getComment_by_Post, increament_likes } from "../controllers/post.controller.js";
 import mongoose from "mongoose";
 import multer from "multer";
-
+import { Storage } from "../config/cloudinary.js";
 const router = Router();
-const storage = multer.diskStorage({
-    destination:(req, file , cb)=>{
-        cb (null, 'uploads/')
-    },
-    filename:(req, file, cb )=>{
-        cb (null, file.originalname)
-    },
+// const storage = multer.diskStorage({
+//     destination:(req, file , cb)=>{
+//         cb (null, 'uploads/')
+//     },
+//     filename:(req, file, cb )=>{
+//         cb (null, file.originalname)
+//     },
 
-})
-const upload = multer({storage:storage})
+// })
+const upload = multer({storage:Storage})
 
 router.route("/").get(activecheck);
 router.route('/post').post(upload.single('media'),createPost)
