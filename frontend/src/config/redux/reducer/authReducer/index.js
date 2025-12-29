@@ -129,7 +129,7 @@ const authSlice = createSlice({
             })
             .addCase(acceptConnectionRequest.fulfilled, (state, action) => {
                 state.isError = false,
-                state.message = action.payload.message
+                    state.message = action.payload.message
             })
             .addCase(acceptConnectionRequest.rejected, (state, action) => {
                 state.isError = true;
@@ -146,17 +146,20 @@ const authSlice = createSlice({
 
             })
             .addCase(updateUserProfile.fulfilled, (state, action) => {
-                state.isLoading = false,
-                    state.isError = false,
-                    state.isSuccess = true,
-                    state.message = action.payload?.message || "Profile updated successfully"
+                state.isLoading = false;
+                state.isSuccess = true;
+                // Update the local user object with the new Cloudinary path
+                if (state.user && state.user.userId) {
+                    state.user.userId.profilePicture = action.payload.profilePicture;
+                }
+                state.message = "Profile picture updated!";
             })
             .addCase(updateUserProfile.rejected, (state, action) => {
                 state.isLoading = false,
                     state.isError = true,
                     state.isSuccess = false,
                     state.message = action.payload?.message || "Profile not updated"
-            })  
+            })
             .addCase(updateUserProfile.pending, (state) => {
                 state.isLoading = true
             })

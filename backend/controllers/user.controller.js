@@ -7,7 +7,7 @@ import Profile from "../models/profile.model.js";
 import bcrypt from "bcrypt";
 
 import crypto from "crypto"
-
+import { v2 as cloudinary } from "cloudinary";
 import fs from "fs"
 import PDFDocument from "pdfkit";
 import mongoose from "mongoose";
@@ -71,13 +71,41 @@ export const uploadProfilePicture = async (req, res) => {
     try {
         const { token } = req.body;
         const user = await User.findOne({ token });
-        if (!user) return res.status(404).json({ message: "invalid creadential hai " });
-        user.profilePicture = req.file.filename;
+        if (!user) return res.status(404).json({ message: "Invalid credentials" });
+
+        // --- NEW: DELETE OLD PICTURE FROM CLOUDINARY ---
+        // Check if there is an existing picture and if it is a Cloudinary URL
+        if (user.profilePicture && user.profilePicture.includes("cloudinary")) {
+            try {
+                // Example URL: .../upload/v1234/folder/image_name.jpg
+                const urlParts = user.profilePicture.split('/');
+                const fileNameWithExtension = urlParts[urlParts.length - 1];
+                const folderName = urlParts[urlParts.length - 2]; // e.g., "profile_pics"
+                
+                const publicId = `${folderName}/${fileNameWithExtension.split('.')[0]}`;
+                
+                // Delete the old file from Cloudinary
+                await cloudinary.uploader.destroy(publicId);
+                console.log("Old profile picture deleted from Cloudinary:", publicId);
+            } catch (cloudErr) {
+                console.error("Cloudinary Delete Error:", cloudErr);
+                // We don't block the upload if the old delete fails
+            }
+        }
+
+        // --- SAVE NEW PICTURE ---
+        // req.file.path contains the new Cloudinary URL provided by your storage config
+        user.profilePicture = req.file.path; 
         await user.save();
-        return res.json({ message: "profile succcessfully uploaded mere bhai " });
+
+        return res.json({ 
+            message: "Profile successfully updated", 
+            profilePicture: user.profilePicture 
+        });
 
     } catch (error) {
-        return req.status(500).json({ message: res.status })
+        console.error(error);
+        return res.status(500).json({ message: "Internal Server Error" });
     }
 }
 

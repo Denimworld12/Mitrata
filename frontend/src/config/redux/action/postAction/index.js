@@ -24,19 +24,14 @@ export const createPost = createAsyncThunk(
             formData.append('token', localStorage.getItem('token'))
             formData.append('body', body)
             formData.append('media', file)
-            const response = clientServer.post('/post', formData, {
-                headers: {
-                    'Content-type': 'multipart/form-data'
-                }
-            }
-            )
+            const response = clientServer.post('/post', formData)
+            
             if ((await response).status === 200) {
                 return thunkapi.fulfillWithValue("Post successfully")
             }
             else {
                 return thunkapi.rejectWithValue('post not uploaded')
             }
-
         } catch (error) {
             return thunkapi.rejectWithValue(error.response.data)
         }
@@ -71,6 +66,7 @@ export const incrementLike = createAsyncThunk(
                 post_id: postId,
                 token: localStorage.getItem('token')
             })
+            thunkapi.dispatch(getAllPosts());
             if (response.status === 200) {
                 return thunkapi.fulfillWithValue("like incremented")
             } else {
@@ -113,6 +109,7 @@ export const commentPost = createAsyncThunk(
                 post_id: postId,
                 commentBody: commentBody
             })
+            thunkapi.dispatch(getAllComments({ postId }));
             if (response.status === 200) {
                 return thunkapi.fulfillWithValue("Comment added successfully")
             } else {

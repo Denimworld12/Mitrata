@@ -2,7 +2,7 @@ import { Base_Url, clientServer } from '@/config'
 import React, { useEffect, useState } from 'react'
 import styles from './styles.module.css'
 import UserLayout from '@/layout/userLayout'
-import DashboardLayout from '@/layout/DashboardLayout' 
+import DashboardLayout from '@/layout/DashboardLayout'
 import { useRouter } from 'next/router'
 import { useDispatch, useSelector } from 'react-redux'
 import { getAllPosts } from '@/config/redux/action/postAction'
@@ -20,6 +20,29 @@ export default function viewProfilePage({ userProfile }) {
     const [isCurrentUserInConnection, setIsCurrentUserInConnection] = useState(false)
     const [isConnectionNull, setConnectionNull] = useState(true)
     const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
+    const [connectionStatus, setConnectionStatus] = useState(undefined); // NEW STATE
+
+    useEffect(() => {
+        const connections = userState.connection;
+        const profileId = userProfile?.userId?._id;
+
+        if (connections && Array.isArray(connections) && profileId) {
+            const foundConn = connections.find(conn => {
+                const connId = conn.connectionId?._id || conn.connectionId;
+                const userId = conn.userId?._id || conn.userId;
+                return connId === profileId || userId === profileId;
+            });
+
+            if (foundConn) {
+                setIsCurrentUserInConnection(true);
+                // status_accepted: true (Connected), null (Pending), false (Rejected)
+                setConnectionStatus(foundConn.status_accepted);
+            } else {
+                setIsCurrentUserInConnection(false);
+                setConnectionStatus(undefined);
+            }
+        }
+    }, [userState.connection, userProfile?.userId?._id]);
 
     useEffect(() => {
         setMounted(true); // CRITICAL: Mark as mounted to allow layout toggle
@@ -74,7 +97,7 @@ export default function viewProfilePage({ userProfile }) {
         const res = await dispatch(downloadResume({ connectionId: userProfile.userId._id }));
         if (downloadResume.fulfilled.match(res)) {
             const filePath = res.payload.file;
-            const cleanBaseUrl = Base_Url.replace(/\/$/, ""); 
+            const cleanBaseUrl = Base_Url.replace(/\/$/, "");
             const cleanFilePath = filePath.startsWith("/") ? filePath : `/${filePath}`;
             window.open(`${cleanBaseUrl}${cleanFilePath}`, "_blank");
         }
@@ -87,7 +110,7 @@ export default function viewProfilePage({ userProfile }) {
                 <div className={styles.backDropContainer}></div>
                 <img
                     className={styles.profileImage}
-                    src={`${Base_Url}/${userProfile.userId?.profilePicture}`}
+                    src={userProfile.userId?.profilePicture || "/default-avatar.png"}
                     alt="profile"
                 />
             </div>
@@ -105,20 +128,24 @@ export default function viewProfilePage({ userProfile }) {
                             </div>
 
                             <div className={styles.actionButtons}>
-                                {isCurrentUserInConnection ? (
-                                    isConnectionNull ? (
+                                {isCurrentUserInConnection && connectionStatus === true ? (
+                                    <button className={styles.connectedButton}>Connected</button>
+                                ) :
+
+                                    /* CASE 2: Pending (Sent but not yet accepted) */
+                                    isCurrentUserInConnection && connectionStatus === null ? (
                                         <button className={styles.pendingButton} disabled>Pending</button>
-                                    ) : (
-                                        <button className={styles.connectedButton}>Connected</button>
-                                    )
-                                ) : (
-                                    <button className={styles.connectButton} onClick={() => {
-                                        dispatch(sendConnectionRequest({
-                                            token: localStorage.getItem('token'),
-                                            connectionId: userProfile.userId._id
-                                        }));
-                                    }}>Connect</button>
-                                )}
+                                    ) :
+
+                                        /* CASE 3: Not connected OR Rejected (Show Connect button) */
+                                        (
+                                            <button className={styles.connectButton} onClick={() => {
+                                                dispatch(sendConnectionRequest({
+                                                    token: localStorage.getItem('token'),
+                                                    connectionId: userProfile.userId._id
+                                                }));
+                                            }}>Connect</button>
+                                        )}
                                 <button className={styles.resumeButton} onClick={handleDownloadResume}>
                                     <svg viewBox="0 0 24 24" fill="currentColor" width="20"><path d="M12 1.5a.75.75 0 0 1 .75.75V7.5h-1.5V2.25A.75.75 0 0 1 12 1.5ZM11.25 7.5v5.69l-1.72-1.72a.75.75 0 0 0-1.06 1.06l3 3a.75.75 0 0 0 1.06 0l3-3a.75.75 0 1 0-1.06-1.06l-1.72 1.72V7.5h3.75a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-9a3 3 0 0 1-3-3v-9a3 3 0 0 1 3-3h3.75Z" /></svg>
                                     <p>Resume</p>
@@ -157,17 +184,38 @@ export default function viewProfilePage({ userProfile }) {
                     </div>
                 </div>
 
+                {/* RIGHT COLUMN: Recent Posts/Activity Sidebar */}
                 <div className={styles.userActivitySidebar}>
                     <h3>Recent Activity</h3>
-                    {recentPosts.map((post) => (
-                        <div key={post._id} className={styles.sidebarPostCard}>
-                            {post.media ? (
-                                <img src={`${Base_Url}/${post.media}`} className={styles.sidebarPostImage} alt="activity"/>
-                            ) : (
-                                <p className={styles.sidebarPostText}>{post.body.substring(0, 60)}...</p>
+
+                    {userPost.length > 0 ? (
+                        <>
+                            {recentPosts.map((post) => (
+                                <div key={post._id} className={styles.sidebarPostCard}>
+                                    {post.media ? (
+                                        <img src={post.media} className={styles.sidebarPostImage} alt="activity" />
+                                    ) : (
+                                        <p className={styles.sidebarPostText}>{post.body.substring(0, 60)}...</p>
+                                    )}
+                                </div>
+                            ))}
+
+                            {/* NEW: Button to see all activity */}
+                            {userPost.length > 0 && (
+                                <button
+                                    className={styles.showAllActivityBtn}
+                                    onClick={() => router.push(`/activity/${userProfile.userId.username}`)}
+                                >
+                                    Show all activity ({userPost.length})
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="16">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                                    </svg>
+                                </button>
                             )}
-                        </div>
-                    ))}
+                        </>
+                    ) : (
+                        <p className={styles.noDataText}>No recent activity to show.</p>
+                    )}
                 </div>
             </div>
         </div>
@@ -194,18 +242,18 @@ export async function getServerSideProps(context) {
         const req = await serverAxios.get('/user/get_user_based_on_username', {
             params: { username: context.query.username }
         });
-        
-        return { 
-            props: { 
-                userProfile: req.data.profile || null 
-            } 
+
+        return {
+            props: {
+                userProfile: req.data.profile || null
+            }
         };
     } catch (error) {
         console.error("Profile Fetch Error:", error.response?.status);
         return {
-            props: { 
+            props: {
                 userProfile: null,
-                error: "Profile not found" 
+                error: "Profile not found"
             }
         };
     }

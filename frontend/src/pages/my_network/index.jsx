@@ -4,7 +4,6 @@ import UserLayout from '@/layout/userLayout'
 import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import styles from './mynetwork.module.css'
-import { Base_Url } from '@/config';
 import { useRouter } from 'next/router';
 
 export default function MyNetwork() {
@@ -61,7 +60,7 @@ export default function MyNetwork() {
                                 {myConnections.length === 0 ? <p>No connections yet.</p> : (
                                     myConnections.map((conn) => (
                                         <div key={conn._id} onClick={() => router.push(`/view_profile/${conn.userId.username}`)} className={styles.userCard}>
-                                            <img src={`${Base_Url}/${conn.userId.profilePicture}`} alt="profile" />
+                                            <img src={conn.userId.profilePicture || "/default-avatar.png"} alt="profile" />
                                             <div className={styles.userInfo}>
                                                 <h4>{conn.userId.name}</h4>
                                                 <p>@{conn.userId.username}</p>
@@ -79,7 +78,7 @@ export default function MyNetwork() {
                                         <div key={req._id} className={styles.userCard}
                                             onClick={() => router.push(`/view_profile/${req.userId.username}`)}
                                         >
-                                            <img src={`${Base_Url}/${req.userId.profilePicture}`} alt="profile" />
+                                            <img src={req.userId.profilePicture || "/default-avatar.png"} alt="profile" />
                                             <div className={styles.userInfo}>
                                                 <h4>{req.userId.name}</h4>
                                                 <p>@{req.userId.username}</p>

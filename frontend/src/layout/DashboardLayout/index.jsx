@@ -5,7 +5,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import {  setTokenThere } from '@/config/redux/reducer/authReducer';
 import { getAllPosts } from '@/config/redux/action/postAction';
 import { getAllUser } from '@/config/redux/action/authAction';
-import { Base_Url } from '@/config';
 export default function DashboardLayout({ children }) {
     const router = useRouter();
     const dispatch = useDispatch();
@@ -75,9 +74,7 @@ export default function DashboardLayout({ children }) {
                                 <div key={profile._id} className={styles.topProfileCard}>
 
                                     <img
-                                        src={profile.userId?.profilePicture
-                                            ? `${Base_Url}/${profile.userId.profilePicture}`
-                                            : "/default-avatar.png"}
+                                        src={profile.userId?.profilePicture || "/default-avatar.png"}
                                         alt="profile"
                                         className={styles.topProfileImg}
                                     />

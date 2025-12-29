@@ -6,9 +6,9 @@ import { useRouter } from 'next/router';
 import React, { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import styles from './index.module.css'
-import { Base_Url } from '@/config';
 import { setTokenNotThere, setTokenThere } from '@/config/redux/reducer/authReducer';
 import { resetPostId } from '@/config/redux/reducer/postReducer';
+import { Base_Url } from '@/config';
 
 export default function Dashboard() { // Renamed export to Dashboard for Next.js convention
     const router = useRouter();
@@ -111,7 +111,7 @@ export default function Dashboard() { // Renamed export to Dashboard for Next.js
                             <div style={{ display: 'flex', width: '100%', gap: '1rem', alignItems: 'flex-start' }}>
                                 <img
                                     className={styles.userProfile}
-                                    src={`${Base_Url}/${authState.user?.userId.profilePicture}`}
+                                    src={authState.user?.userId?.profilePicture}
                                     alt="Profile"
                                 />
                                 <textarea
@@ -183,7 +183,7 @@ export default function Dashboard() { // Renamed export to Dashboard for Next.js
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6">
                                             <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
                                         </svg>
-                                        
+
                                     </button>
                                 }
                             </div>
@@ -202,7 +202,7 @@ export default function Dashboard() { // Renamed export to Dashboard for Next.js
                                             <div className={styles.singleCard_profileContainer}>
                                                 <img
                                                     className={styles.userProfile}
-                                                    src={`${Base_Url}/${post?.userId?.profilePicture}`}
+                                                    src={post.userId?.profilePicture || "/default-avatar.png"}
                                                     alt="User Profile"
                                                 />
 
@@ -260,8 +260,13 @@ export default function Dashboard() { // Renamed export to Dashboard for Next.js
                                             )}
 
                                             {/* IMAGE */}
-                                            {post.fileType === "jpeg" || post.fileType === "png" ? (
-                                                <img className={styles.postImage} src={`${Base_Url}/${post.media}`} alt="Post Image" />
+                                            {post.media ? (
+                                                <img
+                                                    className={styles.postImage}
+                                                    /* Detect if it is a Cloudinary link or an old local file */
+                                                    src={post.media.startsWith("http") ? post.media : `${Base_Url}/${post.media}`}
+                                                    alt="Post Image"
+                                                />
                                             ) : null}
                                         </div>
 
@@ -354,7 +359,7 @@ export default function Dashboard() { // Renamed export to Dashboard for Next.js
                                                 {/* 1. Profile Picture */}
                                                 <img
                                                     className={styles.commentUserProfile} // NEW CLASS
-                                                    src={`${Base_Url}/${item?.userId?.profilePicture}`}
+                                                    src={item?.userId?.profilePicture}
                                                     alt={`${item?.userId?.username}'s profile`}
                                                 />
 

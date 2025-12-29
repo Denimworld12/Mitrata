@@ -1,0 +1,375 @@
+.activityContainer {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.navigationRow {
+    margin-bottom: 2rem;
+}
+
+.backBtn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    color: #0a66c2;
+    border: 1px solid #0a66c2;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.backBtn:hover {
+    background: #e7f3ff;
+}
+
+.pageHeader {
+    border-left: 5px solid #0a66c2;
+    padding-left: 15px;
+    margin-bottom: 30px;
+}
+
+.pageHeader h1 {
+    font-size: 1.8rem;
+    color: #1d2226;
+    margin: 0;
+}
+
+.postCard {
+    background: #fff;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    border: 1px solid #e0e0e0;
+    overflow: hidden;
+}
+
+.postHeader {
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.userMeta {
+    display: flex;
+    gap: 12px;
+}
+
+.miniAvatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.userName {
+    font-weight: 600;
+    margin: 0;
+}
+
+.postDate {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.deleteBtn {
+    background: #fdf2f2;
+    color: #d93025;
+    border: none;
+    padding: 8px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+}
+
+/* Image Management Logic */
+.mediaContainer {
+    width: 100%;
+    max-height: 450px; /* Limits large portrait images */
+    background: #f3f2f1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    border-top: 1px solid #f0f2f5;
+    border-bottom: 1px solid #f0f2f5;
+}
+
+.postImg {
+    max-width: 100%;
+    max-height: 450px;
+    object-fit: contain; /* Shows full image without cropping */
+}
+
+.postBody {
+    padding: 0 0 16px 0; /* Remove side padding to let images go edge-to-edge */
+}
+
+.postContent {
+    padding: 0 16px 12px 16px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    .postCard {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+}
+/* Actions bar below the post content */
+.postActions {
+    display: flex;
+    padding: 8px 12px;
+    border-top: 1px solid #f0f2f5;
+    gap: 10px;
+    background: #fafbfc;
+}
+
+.actionBtn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    color: #666;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+
+.actionBtn:hover {
+    background: #f3f2f1;
+    color: #0a66c2;
+}
+
+.actionBtn svg {
+    color: #666;
+}
+
+.actionBtn:hover svg {
+    color: #0a66c2;
+}
+
+/* Comment Modal Styles (LinkedIn style) */
+.commentsOverlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.commentsPopup {
+    background: white;
+    width: 90%;
+    max-width: 550px;
+    max-height: 80vh;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+}
+
+.commentsHeader {
+    padding: 16px 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.commentsList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background: #f9fafb;
+}
+
+.singleCommentContainer {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.commentUserProfile {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.singleComment {
+    background: white;
+    padding: 12px 16px;
+    border-radius: 0 12px 12px 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    flex: 1;
+}
+
+.commentUser {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #1d2226;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.commentMsg {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: #333;
+}
+
+.commentInputBar {
+    padding: 15px 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 12px;
+}
+
+.commentInputBar input {
+    flex: 1;
+    padding: 10px 18px;
+    border-radius: 25px;
+    border: 1px solid #dcdcdc;
+    outline: none;
+}
+
+.commentInputBar button {
+    background: #0a66c2;
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.commentInputBar button:disabled {
+    background: #e0e0e0;
+    cursor: not-allowed;
+}
+
+/* --- Global Container Fix --- */
+.activityContainer {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 20px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden; /* Prevents X-scroll */
+}
+
+/* --- Navigation & Header --- */
+.navigationRow { margin-bottom: 2rem; }
+.backBtn {
+    background: #0a66c2;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pageHeader { border-left: 5px solid #0a66c2; padding-left: 15px; margin-bottom: 30px; }
+.pageHeader h1 { font-size: 1.8rem; margin: 0; color: #1d2226; }
+
+/* --- Post Card Word Wrap Fix --- */
+.postCard {
+    background: #fff;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    border: 1px solid #e0e0e0;
+    width: 100%;
+    overflow-wrap: break-word; /* Fix for long content */
+    word-break: break-word;     /* Fix for long content */
+}
+
+.postContent {
+    padding: 0 16px 12px 16px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    white-space: pre-wrap; /* Maintains spacing but wraps words */
+}
+
+/* --- IMAGE HANDLING --- */
+.mediaContainer {
+    width: 100%;
+    max-height: 450px;
+    background: #f3f2f1;
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+}
+.postImg { max-width: 100%; height: auto; object-fit: contain; }
+
+/* --- ACTION BAR --- */
+.postActions { display: flex; padding: 8px 12px; border-top: 1px solid #f0f2f5; gap: 5px; }
+.actionBtn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 10px; cursor: pointer; color: #666; font-weight: 600; font-size: 0.85rem; }
+
+/* --- RESPONSIVE COMMENT MODAL --- */
+.commentsOverlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: flex-end; /* Mobile friendly: slides up from bottom */
+    z-index: 9999;
+}
+
+.commentsPopup {
+    background: white;
+    width: 100%;
+    max-width: 600px;
+    height: 85vh; /* Standard mobile drawer height */
+    border-radius: 20px 20px 0 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+@media (min-width: 768px) {
+    .commentsOverlay { align-items: center; }
+    .commentsPopup { height: 75vh; border-radius: 12px; width: 90%; }
+}
+
+.commentsHeader { padding: 16px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+.commentsList { flex: 1; overflow-y: auto; padding: 16px; background: #f9fafb; }
+
+.singleCommentContainer { display: flex; gap: 10px; margin-bottom: 15px; }
+.commentAvatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+.commentContent { 
+    background: #eee; 
+    padding: 10px 14px; 
+    border-radius: 0 12px 12px 12px; 
+    flex: 1;
+    word-break: break-word; /* Fixes X-scroll inside comments */
+}
+.commentUser { font-weight: 700; font-size: 0.8rem; display: block; margin-bottom: 2px; }
+.commentMsg { margin: 0; font-size: 0.85rem; }
+
+.commentInputBar { padding: 12px; display: flex; gap: 10px; border-top: 1px solid #eee; background: white; }
+.commentInputBar input { flex: 1; padding: 12px 16px; border-radius: 25px; border: 1px solid #ddd; font-size: 14px; }
+.commentInputBar button { background: #0a66c2; color: white; border: none; padding: 0 20px; border-radius: 25px; font-weight: 600; }
+
+/* Mobile Post Card adjustments */
+@media (max-width: 768px) {
+    .activityContainer { padding: 10px; }
+    .postCard { border-radius: 0; border-left: none; border-right: none; margin-bottom: 10px; }
+    .actionBtn span { display: none; } /* Hide text, show only icons on very small screens if needed */
+}

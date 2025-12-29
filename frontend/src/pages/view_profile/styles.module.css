@@ -16,6 +16,43 @@
   margin: auto;
 }
 
+/* Connected: Greenish/Blueish light background */
+.connectedButton {
+    background: #e7f3ff;
+    color: #0a66c2;
+    border: 1px solid #0a66c2;
+    padding: 0.5rem 1.5rem;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+/* Pending: Gray/Disabled state */
+.pendingButton {
+    background-color: #f3f3f3;
+    color: #666666;
+    border: 1px solid #666666;
+    cursor: not-allowed;
+    padding: 0.5rem 1.5rem;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+/* Connect: Solid Primary Color */
+.connectButton {
+    background: #0a66c2;
+    color: white;
+    border: none;
+    padding: 0.5rem 1.5rem;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.connectButton:hover {
+    background: #004182;
+}
+
 /* Cover image */
 .backDropContainer {
   width: 100%;
@@ -296,7 +333,36 @@
     color: #999;
 }
 
+/* Sidebar activity button */
+.showAllActivityBtn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid #0a66c2;
+    color: #0a66c2;
+    padding: 10px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background-color 0.2s, color 0.2s;
+    margin-top: 10px;
+}
 
+.showAllActivityBtn:hover {
+    background-color: #f0f7ff;
+    color: #004182;
+}
+
+.showAllActivityBtn svg {
+    transition: transform 0.2s ease;
+}
+
+.showAllActivityBtn:hover svg {
+    transform: translateX(4px); /* Subtle arrow animation */
+}
 /* Update these responsive rules in your existing styles.module.css */
 
 @media (max-width: 1024px) {
