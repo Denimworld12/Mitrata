@@ -14,8 +14,6 @@ export default function MyNetwork() {
     const [activeTab, setActiveTab] = useState('connections');
     const [isMounted, setIsMounted] = useState(false);
 
-    // --- 1. Persistent Data Fetching ---
-    // Memoize the refresh function to prevent unnecessary re-renders
     const refreshData = useCallback(() => {
         const token = localStorage.getItem("token");
         if (token) {
@@ -29,51 +27,54 @@ export default function MyNetwork() {
         const token = localStorage.getItem("token");
 
         if (token) {
-            // Only fetch if the data isn't already in Redux (Caching)
-            if (!authState.connectionRequest || authState.connectionRequest.length === 0) {
-                refreshData();
-            }
+            refreshData();
         } else {
             router.replace('/login');
         }
-    }, [refreshData, router]); // Removed authState from deps to prevent infinite loops
+    }, [refreshData, router]);
 
-    // --- 2. Optimized Filtering (Memoized) ---
-    const { pendingRequests, myConnections } = useMemo(() => {
-        const requests = authState.connectionRequest || [];
+    // FIXED: Separate the data properly
+    const { pendingReceived, pendingSent, myConnections } = useMemo(() => {
+        const allRequests = authState.connection || [];
+        const acceptedConnections = authState.connectionRequest || [];
+        
         return {
-            pendingRequests: requests.filter(req => req.status_accepted === null),
-            myConnections: requests.filter(req => req.status_accepted === true)
+            // Requests I RECEIVED and are PENDING
+            pendingReceived: allRequests.filter(
+                req => req.status_accepted === null && !req.iAmSender
+            ),
+            // Requests I SENT and are PENDING
+            pendingSent: allRequests.filter(
+                req => req.status_accepted === null && req.iAmSender
+            ),
+            // ACCEPTED connections
+            myConnections: acceptedConnections
         };
-    }, [authState.connectionRequest]);
+    }, [authState.connection, authState.connectionRequest]);
 
     const handleAction = async (requestId, action) => {
         const token = localStorage.getItem("token");
         
-        // Use async/await for cleaner flow
         try {
             await dispatch(acceptConnectionRequest({
                 token,
                 connectionId: requestId,
                 action: action
-            })).unwrap(); // .unwrap() ensures we catch errors correctly
+            })).unwrap();
             
-            // Silent refresh in the background
             refreshData();
         } catch (error) {
             console.error("Failed to update connection:", error);
+            alert(error.message || "Failed to update connection");
         }
     };
 
-    // Prevent Hydration mismatch error in Next.js
     if (!isMounted) return null;
 
     return (
         <UserLayout>
             <DashboardLayout>
                 <div className={styles.container}>
-
-                    {/* Tab Navigation */}
                     <div className={styles.tabHeader}>
                         <button
                             className={activeTab === 'connections' ? styles.activeTab : styles.tabBtn}
@@ -82,38 +83,50 @@ export default function MyNetwork() {
                             Connections ({myConnections.length})
                         </button>
                         <button
-                            className={activeTab === 'requests' ? styles.activeTab : styles.tabBtn}
-                            onClick={() => setActiveTab('requests')}
+                            className={activeTab === 'received' ? styles.activeTab : styles.tabBtn}
+                            onClick={() => setActiveTab('received')}
                         >
-                            Requests ({pendingRequests.length})
+                            Received ({pendingReceived.length})
+                        </button>
+                        <button
+                            className={activeTab === 'sent' ? styles.activeTab : styles.tabBtn}
+                            onClick={() => setActiveTab('sent')}
+                        >
+                            Sent ({pendingSent.length})
                         </button>
                     </div>
 
                     <div className={styles.contentArea}>
-                        {activeTab === 'connections' ? (
+                        {activeTab === 'connections' && (
                             <div className={styles.connectionsList}>
                                 <h3>Your Connections</h3>
-                                {myConnections.length === 0 ? <p>No connections yet.</p> : (
+                                {myConnections.length === 0 ? (
+                                    <p>No connections yet.</p>
+                                ) : (
                                     myConnections.map((conn) => (
-                                        <div key={conn._id}  className={styles.userCard}>
+                                        <div key={conn._id} className={styles.userCard}>
                                             <img src={conn.userId.profilePicture || "/default-avatar.png"} alt="profile" />
                                             <div className={styles.userInfo} onClick={() => router.push(`/view_profile/${conn.userId.username}`)}>
                                                 <h4>{conn.userId.name}</h4>
                                                 <p>@{conn.userId.username}</p>
                                             </div>
-                                            <button className={styles.msgBtn} onClick={() => router.push(`/messaging/${conn.userId.username}`)}>Message</button>
+                                            <button className={styles.msgBtn} onClick={() => router.push(`/messaging/${conn.userId.username}`)}>
+                                                Message
+                                            </button>
                                         </div>
                                     ))
                                 )}
                             </div>
-                        ) : (
+                        )}
+
+                        {activeTab === 'received' && (
                             <div className={styles.requestsList}>
-                                <h3>Pending Invitations</h3>
-                                {pendingRequests.length === 0 ? <p>No new requests.</p> : (
-                                    pendingRequests.map((req) => (
-                                        <div key={req._id} className={styles.userCard}
-                                        
-                                        >
+                                <h3>Received Requests</h3>
+                                {pendingReceived.length === 0 ? (
+                                    <p>No pending requests.</p>
+                                ) : (
+                                    pendingReceived.map((req) => (
+                                        <div key={req._id} className={styles.userCard}>
                                             <img src={req.userId.profilePicture || "/default-avatar.png"} alt="profile" />
                                             <div className={styles.userInfo} onClick={() => router.push(`/view_profile/${req.userId.username}`)}>
                                                 <h4>{req.userId.name}</h4>
@@ -135,6 +148,26 @@ export default function MyNetwork() {
                                                     ✕
                                                 </button>
                                             </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'sent' && (
+                            <div className={styles.requestsList}>
+                                <h3>Sent Requests</h3>
+                                {pendingSent.length === 0 ? (
+                                    <p>No pending sent requests.</p>
+                                ) : (
+                                    pendingSent.map((req) => (
+                                        <div key={req._id} className={styles.userCard}>
+                                            <img src={req.userId.profilePicture || "/default-avatar.png"} alt="profile" />
+                                            <div className={styles.userInfo} onClick={() => router.push(`/view_profile/${req.userId.username}`)}>
+                                                <h4>{req.userId.name}</h4>
+                                                <p>@{req.userId.username}</p>
+                                            </div>
+                                            <span className={styles.pendingBadge}>Pending</span>
                                         </div>
                                     ))
                                 )}

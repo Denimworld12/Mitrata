@@ -91,12 +91,12 @@ const authSlice = createSlice({
                 // state.connectionRequest = action.payload.connectionRequest
             })
             .addCase(getAboutUser.rejected, (state) => {
-    state.isLoading = false;
-    state.isTokenThere = false;
-    state.loggedIn = false;
-    state.user = null;
-    if (typeof window !== "undefined") localStorage.removeItem("token");
-})
+                state.isLoading = false;
+                state.isTokenThere = false;
+                state.loggedIn = false;
+                state.user = null;
+                if (typeof window !== "undefined") localStorage.removeItem("token");
+            })
             .addCase(getAllUser.fulfilled, (state, action) => {
                 state.isError = false,
                     state.all_user = action.payload.profiles
@@ -112,7 +112,7 @@ const authSlice = createSlice({
             })
             .addCase(getConnectionRequest.fulfilled, (state, action) => {
                 state.isError = false,
-                    state.connection = action.payload.connections || action.payload
+                state.connection = action.payload.connections || action.payload
             })
             .addCase(getConnectionRequest.rejected, (state, action) => {
                 state.isError = true;

@@ -58,6 +58,19 @@ export default function Profile() {
       document.body.style.paddingRight = '0px';
     };
   }, [isEditModalOpen]);
+   useEffect(() => {
+    if (userProfile && userProfile.userId) { // Added userId check
+      setFormData({
+        name: userProfile.userId?.name || "",
+        bio: userProfile.bio || "",
+        currentPost: userProfile.currentPost || "",
+        pastWork: userProfile.pastWork || [],
+        education: userProfile.education || []
+      });
+      setIsDirty(false); // Reset dirty state on sync
+    }
+  }, [userProfile, isEditModalOpen]);
+  
   useEffect(() => {
     const token = localStorage.getItem('token');
     
@@ -74,7 +87,7 @@ export default function Profile() {
 }, [dispatch, router]); // Dependency array should be stable
 const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('token') : false;
   const userPosts = useMemo(() => {
-    if (postState.posts && userProfile?.userId?._id) {
+    if (postState.posts && userProfile?.userId?._id) { // Added optional chaining
       return postState.posts.filter(post => post.userId?._id === userProfile.userId._id);
     }
     return [];
@@ -83,18 +96,7 @@ const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('toke
   const recentPosts = userPosts.slice(0, 3);
   const hasMorePosts = userPosts.length > 3;
 
-  useEffect(() => {
-    if (userProfile) {
-      setFormData({
-        name: userProfile.userId?.name || "",
-        bio: userProfile.bio || "",
-        currentPost: userProfile.currentPost || "",
-        pastWork: userProfile.pastWork || [],
-        education: userProfile.education || []
-      });
-      setIsDirty(false); // Reset dirty state on sync
-    }
-  }, [userProfile, isEditModalOpen]);
+  
 
   // Wrapper to track if user touched the form
   const updateForm = (newData) => {
@@ -160,7 +162,8 @@ const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('toke
     }
   }
 
-  if (!userProfile && tokenExists) {
+  // FIXED: Added "mounted" check to prevent hydration mismatch errors
+  if (mounted && !userProfile && tokenExists) {
     return <UserLayout><div className={styles.loader}>Loading Profile...</div></UserLayout>;
   }
 
@@ -174,7 +177,7 @@ const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('toke
           <div className={styles.imageWrapper}>
             <img
               className={styles.profileImage}
-              src={userProfile.userId?.profilePicture}
+              src={userProfile?.userId?.profilePicture || "/default-avatar.png"} // Added optional chaining
               alt="profile"
             />
             {isOwner && (
@@ -195,24 +198,24 @@ const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('toke
           <div className={styles.profileHeaderContent}>
             <div className={styles.profileNameSection}>
               <div className={styles.nameRow}>
-                <h2>{userProfile.userId.name}</h2>
+                <h2>{userProfile?.userId?.name || "User"}</h2> {/* Added optional chaining */}
                 {isOwner && (
                   <button className={styles.editIconBtn} onClick={() => setIsEditModalOpen(true)}>✎ Edit Profile</button>
                 )}
               </div>
-              <p className={styles.headline}>{userProfile.currentPost || "Member"}</p>
-              <p className={styles.profileUsername}>@{userProfile.userId.username}</p>
+              <p className={styles.headline}>{userProfile?.currentPost || "Member"}</p> {/* Added optional chaining */}
+              <p className={styles.profileUsername}>@{userProfile?.userId?.username}</p> {/* Added optional chaining */}
             </div>
           </div>
 
           <div className={styles.profileBio}>
             <h3>About</h3>
-            <p>{userProfile.bio || 'This user has not yet added a bio.'}</p>
+            <p>{userProfile?.bio || 'This user has not yet added a bio.'}</p> {/* Added optional chaining */}
           </div>
 
           <div className={styles.infoSection}>
             <h3>Experience</h3>
-            {userProfile.pastWork?.length > 0 ? (
+            {userProfile?.pastWork?.length > 0 ? ( // Added optional chaining
               userProfile.pastWork.map((work, idx) => (
                 <div key={idx} className={styles.infoItem}>
                   <h4>{work.position}</h4>
@@ -224,7 +227,7 @@ const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('toke
 
           <div className={styles.infoSection}>
             <h3>Education</h3>
-            {userProfile.education?.length > 0 ? (
+            {userProfile?.education?.length > 0 ? ( // Added optional chaining
               userProfile.education.map((edu, idx) => (
                 <div key={idx} className={styles.infoItem}>
                   <h4>{edu.school}</h4>
@@ -253,7 +256,7 @@ const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('toke
               
                 <button
                   className={styles.showAllActivityBtn}
-                  onClick={() => router.push(`/activity/${userProfile.userId.username}`)}
+                  onClick={() => router.push(`/activity/${userProfile?.userId?.username}`)} // Added optional chaining
                 >
                   Show all activity ({userPosts.length})
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="16">
@@ -270,7 +273,11 @@ const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('toke
 
       {/* --- ENHANCED EDIT MODAL --- */}
       {isEditModalOpen && (
-        <div className={styles.modalOverlay} onClick={handleSafeClose}>
+        <div 
+          className={styles.modalOverlay} 
+          onClick={handleSafeClose}
+          style={{ zIndex: 10001 }} /* Increased to clear Dashboard nav exactly */
+        >
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <div className={styles.headerTitle}>
@@ -343,7 +350,8 @@ const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('toke
     </div>
   );
 
-  if (!mounted) return <UserLayout>{MainContent}</UserLayout>;
+  // FIXED: Replaced standard return with null if not mounted to solve SSR hydration errors
+  if (!mounted) return null;
 
   return (
     <UserLayout>
