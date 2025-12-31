@@ -162,7 +162,8 @@ const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('toke
     }
   }
 
-  if (!userProfile && tokenExists) {
+  // FIXED: Added "mounted" check to prevent hydration mismatch errors
+  if (mounted && !userProfile && tokenExists) {
     return <UserLayout><div className={styles.loader}>Loading Profile...</div></UserLayout>;
   }
 
@@ -272,7 +273,11 @@ const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('toke
 
       {/* --- ENHANCED EDIT MODAL --- */}
       {isEditModalOpen && (
-        <div className={styles.modalOverlay} onClick={handleSafeClose}>
+        <div 
+          className={styles.modalOverlay} 
+          onClick={handleSafeClose}
+          style={{ zIndex: 10001 }} /* Increased to clear Dashboard nav exactly */
+        >
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <div className={styles.headerTitle}>
@@ -345,7 +350,8 @@ const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('toke
     </div>
   );
 
-  if (!mounted) return <UserLayout>{MainContent}</UserLayout>;
+  // FIXED: Replaced standard return with null if not mounted to solve SSR hydration errors
+  if (!mounted) return null;
 
   return (
     <UserLayout>
