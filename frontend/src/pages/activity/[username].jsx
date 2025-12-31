@@ -19,7 +19,12 @@ export default function UserActivityPage() {
     const [mounted, setMounted] = useState(false);
     const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
     const [commentText, setCommentText] = useState("");
-
+    const refreshData = () => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            dispatch(getAllPosts({ token }));
+        }
+    };
     // --- NEW: Scroll Lock Logic ---
     useEffect(() => {
         if (postState.postId !== "") {
@@ -29,9 +34,17 @@ export default function UserActivityPage() {
         }
         return () => { document.body.style.overflow = "unset"; };
     }, [postState.postId]);
-
     useEffect(() => {
         setMounted(true);
+        const token = localStorage.getItem('token');
+        
+        // Only fetch if Redux is empty to prevent "loading every time" flicker
+        if (token && postState.posts.length === 0) {
+            dispatch(getAllPosts({ token }));
+        }
+    }, [dispatch]);
+    useEffect(() => {
+        
         const handleResize = () => setIsMobileOrTablet(window.innerWidth <= 1024);
         handleResize();
         window.addEventListener('resize', handleResize);
@@ -53,8 +66,8 @@ export default function UserActivityPage() {
     const isOwner = authState.user?.userId?.username === username;
 
     const handleLike = async (postId) => {
-        await dispatch(incrementLike(postId));
-        dispatch(getAllPosts());
+       await dispatch(incrementLike(postId));
+        refreshData();
     };
 
     const handleCommentSubmit = async () => {
@@ -65,6 +78,7 @@ export default function UserActivityPage() {
         }));
         setCommentText("");
         dispatch(getAllComments({ postId: postState.postId }));
+        refreshData();
     };
 
     const handleShare = (postId) => {
