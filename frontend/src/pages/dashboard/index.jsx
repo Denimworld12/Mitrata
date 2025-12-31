@@ -10,93 +10,92 @@ import { setTokenNotThere, setTokenThere } from '@/config/redux/reducer/authRedu
 import { resetPostId } from '@/config/redux/reducer/postReducer';
 import { Base_Url } from '@/config';
 
-export default function Dashboard() { // Renamed export to Dashboard for Next.js convention
+export default function Dashboard() {
     const router = useRouter();
     const dispatch = useDispatch();
-    const authState = useSelector((state) => state.auth)
-    const postState = useSelector((state) => state.post)
+    const authState = useSelector((state) => state.auth);
+    const postState = useSelector((state) => state.post);
     const fileRef = useRef(null);
 
-    // --- State Management ---
     const [postContent, setPostContent] = useState("");
-    const [fileContent, setFileContent] = useState(null)
+    const [fileContent, setFileContent] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [commentText, setCommentText] = useState("");
     const [expandedPosts, setExpandedPosts] = useState({});
+    const [isMounted, setIsMounted] = useState(false);
 
-    // --- Handlers ---
-    const toggleExpand = (postId) => {
-        setExpandedPosts(prev => ({
-            ...prev,
-            [postId]: !prev[postId]
-        }));
+    // 1. Initial Auth Check (Runs only once)
+    useEffect(() => {
+        setIsMounted(true);
+        const token = localStorage.getItem("token");
+        if (!token) {
+            dispatch(setTokenNotThere());
+            router.push('/login');
+        } else {
+            dispatch(setTokenThere());
+            // Only fetch if Redux is empty to avoid "loading everytime"
+            if (postState.posts.length === 0) {
+                dispatch(getAllPosts());
+            }
+            if (!authState.user) {
+                dispatch(getAboutUser({ token }));
+            }
+        }
+    }, []); // Empty dependency array is key for returning users
+
+    // 2. Optimized Refresh Handler
+    // Use this after likes/comments to get fresh data without a full page reload
+    const handleRefresh = () => {
+        dispatch(getAllPosts());
     };
 
     const handlePost = async () => {
         if (!postContent.trim() && !fileContent) return;
+        await dispatch(createPost({ file: fileContent, body: postContent }));
+        setPostContent('');
+        setFileContent(null);
+        setPreviewUrl(null);
+        if (fileRef.current) fileRef.current.value = "";
+        handleRefresh();
+    };
 
-        await dispatch(createPost({ file: fileContent, body: postContent }))
-
-        // Reset local state and trigger refresh
-        setPostContent('')
-        setFileContent(null)
-        setPreviewUrl(null)
-        if (fileRef.current) {
-            fileRef.current.value = "";
-        }
-        dispatch(getAllPosts());
-    }
-
-    const handleDelete = (postId) => {
-        dispatch(deletePost(postId)).then(() => {
-            dispatch(getAllPosts()); // Fetch all posts after deletion
-        });
-    }
+    const handleLike = async (postId) => {
+        await dispatch(incrementLike(postId));
+        handleRefresh(); // Real-time update logic
+    };
 
     const handleCommentPost = async () => {
         if (!commentText.trim()) return;
-
         await dispatch(commentPost({
             postId: postState.postId,
             commentBody: commentText.trim()
-        }))
+        }));
+        setCommentText("");
+        await dispatch(getAllComments({ postId: postState.postId }));
+        handleRefresh(); // Updates the comment count on the main card
+    };
 
-        setCommentText("")
-        // Fetch comments again to show the newly posted comment
-        await dispatch(getAllComments({ postId: postState.postId }))
-    }
-
-    // --- Effects ---
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (token) {
-            dispatch(setTokenThere());
-        } else {
-            dispatch(setTokenNotThere());
-            router.push('/login')
+    const handleDelete = (postId) => {
+        if (window.confirm("Are you sure?")) {
+            dispatch(deletePost(postId)).then(() => handleRefresh());
         }
-    }, [dispatch, router]);
+    };
 
-    useEffect(() => {
-        if (authState.isTokenThere && localStorage.getItem('token')) {
-            dispatch(getAllPosts())
-            dispatch(getAboutUser({ token: localStorage.getItem('token') }))
-        }
-    }, [authState.isTokenThere, dispatch])
+    // 3. Scroll Lock Logic (Keep your existing code)
     useEffect(() => {
         if (postState.postId !== "") {
-            // Disable scroll on the main page
             document.body.style.overflow = "hidden";
         } else {
-            // Re-enable scroll
             document.body.style.overflow = "unset";
         }
-
-        // Cleanup function to ensure scroll is re-enabled if component unmounts
-        return () => {
-            document.body.style.overflow = "unset";
-        };
+        return () => { document.body.style.overflow = "unset"; };
     }, [postState.postId]);
+
+    // Prevent Hydration error
+    if (!isMounted) return null;
+
+    // ... your return JSX remains exactly the same
+
 
     // --- Render ---
     if (authState.user) {
@@ -207,7 +206,7 @@ export default function Dashboard() { // Renamed export to Dashboard for Next.js
                                                 />
 
                                                 <div>
-                                                    <p className={styles.userName}>{post?.userId?.username}</p>
+                                                    <p onClick={() => { router.push(`/view_profile/${post?.userId?.username}`) }} className={styles.userName}>{post?.userId?.username}</p>
                                                     <span className={styles.postTime}>
                                                         {new Date(post?.createId).toLocaleString()}
                                                     </span>

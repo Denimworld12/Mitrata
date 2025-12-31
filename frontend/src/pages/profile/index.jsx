@@ -60,13 +60,19 @@ export default function Profile() {
   }, [isEditModalOpen]);
   useEffect(() => {
     const token = localStorage.getItem('token');
+    
     if (token) {
-      dispatch(getAboutUser({ token }));
-      dispatch(getConnectionRequest({ token }));
-      dispatch(getAllPosts({ token }))
+        // 1. Fetch user profile, connection requests, and posts immediately
+        // using the token directly from localStorage
+        dispatch(getAboutUser({ token }));
+        dispatch(getConnectionRequest({ token }));
+        dispatch(getAllPosts({ token }));
+    } else {
+        // 2. No token? Redirect to login immediately
+        router.push('/login');
     }
-  }, [dispatch])
-
+}, [dispatch, router]); // Dependency array should be stable
+const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('token') : false;
   const userPosts = useMemo(() => {
     if (postState.posts && userProfile?.userId?._id) {
       return postState.posts.filter(post => post.userId?._id === userProfile.userId._id);
@@ -154,7 +160,7 @@ export default function Profile() {
     }
   }
 
-  if (!userProfile || !userProfile.userId) {
+  if (!userProfile && tokenExists) {
     return <UserLayout><div className={styles.loader}>Loading Profile...</div></UserLayout>;
   }
 

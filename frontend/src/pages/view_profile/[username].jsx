@@ -220,6 +220,9 @@ export default function viewProfilePage({ userProfile }) {
             </div>
         </div>
     );
+    
+    
+    
 
     // CRITICAL: Ensure this logic runs AFTER ProfileContent is defined
     if (!mounted) return <UserLayout>{ProfileContent}</UserLayout>;

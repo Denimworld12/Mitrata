@@ -8,7 +8,7 @@ const initialState = {
     isError: false,
     isSuccess: false,
     isLoading: false,
-    loggedIn: false,
+    loggedIn: typeof window !== "undefined" && !!localStorage.getItem("token"),
     message: "",
     isTokenThere: typeof window !== "undefined" && localStorage.getItem("token") ? true : false,
     profileFetched: false,
@@ -90,6 +90,13 @@ const authSlice = createSlice({
                 // state.connection = action.payload.connection,
                 // state.connectionRequest = action.payload.connectionRequest
             })
+            .addCase(getAboutUser.rejected, (state) => {
+    state.isLoading = false;
+    state.isTokenThere = false;
+    state.loggedIn = false;
+    state.user = null;
+    if (typeof window !== "undefined") localStorage.removeItem("token");
+})
             .addCase(getAllUser.fulfilled, (state, action) => {
                 state.isError = false,
                     state.all_user = action.payload.profiles

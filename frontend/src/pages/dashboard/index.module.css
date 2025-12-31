@@ -1,3 +1,116 @@
+/* --- Minimized Card Layout --- */
+.scrollcomponent {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: 0.5rem; /* Decreased from 1rem to minimize vertical space */
+    overflow-y: auto;
+}
+
+.createPostContainer {
+    display: flex;
+    height: 60px; /* Decreased from 70px */
+    width: 90%;   /* Increased width from 80% to make it feel more compact */
+    padding-left: 0.6rem;
+    padding-right: .5rem;
+    padding: inline 0.8rem;
+    gap: 0.6rem;  /* Decreased from 1.0rem */
+    align-items: center;
+    background: rgb(255, 251, 212);
+    margin: 8px;  /* Decreased from 12px */
+    border-radius: 12px; /* Smoother minimization */
+    outline: none;
+    position: relative;
+}
+
+.singleCard {
+    width: 100%;
+    max-width: 550px; /* NEW: Added max-width to prevent cards from being too wide on desktop */
+    background: #fff;
+    border-radius: 12px; /* Minimized from 14px */
+    margin-bottom: 0.8rem; /* Decreased from 1.4rem */
+    border: 1px solid #eaeaea;
+    overflow: hidden;
+    box-shadow: 0 0 4px rgba(0,0,0,0.08);
+    box-sizing: border-box;
+}
+
+.singleCard_profileContainer {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;   /* Decreased from 0.8rem */
+    padding: 0.6rem 0.8rem; /* Decreased from 0.8rem 1rem */
+}
+
+.userProfile {
+    width: 38px;  /* Decreased from 48px */
+    height: 38px; /* Decreased from 48px */
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1.5px solid #eee;
+}
+
+.postBody {
+    padding: 0 0.8rem 0.6rem 0.8rem; /* Decreased from 1rem 1.3rem */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.postImage {
+    width: 100%;
+    border-radius: 10px; /* Minimized from 12px */
+    margin-top: 0.5rem; /* Decreased from 0.8rem */
+    object-fit: contain; 
+    max-height: 350px;  /* Decreased from 420px to minimize height */
+    background: #f1f1f1;
+}
+
+/* --- Keyboard Aware Mobile Logic --- */
+@media (max-width: 600px) {
+    .commentsOverlay {
+        align-items: flex-end; 
+        height: 100dvh; /* dvh handles keyboard resizing perfectly */
+        width: 100vw;
+        background: #00000060;
+        backdrop-filter: blur(4px);
+        position: fixed;
+        top: 0;
+        left: 0;
+        display: flex;
+        justify-content: center;
+        z-index: 10000 !important; 
+        animation: fadeIn 0.2s ease;
+    }
+
+    .commentsPopup {
+        width: 100%;
+        height: 80dvh; /* Adjusts as keyboard moves */
+        max-height: 80dvh;
+        border-radius: 15px 15px 0 0;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+        animation: slideUp 0.25s ease;
+        position: relative; /* Keeps children in flow */
+    }
+
+    .commentInputBar {
+        position: sticky; /* Sticks to the top of the keyboard */
+        bottom: 0;
+        padding: 0.8rem 1rem;
+        padding-bottom: max(0.8rem, env(safe-area-inset-bottom)); /* Dynamic padding for notches */
+        background: #fff;
+        border-top: 1px solid #e6e6e6;
+        z-index: 5;
+    }
+    
+    .singleCard {
+        border-radius: 0;
+        margin-bottom: 0.5rem; /* Minimized for mobile feed */
+    }
+}
 .scrollcomponent{
     display: flex;
     justify-content: center;
@@ -163,7 +276,7 @@
     display: flex;
     align-items: center;
     gap: 0.8rem;
-    padding: 1.1rem 1.3rem;
+   padding: 0.8rem 1rem;
 }
 
 /* Profile image */
@@ -180,6 +293,7 @@
     font-size: 1.05rem;
     font-weight: 600;
     color: #333;
+    cursor: pointer;
 }
 
 .postTime {
@@ -189,7 +303,7 @@
 
 /* Post body text */
 .postBody {
-    padding: 0 1.3rem 1rem 1.3rem;
+   padding: 0 1rem 0.8rem 1rem;
 }
 
 
@@ -574,7 +688,8 @@
 
     .singleCard {
         border-radius: 0; /* Mobile feed standard */
-        margin-bottom: 10px;
+        margin-bottom: 1rem;
+    border-radius: 12px;
         border-left: none;
         border-right: none;
     }
@@ -699,7 +814,34 @@
         height: 70vh;
     }
 }
+@media (max-width: 600px) {
+    .commentsOverlay {
+        /* Use flex-end so popup sticks to the bottom (where keyboard is) */
+        align-items: flex-end; 
+        padding: 0;
+        /* dynamic viewport height to handle mobile browser bars */
+        height: 100dvh; 
+    }
 
+    .commentsPopup {
+        width: 100%;
+        /* Change from 100vh to a percentage or dynamic calc */
+        height: 80dvh; 
+        max-height: 80dvh;
+        border-radius: 15px 15px 0 0;
+        /* This is crucial for keeping input above keyboard */
+        position: relative; 
+    }
+
+    .commentInputBar {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        /* Accounts for both the virtual keyboard and physical home buttons */
+        padding-bottom: max(10px, env(safe-area-inset-bottom)); 
+        z-index: 10;
+    }
+}
 @media (max-width: 600px) {
     /* 1. Fix for Likes not showing perfectly */
     .postActions {
@@ -765,3 +907,5 @@
         width: 1.1rem;
     }
 }
+
+

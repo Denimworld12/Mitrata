@@ -13,11 +13,19 @@ export default function Search() {
     const [searchTerm, setSearchTerm] = useState('');
 
     // Fetch all users once
-    useEffect(() => {
+useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    if (token) {
+        // We fetch if they haven't been fetched yet in this session
         if (!authState.all_profile_fetched) {
-            dispatch(getAllUser({ token: localStorage.getItem("token") }));
+            dispatch(getAllUser({ token }));
         }
-    }, [authState.all_profile_fetched]);
+    } else {
+        // If someone tries to search without being logged in, send them away
+        router.push('/login');
+    }
+}, [authState.all_profile_fetched, dispatch, router]);
 
     // Filter users based on search input
     // Filter users based on search input AND exclude current user

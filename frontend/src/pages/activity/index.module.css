@@ -368,8 +368,21 @@
 .commentInputBar button { background: #0a66c2; color: white; border: none; padding: 0 20px; border-radius: 25px; font-weight: 600; }
 
 /* Mobile Post Card adjustments */
+/* Mobile Post Card adjustments */
 @media (max-width: 768px) {
     .activityContainer { padding: 10px; }
     .postCard { border-radius: 0; border-left: none; border-right: none; margin-bottom: 10px; }
-    .actionBtn span { display: none; } /* Hide text, show only icons on very small screens if needed */
+    
+    /* CHANGE THIS PART */
+    .actionBtn span { 
+        display: inline-block; /* Changed from none to inline-block */
+        font-size: 0.75rem;     /* Slightly smaller for mobile */
+        margin-left: 2px;
+    } 
+
+    /* Optional: Reduce padding on buttons to save space */
+    .actionBtn {
+        padding: 8px 4px;
+        gap: 4px;
+    }
 }
