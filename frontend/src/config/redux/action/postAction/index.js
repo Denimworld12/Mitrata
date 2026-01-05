@@ -2,18 +2,27 @@ import { createAsyncThunk } from "@reduxjs/toolkit"
 import { clientServer } from "@/config";
 
 export const getAllPosts = createAsyncThunk(
-    "post/getAllPosts",
-    async (_, thunkapi) => {
-        try {
-            const response = await clientServer.get('/posts')
-            console.log(response.data);
-            return thunkapi.fulfillWithValue(response.data)
+  "post/getAllPosts",
+  async (_, thunkapi) => {
+    try {
+      const token = localStorage.getItem("token"); // or whatever key you used
 
-        } catch (error) {
-            return thunkapi.rejectWithValue(error.message.data)
-        }
+      const response = await clientServer.get("/posts", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      return thunkapi.fulfillWithValue(response.data);
+
+    } catch (error) {
+      return thunkapi.rejectWithValue(
+        error.response?.data || error.message
+      );
     }
-) 
+  }
+);
+
 
 export const createPost = createAsyncThunk(
     'post/createPost',
