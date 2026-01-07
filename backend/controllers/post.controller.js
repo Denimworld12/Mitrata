@@ -34,30 +34,38 @@ export const createPost = async (req, res) => {
 export const getAllPosts = async (req, res) => {
   try {
     const userId = req.userId;
-    const posts = await Post.find().populate(
-      "userId",
-      "name username email profilePicture createAt"
-    );
-    const postsWithReactions = posts.map(post => {
-  let likeCount = 0;
-  let dislikeCount = 0;
-  let userReaction = null;
 
-  post.reactions.forEach(r => {
-    if (r.userId.toString() === userId.toString()) userReaction = r;
-    if (r.type === "like") likeCount++;
-    if (r.type === "dislike") dislikeCount++;
-  });
+    const posts = await Post.find()
+      .populate("userId", "name username email profilePicture createdAt");
 
-    return {
-      posts: {...post._doc,
-      likeCount,
-      dislikeCount,
-      reactions: userReaction,}
-    };
-  });
+    const formattedPosts = posts.map(post => {
+      let likeCount = 0;
+      let dislikeCount = 0;
+      let userReaction = null;
 
-    // return res.json({ posts: postsWithReactions });
+      post.reactions.forEach(r => {
+        if (r.type === "like") likeCount++;
+        if (r.type === "dislike") dislikeCount++;
+        if (r.userId.toString() === userId.toString()) {
+          userReaction = r; // or r if you want full object
+        }
+      });
+      
+      // reactions:
+      //   complaint.reactions.find(
+      //     (r) => r.userId.toString() === userId.toString()
+      //   ) || null,
+
+      return {
+        ...post._doc,
+        likeCount,
+        dislikeCount,
+        reactions: userReaction, // ✅ explicit, honest
+      };
+    });
+
+    return res.status(200).json({ posts: formattedPosts });
+
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
