@@ -4,7 +4,6 @@ import UserLayout from '@/layout/userLayout';
 import DashboardLayout from '@/layout/DashboardLayout';
 import { useRouter } from 'next/router';
 import { useSelector, useDispatch } from 'react-redux';
-import { io } from "socket.io-client";
 import { Base_Url } from '@/config';
 import { pushMessage, resetMessages, removeDeletedMessages } from '@/config/redux/reducer/messageReducer';
 import { getMessages, sendMessage, deleteMessages, deleteChat, deleteMessageForEveryone } from '@/config/redux/action/messageAction';
@@ -250,8 +249,8 @@ export default function Messaging() {
             setMessage("");
             setSelectedFiles([]);
             // Emit stop typing
-            if (socket && activeChatUser?.userId?._id) {
-                socket.emit("stopTyping", { receiverId: activeChatUser.userId._id });
+            if (socket.current && activeChatUser?.userId?._id) {
+                socket.current.emit("stopTyping", { receiverId: activeChatUser.userId._id });
             }
         } catch (error) {
             console.error("Error sending message:", error);
@@ -405,432 +404,432 @@ export default function Messaging() {
     /* -------------------- UI -------------------- */
     return (
         // <UserLayout>
-            <div className={styles.messagingWrapper}>
-                <div className={styles.messagingMainCard}>
+        <div className={styles.messagingWrapper}>
+            <div className={styles.messagingMainCard}>
 
-                    {/* SIDEBAR */}
-                    
-                    <div className={`${styles.sidebar} ${!isSidebarOnly ? styles.mobileHidden : ''}`}>
-                        
-                            <div className={styles.sidebarHeader}>
-                                <div className={styles.sidebarHeaderLeft} onClick={() => router.back()}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="20" height="20">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-                                    </svg>
-                                </div>
-                                <h3>Messages</h3>
-                                <div className={styles.sidebarHeaderRight} onClick={() => router.push('/my_network')}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="20" height="20">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                                    </svg>
-                                </div>
-                            </div>
-                            
-                            <div className={styles.connectionsList}>
-                                {connections.length === 0 ? (
-                                    <p className={styles.noData}>No connections found.</p>
-                                ) : connections.map(conn => (
-                                    <div
-                                        key={conn._id}
-                                        className={`${styles.userCard} ${username === conn.userId?.username ? styles.activeUser : ''}`}
-                                        onClick={() => handleUserSelect(conn.userId?.username)}
-                                    >
-                                        <div className={styles.avatarWrapper}>
-                                            <img
-                                                src={conn.userId?.profilePicture || "/default-avatar.png"}
-                                                alt={conn.userId?.name}
-                                            />
-                                            <div className={`${styles.onlineStatus} ${onlineUsers.has(conn.userId?._id) ? styles.online : styles.offline}`}></div>
-                                        </div>
-                                        <div className={styles.userMeta}>
-                                            <p className={styles.name}>{conn.userId?.name}</p>
-                                            <p className={styles.lastMsg}>Click to chat</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            
+                {/* SIDEBAR */}
+
+                <div className={`${styles.sidebar} ${!isSidebarOnly ? styles.mobileHidden : ''}`}>
+
+                    <div className={styles.sidebarHeader}>
+                        <div className={styles.sidebarHeaderLeft} onClick={() => router.push('/my_network')}>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="20" height="20">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+                            </svg>
                         </div>
-
-                        {/* CHAT PANEL */}
-                        <div className={`${styles.chatPanel} ${isSidebarOnly ? styles.mobileHidden : ''}`}>
-                            {activeChatUser ? (
-                                <>
-                                    {/* HEADER */}
-                                    <div className={styles.chatHeader}>
-                                        {selectionMode ? (
-                                            <>
-                                                <button className={styles.backBtn} onClick={handleCancelSelection}>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="black" className="size-6">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-                                                    </svg>
-                                                </button>
-
-                                                <div className={styles.selectionInfo}>
-                                                    {selectedMessages.length} selected
-                                                </div>
-
-                                                <div className={styles.headerActions} ref={deleteMenuRef}>
-                                                    <button
-                                                        className={styles.deleteBtn}
-                                                        onClick={() => setShowDeleteMenu(prev => !prev)}
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6">
-                                                            <path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clipRule="evenodd" />
-                                                        </svg>
-                                                    </button>
-
-                                                    {showDeleteMenu && (
-                                                        <div className={styles.dropdownMenu}>
-                                                            <button
-                                                                className={styles.menuItem}
-                                                                onClick={async () => {
-                                                                    await dispatch(deleteMessages({ messageIds: selectedMessages })).unwrap();
-                                                                    setShowDeleteMenu(false);
-                                                                    handleCancelSelection();
-                                                                }}
-                                                            >
-                                                                Delete for me
-                                                            </button>
-
-                                                            {/* SMART CONDITION: Only show if all selected messages are mine */}
-                                                            {canDeleteEveryone && (
-                                                                <button
-                                                                    className={`${styles.menuItem} ${styles.danger}`}
-                                                                    onClick={async () => {
-                                                                        // Loop through all selected messages and delete each for everyone
-                                                                        for (const id of selectedMessages) {
-                                                                            await dispatch(deleteMessageForEveryone({ messageId: id })).unwrap();
-                                                                        }
-                                                                        setShowDeleteMenu(false);
-                                                                        handleCancelSelection();
-                                                                    }}
-                                                                >
-                                                                    Delete for everyone
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <button className={styles.backBtn} onClick={handleBackClick}>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="black" className="size-6">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-                                                    </svg>
-                                                </button>
-
-                                                <div className={styles.headerUserInfo}>
-                                                    <img
-                                                        src={activeChatUser.userId.profilePicture || "/default-avatar.png"}
-                                                        alt={activeChatUser.userId.name}
-                                                        className={styles.headerAvatar}
-                                                    />
-                                                    <div className={styles.headerInfo}>
-                                                        <h4 onClick={() => { router.push(`/view_profile/${activeChatUser.userId.username}`) }}>{activeChatUser.userId.name}</h4>
-                                                        <span className={isTyping ? styles.typingStatus : (onlineUsers.has(activeChatUser.userId._id) ? styles.onlineText : styles.offlineText)}>
-                                                            {isTyping ? 'typing...' : (onlineUsers.has(activeChatUser.userId._id) ? 'Online' : 'Offline')}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <div className={styles.headerActions} ref={menuRef}>
-                                                    <button
-                                                        className={styles.menuBtn}
-                                                        onClick={() => callUser(activeChatUser.userId._id, {
-                                                            name: activeChatUser.userId.name,
-                                                            avatar: activeChatUser.userId.profilePicture
-                                                        })}
-                                                        title="Voice Call"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="24" height="24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
-                                                        </svg>
-                                                    </button>
-
-                                                    <button
-                                                        className={styles.menuBtn}
-                                                        onClick={() => setShowMenu(!showMenu)}
-                                                    >
-                                                        ⋮
-                                                    </button>
-
-                                                    {showMenu && (
-                                                        <div className={styles.dropdownMenu}>
-                                                            <button
-                                                                className={styles.menuItem}
-                                                                onClick={() => {
-                                                                    setShowSearchModal(true);
-                                                                    setShowMenu(false);
-                                                                }}
-                                                            >
-                                                                Search Chat
-                                                            </button>
-                                                            <button
-                                                                className={`${styles.menuItem} ${styles.danger}`}
-                                                                onClick={handleClearChat}
-                                                            >
-                                                                Clear Chat
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-
-                                    {/* MESSAGES AREA */}
-                                    <div className={styles.messagesArea}>
-                                        {(showSearchModal ? filteredMessages : messages).map((msg, idx) => {
-                                            const senderId = msg.sender?.userId?._id || msg.sender?._id || msg.sender;
-                                            const isMe = senderId === authState.user?.userId?._id;
-                                            const isSelected = selectedMessages.includes(msg._id);
-
-                                            return (
-                                                <div
-                                                    key={msg._id || idx}
-                                                    className={`${isMe ? styles.sentMsg : styles.receivedMsg} ${isSelected ? styles.selectedMsg : ''
-                                                        } ${selectionMode ? styles.selectableMsg : ''}`}
-                                                    onMouseDown={() => handleLongPressStart(msg._id)}
-                                                    onMouseUp={handleLongPressEnd}
-                                                    onMouseLeave={handleLongPressEnd}
-                                                    onTouchStart={() => handleLongPressStart(msg._id)}
-                                                    onTouchEnd={handleLongPressEnd}
-                                                    onClick={() => handleMessageClick(msg._id)}
-                                                >
-                                                    {selectionMode && (
-                                                        <div className={styles.selectionCheckbox}>
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={isSelected}
-                                                                onChange={() => handleMessageClick(msg._id)}
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            />
-                                                        </div>
-                                                    )}
-                                                    {msg.media && msg.media.length > 0 && (
-                                                        <div className={msg.media.length > 1 ? styles.mediaGrid : ''}>
-                                                            {msg.media.map((m, i) => (
-                                                                <div key={i} className={styles.mediaContainer}>
-                                                                    {m.mediaType === "video" ? (
-                                                                        <video
-                                                                            src={m.url}
-                                                                            controls
-                                                                            className={styles.msgMedia}
-                                                                            onClick={(e) => {
-                                                                                if (!selectionMode) {
-                                                                                    e.stopPropagation();
-                                                                                    handleMediaClick(m);
-                                                                                }
-                                                                            }}
-                                                                        />
-                                                                    ) : (
-                                                                        <img
-                                                                            src={m.url}
-                                                                            alt="attachment"
-                                                                            className={styles.msgMedia}
-                                                                            onClick={(e) => {
-                                                                                if (!selectionMode) {
-                                                                                    e.stopPropagation();
-                                                                                    handleMediaClick(m);
-                                                                                }
-                                                                            }}
-                                                                        />
-                                                                    )}
-                                                                    {!selectionMode && (
-                                                                        <button
-                                                                            className={styles.downloadBtn}
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                handleDownloadMedia(m.url, m.mediaType);
-                                                                            }}
-                                                                            title="Download"
-                                                                        >
-                                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-5">
-                                                                                <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
-                                                                                <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
-                                                                            </svg>
-
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                    {msg.content && <p>{msg.content}</p>}
-                                                    <span className={styles.timeStamp}>
-                                                        {new Date(msg.createdAt).toLocaleTimeString([], {
-                                                            hour: "2-digit",
-                                                            minute: "2-digit"
-                                                        })}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                        <div ref={messagesEndRef} />
-                                    </div>
-
-                                    {/* INPUT SECTION */}
-                                    <div className={styles.inputSection}>
-                                        {selectedFiles.length > 0 && (
-                                            <div className={styles.previewStrip}>
-                                                {selectedFiles.map((f, i) => (
-                                                    <div key={i} className={styles.previewThumb}>
-                                                        {f.type.startsWith("image") ? (
-                                                            <img src={createPreviewUrl(f)} alt="preview" />
-                                                        ) : (
-                                                            <video src={createPreviewUrl(f)} />
-                                                        )}
-                                                        <button onClick={() => removeFile(i)}>×</button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        <form onSubmit={handleSend} className={styles.inputContainer}>
-                                            <button
-                                                type="button"
-                                                onClick={() => fileInputRef.current?.click()}
-                                                className={styles.attachBtn}
-                                            >
-                                                +
-                                            </button>
-
-                                            <input
-                                                ref={fileInputRef}
-                                                type="file"
-                                                hidden
-                                                multiple
-                                                accept="image/*,video/*"
-                                                onChange={handleFileChange}
-                                            />
-
-                                            <textarea
-                                                value={message}
-                                                onChange={e => setMessage(e.target.value)}
-                                                placeholder="Write a message..."
-                                                onKeyDown={e => {
-                                                    if (e.key === "Enter" && !e.shiftKey) {
-                                                        e.preventDefault();
-                                                        handleSend(e);
-                                                    }
-                                                }}
-                                            />
-
-                                            <button
-                                                type="submit"
-                                                className={styles.sendBtn}
-                                                disabled={sending || (!message.trim() && selectedFiles.length === 0)}
-                                            >
-                                                {sending ? "Sending..." : "Send"}
-                                            </button>
-                                        </form>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className={styles.noChatPlaceholder}>
-                                    <div className={styles.placeholderContent}>
-                                        <div className={styles.placeholderIcon}>💬</div>
-                                        <h3>Select a connection to start chatting</h3>
-                                        <p>Choose someone from your connections to begin a conversation</p>
-                                    </div>
-                                </div>
-                            )}
+                        <h3>Messages</h3>
+                        <div className={styles.sidebarHeaderRight} onClick={() => router.push('/my_network')}>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="20" height="20">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                            </svg>
                         </div>
                     </div>
 
-                    {/* SEARCH MODAL */}
-                    {showSearchModal && (
-                        <div className={styles.searchModal} onClick={() => setShowSearchModal(false)}>
-                            <div className={styles.searchModalContent} onClick={e => e.stopPropagation()}>
-                                <div className={styles.searchModalHeader}>
-                                    <h3>Search Messages</h3>
-                                    <button
-                                        className={styles.closeBtn}
-                                        onClick={() => {
-                                            setShowSearchModal(false);
-                                            setSearchQuery("");
-                                        }}
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                                <div className={styles.searchModalBody}>
-                                    <input
-                                        type="text"
-                                        className={styles.searchInput}
-                                        placeholder="Search in conversation..."
-                                        value={searchQuery}
-                                        onChange={e => setSearchQuery(e.target.value)}
-                                        autoFocus
+                    <div className={styles.connectionsList}>
+                        {connections.length === 0 ? (
+                            <p className={styles.noData}>No connections found.</p>
+                        ) : connections.map(conn => (
+                            <div
+                                key={conn._id}
+                                className={`${styles.userCard} ${username === conn.userId?.username ? styles.activeUser : ''}`}
+                                onClick={() => handleUserSelect(conn.userId?.username)}
+                            >
+                                <div className={styles.avatarWrapper}>
+                                    <img
+                                        src={conn.userId?.profilePicture || "/default-avatar.png"}
+                                        alt={conn.userId?.name}
                                     />
-                                    <div className={styles.searchResults}>
-                                        {filteredMessages.length === 0 ? (
-                                            <p className={styles.noResults}>
-                                                {searchQuery ? "No messages found" : "Start typing to search"}
-                                            </p>
-                                        ) : (
-                                            filteredMessages.map((msg, idx) => {
-                                                const senderId = msg.sender?.userId?._id || msg.sender?._id || msg.sender;
-                                                const isMe = senderId === authState.user?.userId?._id;
-
-                                                return (
-                                                    <div key={idx} className={styles.searchResultItem}>
-                                                        <div className={isMe ? styles.sentMsg : styles.receivedMsg} style={{ maxWidth: '100%' }}>
-                                                            {msg.content && <p>{msg.content}</p>}
-                                                            <span className={styles.timeStamp}>
-                                                                {new Date(msg.createdAt).toLocaleString()}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })
-                                        )}
-                                    </div>
+                                    <div className={`${styles.onlineStatus} ${onlineUsers.has(conn.userId?._id) ? styles.online : styles.offline}`}></div>
+                                </div>
+                                <div className={styles.userMeta}>
+                                    <p className={styles.name}>{conn.userId?.name}</p>
+                                    <p className={styles.lastMsg}>Click to chat</p>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        ))}
+                    </div>
 
-                    {/* MEDIA PREVIEW MODAL */}
-                    {previewMedia && (
-                        <div className={styles.previewModal} onClick={() => setPreviewMedia(null)}>
-                            <div className={styles.previewModalContent} onClick={e => e.stopPropagation()}>
-                                <button
-                                    className={styles.previewCloseBtn}
-                                    onClick={() => setPreviewMedia(null)}
-                                >
-                                    ×
-                                </button>
-                                <button
-                                    className={styles.previewDownloadBtn}
-                                    onClick={() => handleDownloadMedia(previewMedia.url, previewMedia.mediaType)}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                    </svg>
+                </div>
 
+                {/* CHAT PANEL */}
+                <div className={`${styles.chatPanel} ${isSidebarOnly ? styles.mobileHidden : ''}`}>
+                    {activeChatUser ? (
+                        <>
+                            {/* HEADER */}
+                            <div className={styles.chatHeader}>
+                                {selectionMode ? (
+                                    <>
+                                        <button className={styles.backBtn} onClick={handleCancelSelection}>
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="black" className="size-6">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+                                            </svg>
+                                        </button>
 
-                                </button>
-                                {previewMedia.mediaType === 'video' ? (
-                                    <video
-                                        src={previewMedia.url}
-                                        controls
-                                        className={styles.previewMediaLarge}
-                                    />
+                                        <div className={styles.selectionInfo}>
+                                            {selectedMessages.length} selected
+                                        </div>
+
+                                        <div className={styles.headerActions} ref={deleteMenuRef}>
+                                            <button
+                                                className={styles.deleteBtn}
+                                                onClick={() => setShowDeleteMenu(prev => !prev)}
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6">
+                                                    <path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clipRule="evenodd" />
+                                                </svg>
+                                            </button>
+
+                                            {showDeleteMenu && (
+                                                <div className={styles.dropdownMenu}>
+                                                    <button
+                                                        className={styles.menuItem}
+                                                        onClick={async () => {
+                                                            await dispatch(deleteMessages({ messageIds: selectedMessages })).unwrap();
+                                                            setShowDeleteMenu(false);
+                                                            handleCancelSelection();
+                                                        }}
+                                                    >
+                                                        Delete for me
+                                                    </button>
+
+                                                    {/* SMART CONDITION: Only show if all selected messages are mine */}
+                                                    {canDeleteEveryone && (
+                                                        <button
+                                                            className={`${styles.menuItem} ${styles.danger}`}
+                                                            onClick={async () => {
+                                                                // Loop through all selected messages and delete each for everyone
+                                                                for (const id of selectedMessages) {
+                                                                    await dispatch(deleteMessageForEveryone({ messageId: id })).unwrap();
+                                                                }
+                                                                setShowDeleteMenu(false);
+                                                                handleCancelSelection();
+                                                            }}
+                                                        >
+                                                            Delete for everyone
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
                                 ) : (
-                                    <img
-                                        src={previewMedia.url}
-                                        alt="Preview"
-                                        className={styles.previewMediaLarge}
-                                    />
+                                    <>
+                                        <button className={styles.backBtn} onClick={handleBackClick}>
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="black" className="size-6">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+                                            </svg>
+                                        </button>
+
+                                        <div className={styles.headerUserInfo}>
+                                            <img
+                                                src={activeChatUser.userId.profilePicture || "/default-avatar.png"}
+                                                alt={activeChatUser.userId.name}
+                                                className={styles.headerAvatar}
+                                            />
+                                            <div className={styles.headerInfo}>
+                                                <h4 onClick={() => { router.push(`/view_profile/${activeChatUser.userId.username}`) }}>{activeChatUser.userId.name}</h4>
+                                                <span className={isTyping ? styles.typingStatus : (onlineUsers.has(activeChatUser.userId._id) ? styles.onlineText : styles.offlineText)}>
+                                                    {isTyping ? 'typing...' : (onlineUsers.has(activeChatUser.userId._id) ? 'Online' : 'Offline')}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className={styles.headerActions} ref={menuRef}>
+                                            <button
+                                                className={styles.menuBtn}
+                                                onClick={() => callUser(activeChatUser.userId._id, {
+                                                    name: activeChatUser.userId.name,
+                                                    avatar: activeChatUser.userId.profilePicture
+                                                })}
+                                                title="Voice Call"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="24" height="24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+                                                </svg>
+                                            </button>
+
+                                            <button
+                                                className={styles.menuBtn}
+                                                onClick={() => setShowMenu(!showMenu)}
+                                            >
+                                                ⋮
+                                            </button>
+
+                                            {showMenu && (
+                                                <div className={styles.dropdownMenu}>
+                                                    <button
+                                                        className={styles.menuItem}
+                                                        onClick={() => {
+                                                            setShowSearchModal(true);
+                                                            setShowMenu(false);
+                                                        }}
+                                                    >
+                                                        Search Chat
+                                                    </button>
+                                                    <button
+                                                        className={`${styles.menuItem} ${styles.danger}`}
+                                                        onClick={handleClearChat}
+                                                    >
+                                                        Clear Chat
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
                                 )}
+                            </div>
+
+                            {/* MESSAGES AREA */}
+                            <div className={styles.messagesArea}>
+                                {(showSearchModal ? filteredMessages : messages).map((msg, idx) => {
+                                    const senderId = msg.sender?.userId?._id || msg.sender?._id || msg.sender;
+                                    const isMe = senderId === authState.user?.userId?._id;
+                                    const isSelected = selectedMessages.includes(msg._id);
+
+                                    return (
+                                        <div
+                                            key={msg._id || idx}
+                                            className={`${isMe ? styles.sentMsg : styles.receivedMsg} ${isSelected ? styles.selectedMsg : ''
+                                                } ${selectionMode ? styles.selectableMsg : ''}`}
+                                            onMouseDown={() => handleLongPressStart(msg._id)}
+                                            onMouseUp={handleLongPressEnd}
+                                            onMouseLeave={handleLongPressEnd}
+                                            onTouchStart={() => handleLongPressStart(msg._id)}
+                                            onTouchEnd={handleLongPressEnd}
+                                            onClick={() => handleMessageClick(msg._id)}
+                                        >
+                                            {selectionMode && (
+                                                <div className={styles.selectionCheckbox}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => handleMessageClick(msg._id)}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                </div>
+                                            )}
+                                            {msg.media && msg.media.length > 0 && (
+                                                <div className={msg.media.length > 1 ? styles.mediaGrid : ''}>
+                                                    {msg.media.map((m, i) => (
+                                                        <div key={i} className={styles.mediaContainer}>
+                                                            {m.mediaType === "video" ? (
+                                                                <video
+                                                                    src={m.url}
+                                                                    controls
+                                                                    className={styles.msgMedia}
+                                                                    onClick={(e) => {
+                                                                        if (!selectionMode) {
+                                                                            e.stopPropagation();
+                                                                            handleMediaClick(m);
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <img
+                                                                    src={m.url}
+                                                                    alt="attachment"
+                                                                    className={styles.msgMedia}
+                                                                    onClick={(e) => {
+                                                                        if (!selectionMode) {
+                                                                            e.stopPropagation();
+                                                                            handleMediaClick(m);
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            )}
+                                                            {!selectionMode && (
+                                                                <button
+                                                                    className={styles.downloadBtn}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDownloadMedia(m.url, m.mediaType);
+                                                                    }}
+                                                                    title="Download"
+                                                                >
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-5">
+                                                                        <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
+                                                                        <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
+                                                                    </svg>
+
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {msg.content && <p>{msg.content}</p>}
+                                            <span className={styles.timeStamp}>
+                                                {new Date(msg.createdAt).toLocaleTimeString([], {
+                                                    hour: "2-digit",
+                                                    minute: "2-digit"
+                                                })}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                                <div ref={messagesEndRef} />
+                            </div>
+
+                            {/* INPUT SECTION */}
+                            <div className={styles.inputSection}>
+                                {selectedFiles.length > 0 && (
+                                    <div className={styles.previewStrip}>
+                                        {selectedFiles.map((f, i) => (
+                                            <div key={i} className={styles.previewThumb}>
+                                                {f.type.startsWith("image") ? (
+                                                    <img src={createPreviewUrl(f)} alt="preview" />
+                                                ) : (
+                                                    <video src={createPreviewUrl(f)} />
+                                                )}
+                                                <button onClick={() => removeFile(i)}>×</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <form onSubmit={handleSend} className={styles.inputContainer}>
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className={styles.attachBtn}
+                                    >
+                                        +
+                                    </button>
+
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        hidden
+                                        multiple
+                                        accept="image/*,video/*"
+                                        onChange={handleFileChange}
+                                    />
+
+                                    <textarea
+                                        value={message}
+                                        onChange={e => setMessage(e.target.value)}
+                                        placeholder="Write a message..."
+                                        onKeyDown={e => {
+                                            if (e.key === "Enter" && !e.shiftKey) {
+                                                e.preventDefault();
+                                                handleSend(e);
+                                            }
+                                        }}
+                                    />
+
+                                    <button
+                                        type="submit"
+                                        className={styles.sendBtn}
+                                        disabled={sending || (!message.trim() && selectedFiles.length === 0)}
+                                    >
+                                        {sending ? "Sending..." : "Send"}
+                                    </button>
+                                </form>
+                            </div>
+                        </>
+                    ) : (
+                        <div className={styles.noChatPlaceholder}>
+                            <div className={styles.placeholderContent}>
+                                <div className={styles.placeholderIcon}>💬</div>
+                                <h3>Select a connection to start chatting</h3>
+                                <p>Choose someone from your connections to begin a conversation</p>
                             </div>
                         </div>
                     )}
                 </div>
-            
+            </div>
+
+            {/* SEARCH MODAL */}
+            {showSearchModal && (
+                <div className={styles.searchModal} onClick={() => setShowSearchModal(false)}>
+                    <div className={styles.searchModalContent} onClick={e => e.stopPropagation()}>
+                        <div className={styles.searchModalHeader}>
+                            <h3>Search Messages</h3>
+                            <button
+                                className={styles.closeBtn}
+                                onClick={() => {
+                                    setShowSearchModal(false);
+                                    setSearchQuery("");
+                                }}
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div className={styles.searchModalBody}>
+                            <input
+                                type="text"
+                                className={styles.searchInput}
+                                placeholder="Search in conversation..."
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                autoFocus
+                            />
+                            <div className={styles.searchResults}>
+                                {filteredMessages.length === 0 ? (
+                                    <p className={styles.noResults}>
+                                        {searchQuery ? "No messages found" : "Start typing to search"}
+                                    </p>
+                                ) : (
+                                    filteredMessages.map((msg, idx) => {
+                                        const senderId = msg.sender?.userId?._id || msg.sender?._id || msg.sender;
+                                        const isMe = senderId === authState.user?.userId?._id;
+
+                                        return (
+                                            <div key={idx} className={styles.searchResultItem}>
+                                                <div className={isMe ? styles.sentMsg : styles.receivedMsg} style={{ maxWidth: '100%' }}>
+                                                    {msg.content && <p>{msg.content}</p>}
+                                                    <span className={styles.timeStamp}>
+                                                        {new Date(msg.createdAt).toLocaleString()}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MEDIA PREVIEW MODAL */}
+            {previewMedia && (
+                <div className={styles.previewModal} onClick={() => setPreviewMedia(null)}>
+                    <div className={styles.previewModalContent} onClick={e => e.stopPropagation()}>
+                        <button
+                            className={styles.previewCloseBtn}
+                            onClick={() => setPreviewMedia(null)}
+                        >
+                            ×
+                        </button>
+                        <button
+                            className={styles.previewDownloadBtn}
+                            onClick={() => handleDownloadMedia(previewMedia.url, previewMedia.mediaType)}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+
+
+                        </button>
+                        {previewMedia.mediaType === 'video' ? (
+                            <video
+                                src={previewMedia.url}
+                                controls
+                                className={styles.previewMediaLarge}
+                            />
+                        ) : (
+                            <img
+                                src={previewMedia.url}
+                                alt="Preview"
+                                className={styles.previewMediaLarge}
+                            />
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+
         // {/* </UserLayout > */}
     );
 }
