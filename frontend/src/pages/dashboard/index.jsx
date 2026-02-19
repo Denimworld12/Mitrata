@@ -1,4 +1,5 @@
 import { getAboutUser } from "@/config/redux/action/authAction";
+import { useToast } from "@/Components/Toast";
 import {
   commentPost,
   createPost,
@@ -26,12 +27,13 @@ export default function Dashboard() {
   const authState = useSelector((state) => state.auth);
   const postState = useSelector((state) => state.post);
   const fileRef = useRef(null);
+  const toast = useToast();
 
   const [complaints, setComplaints] = useState([]);
 
-useEffect(() => {
-  setComplaints(postState.posts);
-}, [postState.posts]);
+  useEffect(() => {
+    setComplaints(postState.posts);
+  }, [postState.posts]);
   console.log("Complaints state:", complaints);
   const [postContent, setPostContent] = useState("");
   const [fileContent, setFileContent] = useState(null);
@@ -54,7 +56,7 @@ useEffect(() => {
         dispatch(getAllPosts());
       }
       if (!authState.user) {
-        dispatch(getAboutUser({ token }));
+        dispatch(getAboutUser());
       }
     }
   }, []); // Empty dependency array is key for returning users
@@ -66,7 +68,7 @@ useEffect(() => {
     try {
       const token = localStorage.getItem("token");
       if (!token) {
-        alert("Please login to vote");
+        toast.warning("Please login to vote");
         return;
       }
 
@@ -91,17 +93,17 @@ useEffect(() => {
         prev.map((c) =>
           c._id === id
             ? {
-                ...c,
-                likeCount: data.likeCount,
-                dislikeCount: data.dislikeCount,
-                reactions: data.reactions,
-              }
+              ...c,
+              likeCount: data.likeCount,
+              dislikeCount: data.dislikeCount,
+              reactions: data.reactions,
+            }
             : c
         )
       );
     } catch (err) {
       console.error(err);
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -138,9 +140,36 @@ useEffect(() => {
   };
 
   const handleDelete = (postId) => {
-    if (window.confirm("Are you sure?")) {
-      dispatch(deletePost(postId)).then(() => handleRefresh());
+    if (window.confirm("Are you sure you want to delete this post?")) {
+      dispatch(deletePost(postId)).then(() => {
+        handleRefresh();
+        toast.success("Post deleted.");
+      });
     }
+  };
+
+  const handleShare = (postId) => {
+    const url = `${window.location.origin}/post/${postId}`;
+    navigator.clipboard.writeText(url);
+    toast.success("Link copied to clipboard!");
+  };
+
+  const [bookmarked, setBookmarked] = useState({});
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('bookmarks') || '{}');
+      setBookmarked(saved);
+    } catch { }
+  }, []);
+
+  const handleBookmark = (postId) => {
+    setBookmarked(prev => {
+      const next = { ...prev, [postId]: !prev[postId] };
+      localStorage.setItem('bookmarks', JSON.stringify(next));
+      if (next[postId]) toast.info("Post bookmarked");
+      else toast.info("Bookmark removed");
+      return next;
+    });
   };
 
   // 3. Scroll Lock Logic (Keep your existing code)
@@ -465,21 +494,19 @@ useEffect(() => {
                       </div>
 
                       {/* SHARE */}
-                      <div className={styles.actionBtn}>
-                        {/* Share Icon SVG */}
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                          className="size-6"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M2.25 2.25a.75.75 0 0 0 0 1.5H3v10.5a3 3 0 0 0 3 3h1.21l-1.172 3.513a.75.75 0 0 0 1.424.474l.329-.987h8.418l.33.987a.75.75 0 0 0 1.422-.474l-1.17-3.513H18a3 3 0 0 0 3-3V3.75h.75a.75.75 0 0 0 0-1.5H2.25Zm6.54 15h6.42l.5 1.5H8.29l.5-1.5Zm8.085-8.995a.75.75 0 1 0-.75-1.299 12.81 12.81 0 0 0-3.558 3.05L11.03 8.47a.75.75 0 0 0-1.06 0l-3 3a.75.75 0 1 0 1.06 1.06l2.47-2.47 1.617 1.618a.75.75 0 0 0 1.146-.102 11.312 11.312 0 0 1 3.612-3.321Z"
-                            clipRule="evenodd"
-                          />
+                      <div className={styles.actionBtn} onClick={() => handleShare(post._id)}>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="20" height="20">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
                         </svg>
                         <span>Share</span>
+                      </div>
+
+                      {/* BOOKMARK */}
+                      <div className={styles.actionBtn} onClick={() => handleBookmark(post._id)} style={{ color: bookmarked[post._id] ? '#0a66c2' : '#666' }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill={bookmarked[post._id] ? 'currentColor' : 'none'} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="20" height="20">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
+                        </svg>
+                        <span>Save</span>
                       </div>
                     </div>
                   </div>

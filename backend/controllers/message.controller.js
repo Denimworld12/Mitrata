@@ -61,7 +61,7 @@ export const sendMessage = async (req, res) => {
 
         // SOCKET.IO REAL-TIME EMISSION
         const io = req.app.get("socketio");
-        
+
         if (io) {
             // Emit to receiver's room
             io.to(receiverId.toString()).emit("newMessage", populatedMessage);
@@ -71,29 +71,36 @@ export const sendMessage = async (req, res) => {
         res.status(201).json(populatedMessage);
     } catch (error) {
         console.error("Error in sendMessage:", error);
-        res.status(500).json({ 
+        res.status(500).json({
             message: "Internal Server Error",
-            error: error.message 
+            error: error.message
         });
     }
 };
 
 export const getMessages = async (req, res) => {
     try {
-        const { receiverId } = req.query;
+        const { receiverId, page: pageStr, limit: limitStr } = req.query;
         const senderId = req.userId; // From verifyToken middleware
-
-        console.log("Get messages request:", {
-            senderId,
-            receiverId
-        });
 
         if (!receiverId) {
             return res.status(400).json({ message: "Receiver ID is required" });
         }
 
-        // Fetch messages between these two users
-        // Filter out messages that the current user has "deleted"
+        const page = parseInt(pageStr) || 1;
+        const limit = Math.min(parseInt(limitStr) || 50, 100); // Cap at 100
+        const skip = (page - 1) * limit;
+
+        // Count total messages
+        const totalMessages = await Message.countDocuments({
+            $or: [
+                { sender: senderId, receiver: receiverId },
+                { sender: receiverId, receiver: senderId }
+            ],
+            deletedBy: { $ne: senderId }
+        });
+
+        // Fetch paginated messages (newest first, then reverse for display)
         const messages = await Message.find({
             $or: [
                 { sender: senderId, receiver: receiverId },
@@ -101,24 +108,33 @@ export const getMessages = async (req, res) => {
             ],
             deletedBy: { $ne: senderId }
         })
-        .populate({
-            path: 'sender',
-            select: 'name profilePicture username'
-        })
-        .populate({
-            path: 'receiver',
-            select: 'name profilePicture username'
-        })
-        .sort({ createdAt: 1 }); // Oldest to newest
+            .populate({
+                path: 'sender',
+                select: 'name profilePicture username'
+            })
+            .populate({
+                path: 'receiver',
+                select: 'name profilePicture username'
+            })
+            .sort({ createdAt: -1 }) // newest first
+            .skip(skip)
+            .limit(limit);
 
-        console.log("Messages fetched:", messages.length);
+        // Reverse to chronological (oldest-to-newest) for display
+        messages.reverse();
 
-        res.status(200).json(messages);
+        res.status(200).json({
+            messages,
+            hasMore: skip + limit < totalMessages,
+            totalMessages,
+            page,
+            limit
+        });
     } catch (error) {
         console.error("Error in getMessages:", error);
-        res.status(500).json({ 
+        res.status(500).json({
             message: "Error fetching messages",
-            error: error.message 
+            error: error.message
         });
     }
 };
@@ -152,15 +168,15 @@ export const deleteChat = async (req, res) => {
 
         console.log("Chat deleted:", result.modifiedCount, "messages");
 
-        res.status(200).json({ 
+        res.status(200).json({
             message: "Chat deleted successfully",
             deletedCount: result.modifiedCount
         });
     } catch (error) {
         console.error("Error in deleteChat:", error);
-        res.status(500).json({ 
+        res.status(500).json({
             message: "Error deleting chat",
-            error: error.message 
+            error: error.message
         });
     }
 };
@@ -201,29 +217,29 @@ export const deleteMessages = async (req, res) => {
 
         // SOCKET.IO REAL-TIME EMISSION (optional - to notify other user)
         const io = req.app.get("socketio");
-        
+
         if (io) {
             // Get the messages to find the other user
             const messages = await Message.find({ _id: { $in: messageIds } });
-            
+
             messages.forEach(msg => {
-                const otherUserId = msg.sender.toString() === senderId.toString() 
-                    ? msg.receiver.toString() 
+                const otherUserId = msg.sender.toString() === senderId.toString()
+                    ? msg.receiver.toString()
                     : msg.sender.toString();
-                
+
                 io.to(otherUserId).emit("messagesDeleted", { messageIds, deletedBy: senderId });
             });
         }
 
-        res.status(200).json({ 
+        res.status(200).json({
             message: "Messages deleted successfully",
             deletedCount: result.modifiedCount
         });
     } catch (error) {
         console.error("Error in deleteMessages:", error);
-        res.status(500).json({ 
+        res.status(500).json({
             message: "Error deleting messages",
-            error: error.message 
+            error: error.message
         });
     }
 };
@@ -268,21 +284,21 @@ export const deleteMessageForEveryone = async (req, res) => {
 
         // SOCKET.IO REAL-TIME EMISSION
         const io = req.app.get("socketio");
-        
+
         if (io) {
             const receiverId = message.receiver.toString();
             io.to(receiverId).emit("messageDeletedForEveryone", { messageId });
             io.to(senderId).emit("messageDeletedForEveryone", { messageId });
         }
 
-        res.status(200).json({ 
+        res.status(200).json({
             message: "Message deleted for everyone successfully"
         });
     } catch (error) {
         console.error("Error in deleteMessageForEveryone:", error);
-        res.status(500).json({ 
+        res.status(500).json({
             message: "Error deleting message",
-            error: error.message 
+            error: error.message
         });
     }
 };

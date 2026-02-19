@@ -1,0 +1,130 @@
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: #334155;
+    background: #fff;
+    min-height: 100vh;
+}
+
+:global(.dark) .container {
+    background: #0f172a;
+    color: #e2e8f0;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+:global(.dark) .header {
+    border-bottom: 1px solid #334155;
+}
+
+.backBtn {
+    background: none;
+    border: none;
+    display: flex;
+    align-items: center;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 8px 16px 8px 0;
+    transition: color 0.2s;
+}
+
+:global(.dark) .backBtn {
+    color: #94a3b8;
+}
+
+.backBtn:hover {
+    color: #3b82f6;
+}
+
+.backIcon {
+    width: 20px;
+    height: 20px;
+    margin-right: 4px;
+}
+
+.title {
+    flex: 1;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0;
+    margin-right: 60px;
+    /* Balance back button width */
+}
+
+.content {
+    line-height: 1.6;
+}
+
+.lastUpdated {
+    color: #94a3b8;
+    font-size: 14px;
+    margin-bottom: 40px;
+    font-style: italic;
+}
+
+.section {
+    margin-bottom: 40px;
+}
+
+.section h2 {
+    font-size: 20px;
+    color: #1e293b;
+    margin-bottom: 16px;
+    border-left: 4px solid #3b82f6;
+    padding-left: 12px;
+}
+
+:global(.dark) .section h2 {
+    color: #f8fafc;
+}
+
+.section p {
+    margin-bottom: 16px;
+    font-size: 16px;
+}
+
+.section ul {
+    list-style-type: disc;
+    padding-left: 24px;
+    margin-bottom: 16px;
+}
+
+.section li {
+    margin-bottom: 8px;
+}
+
+.section a {
+    color: #3b82f6;
+    text-decoration: none;
+}
+
+.section a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+    .container {
+        padding: 16px;
+    }
+
+    .title {
+        font-size: 20px;
+        margin-right: 0;
+    }
+
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+}

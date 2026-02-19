@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { getAboutUser, loginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, acceptConnectionRequest, downloadResume, updateUserProfile } from "../../action/authAction/index";
+import { getAboutUser, loginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, acceptConnectionRequest, downloadResume, updateUserProfile, logout } from "../../action/authAction/index";
 
 
 
@@ -112,7 +112,7 @@ const authSlice = createSlice({
             })
             .addCase(getConnectionRequest.fulfilled, (state, action) => {
                 state.isError = false,
-                state.connection = action.payload.connections || action.payload
+                    state.connection = action.payload.connections || action.payload
             })
             .addCase(getConnectionRequest.rejected, (state, action) => {
                 state.isError = true;
@@ -169,6 +169,20 @@ const authSlice = createSlice({
             })
             .addCase(updateUserProfile.pending, (state) => {
                 state.isLoading = true
+            })
+            .addCase(logout.fulfilled, (state) => {
+                state.user = null;
+                state.isError = false;
+                state.isSuccess = true;
+                state.isLoading = false;
+                state.loggedIn = false;
+                state.message = "Logged out";
+                state.isTokenThere = false;
+                state.profileFetched = false;
+                state.connection = [];
+                state.all_user = [];
+                state.connectionRequest = [];
+                state.all_profile_fetched = false;
             })
 
     }

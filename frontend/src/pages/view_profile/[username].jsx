@@ -58,8 +58,8 @@ export default function viewProfilePage({ userProfile }) {
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
-            dispatch(getAllPosts({ token }))
-            dispatch(getConnectionRequest({ token }))
+            dispatch(getAllPosts())
+            dispatch(getConnectionRequest())
         }
     }, [dispatch]);
 
@@ -141,7 +141,6 @@ export default function viewProfilePage({ userProfile }) {
                                         (
                                             <button className={styles.connectButton} onClick={() => {
                                                 dispatch(sendConnectionRequest({
-                                                    token: localStorage.getItem('token'),
                                                     connectionId: userProfile.userId._id
                                                 }));
                                             }}>Connect</button>
@@ -220,9 +219,9 @@ export default function viewProfilePage({ userProfile }) {
             </div>
         </div>
     );
-    
-    
-    
+
+
+
 
     // CRITICAL: Ensure this logic runs AFTER ProfileContent is defined
     if (!mounted) return <UserLayout>{ProfileContent}</UserLayout>;

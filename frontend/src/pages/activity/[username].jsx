@@ -7,23 +7,22 @@ import DashboardLayout from '@/layout/DashboardLayout';
 import { getAllPosts, deletePost, incrementLike, getAllComments, commentPost } from '@/config/redux/action/postAction';
 import { resetPostId } from '@/config/redux/reducer/postReducer';
 import { Base_Url } from '@/config';
+import { useToast } from '@/Components/Toast';
 
 export default function UserActivityPage() {
     const router = useRouter();
     const { username } = router.query;
     const dispatch = useDispatch();
-    
+
     const postState = useSelector((state) => state.post);
     const authState = useSelector((state) => state.auth);
-    
+
     const [mounted, setMounted] = useState(false);
     const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
     const [commentText, setCommentText] = useState("");
+    const toast = useToast();
     const refreshData = () => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            dispatch(getAllPosts({ token }));
-        }
+        dispatch(getAllPosts());
     };
     // --- NEW: Scroll Lock Logic ---
     useEffect(() => {
@@ -37,14 +36,14 @@ export default function UserActivityPage() {
     useEffect(() => {
         setMounted(true);
         const token = localStorage.getItem('token');
-        
+
         // Only fetch if Redux is empty to prevent "loading every time" flicker
         if (token && postState.posts.length === 0) {
-            dispatch(getAllPosts({ token }));
+            dispatch(getAllPosts());
         }
     }, [dispatch]);
     useEffect(() => {
-        
+
         const handleResize = () => setIsMobileOrTablet(window.innerWidth <= 1024);
         handleResize();
         window.addEventListener('resize', handleResize);
@@ -53,7 +52,7 @@ export default function UserActivityPage() {
 
     useEffect(() => {
         const token = localStorage.getItem('token');
-        dispatch(getAllPosts({ token }));
+        dispatch(getAllPosts());
     }, [dispatch]);
 
     const userPosts = useMemo(() => {
@@ -66,7 +65,7 @@ export default function UserActivityPage() {
     const isOwner = authState.user?.userId?.username === username;
 
     const handleLike = async (postId) => {
-       await dispatch(incrementLike(postId));
+        await dispatch(incrementLike(postId));
         refreshData();
     };
 
@@ -84,13 +83,14 @@ export default function UserActivityPage() {
     const handleShare = (postId) => {
         const shareUrl = `${window.location.origin}/post/${postId}`;
         navigator.clipboard.writeText(shareUrl);
-        alert("Link copied to clipboard!");
+        toast.success("Link copied to clipboard!");
     };
 
     const handleDelete = (postId) => {
-        if (window.confirm("Are you sure?")) {
+        if (window.confirm("Are you sure you want to delete this post?")) {
             dispatch(deletePost(postId)).then(() => {
                 dispatch(getAllPosts());
+                toast.success("Post deleted.");
             });
         }
     };
@@ -114,10 +114,10 @@ export default function UserActivityPage() {
                     <div key={post._id} className={styles.postCard}>
                         <div className={styles.postHeader}>
                             <div className={styles.userMeta}>
-                                <img 
+                                <img
                                     className={styles.miniAvatar}
-                                    src={post.userId?.profilePicture ? (post.userId.profilePicture.startsWith("http") ? post.userId.profilePicture : `${Base_Url}/${post.userId.profilePicture}`) : "/default-avatar.png"} 
-                                    alt="avatar" 
+                                    src={post.userId?.profilePicture ? (post.userId.profilePicture.startsWith("http") ? post.userId.profilePicture : `${Base_Url}/${post.userId.profilePicture}`) : "/default-avatar.png"}
+                                    alt="avatar"
                                 />
                                 <div className={styles.metaText}>
                                     <p className={styles.userName}>{post.userId?.name || post.userId?.username}</p>
@@ -126,7 +126,7 @@ export default function UserActivityPage() {
                             </div>
                             {isOwner && (
                                 <button className={styles.deleteBtn} onClick={() => handleDelete(post._id)}>
-                                    <svg viewBox="0 0 24 24" fill="currentColor" width="18"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                                    <svg viewBox="0 0 24 24" fill="currentColor" width="18"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" /></svg>
                                 </button>
                             )}
                         </div>

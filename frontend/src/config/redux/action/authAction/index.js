@@ -3,7 +3,6 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 
 
 
-
 export const loginUser = createAsyncThunk(
     "user/login",
     async (user, thunkApi) => {
@@ -19,7 +18,7 @@ export const loginUser = createAsyncThunk(
             return thunkApi.fulfillWithValue(response.data.token)
 
         } catch (error) {
-            return thunkApi.rejectWithValue(error.response.data)
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Login failed" })
         }
     }
 )
@@ -35,26 +34,37 @@ export const registerUser = createAsyncThunk(
             })
             return thunkApi.fulfillWithValue(response.data)
         } catch (error) {
-            return thunkApi.rejectWithValue(error.response.data)
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Registration failed" })
         }
     }
 )
 
 
 
+export const logout = createAsyncThunk(
+    "user/logout",
+    async (_, thunkApi) => {
+        try {
+            await clientServer.post('/logout');
+            localStorage.removeItem("token");
+            return thunkApi.fulfillWithValue({ message: "Logged out successfully" });
+        } catch (error) {
+            localStorage.removeItem("token");
+            return thunkApi.fulfillWithValue({ message: "Logged out locally" });
+        }
+    }
+)
+
+
 export const getAboutUser = createAsyncThunk(
     "user/getAboutUser",
-    async (user, thunkApi) => {
+    async (_user, thunkApi) => {
         try {
-            // const token = localStorage.getItem("token");
-            const response = await clientServer.get('/get_user_and_profile', {
-                params: {
-                    token: user.token
-                }
-            })
+            // Token is auto-attached via axios interceptor
+            const response = await clientServer.get('/get_user_and_profile')
             return thunkApi.fulfillWithValue(response.data)
         } catch (error) {
-            return thunkApi.rejectWithValue(error.response.data)
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Failed to get user info" })
         }
     }
 )
@@ -65,13 +75,13 @@ export const updateUserProfile = createAsyncThunk(
     async (user, thunkApi) => {
         try {
             const { token, ...newUserdata } = user;
+            // Token is auto-attached via axios interceptor
             const response = await clientServer.post('/user/setting/user_update', {
-                token: token,
                 newUserdata: newUserdata
             })
             return thunkApi.fulfillWithValue(response.data)
         } catch (error) {
-            return thunkApi.rejectWithValue(error.response.data)
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Update failed" })
         }
     }
 )
@@ -80,17 +90,15 @@ export const updateUserProfile = createAsyncThunk(
 
 export const getAllUser = createAsyncThunk(
     "user/findUser",
-    async (user, thunkApi) => {
+    async (_user, thunkApi) => {
         try {
-            const response = clientServer.get('/user/findinguser')
-            return thunkApi.fulfillWithValue((await response).data)
+            // Token is auto-attached via axios interceptor
+            const response = await clientServer.get('/user/findinguser')
+            return thunkApi.fulfillWithValue(response.data)
         } catch (error) {
-            return thunkApi.rejectWithValue(error.response.data
-            )
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Failed to find users" })
         }
     }
-
-
 )
 
 
@@ -98,14 +106,14 @@ export const sendConnectionRequest = createAsyncThunk(
     "user/sendConnectionRequest",
     async (user, thunkApi) => {
         try {
+            // Token is auto-attached via axios interceptor
             const response = await clientServer.post('/user/send_connection_request', {
-                token: user.token,
                 connectionId: user.connectionId
             })
-            thunkApi.dispatch(getConnectionRequest({ token: user.token }))
+            thunkApi.dispatch(getConnectionRequest())
             return thunkApi.fulfillWithValue(response.data)
         } catch (error) {
-            return thunkApi.rejectWithValue(error.response.data)
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Request failed" })
         }
     }
 )
@@ -114,34 +122,28 @@ export const sendConnectionRequest = createAsyncThunk(
 
 export const getConnectionRequest = createAsyncThunk(
     "user/getConnectionRequest",
-    async (user, thunkApi) => {
+    async (_user, thunkApi) => {
         try {
-            const response = await clientServer.get('/user/get_connection_request', {
-                params: {
-                    token: user.token
-                }
-            })
+            // Token is auto-attached via axios interceptor
+            const response = await clientServer.get('/user/get_connection_request')
             return thunkApi.fulfillWithValue(response.data)
 
         } catch (error) {
-            return thunkApi.rejectWithValue(error.response.data)
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Failed to get connections" })
         }
     }
 )
 
 export const getMyConnectionRequests = createAsyncThunk(
     "user/getMyConnectionRequests",
-    async (user, thunkApi) => {
+    async (_user, thunkApi) => {
         try {
-            const response = await clientServer.get('/user/get_my_connections', {
-                params: {
-                    token: user.token
-                }
-            })
+            // Token is auto-attached via axios interceptor
+            const response = await clientServer.get('/user/get_my_connections')
             return thunkApi.fulfillWithValue(response.data)
 
         } catch (error) {
-            return thunkApi.rejectWithValue(error.response.data)
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Failed to get connections" })
         }
     }
 )
@@ -150,14 +152,14 @@ export const acceptConnectionRequest = createAsyncThunk(
     "user/acceptConnectionRequest",
     async (payload, thunkApi) => {
         try {
+            // Token is auto-attached via axios interceptor
             const response = await clientServer.post('/user/is_accepted_connection_request', {
-                token: payload.token,
-                requestId: payload.connectionId, // This is the requestId passed from UI
-                action_type: payload.action // Mapping 'action' to 'action_type'
+                requestId: payload.connectionId,
+                action_type: payload.action
             });
             return thunkApi.fulfillWithValue(response.data);
         } catch (error) {
-            return thunkApi.rejectWithValue(error.response.data);
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Action failed" });
         }
     }
 );
@@ -174,7 +176,7 @@ export const downloadResume = createAsyncThunk(
             })
             return response.data
         } catch (error) {
-            return thunkApi.rejectWithValue( error.response?.data || { message: 'Download failed' })
+            return thunkApi.rejectWithValue(error.response?.data || { message: 'Download failed' })
         }
     }
 )
