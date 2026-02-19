@@ -35,7 +35,6 @@ export default function Messaging() {
     const [deleting, setDeleting] = useState(false);
     const [showDeleteMenu, setShowDeleteMenu] = useState(false);
     const [isTyping, setIsTyping] = useState(false);
-    const [onlineUsers, setOnlineUsers] = useState(new Set());
     const deleteMenuRef = useRef(null);
     const longPressTimer = useRef(null);
     const fileInputRef = useRef(null);
@@ -43,23 +42,13 @@ export default function Messaging() {
     const menuRef = useRef(null);
     const typingTimeoutRef = useRef(null);
     const toast = useToast();
+    /* -------------------- SHARED SOCKET & CONTEXT -------------------- */
+    const { socket, onlineUsers } = useNotification();
     const { callUser } = useCall();
+
 
     /* -------------------- CHECK IF SIDEBAR ONLY -------------------- */
     const isSidebarOnly = !username || username === "sidebar_panel";
-
-    /* -------------------- SOCKET WITH JWT AUTH -------------------- */
-    const socket = useMemo(() => {
-        if (typeof window !== 'undefined') {
-            const token = localStorage.getItem('token');
-            return io(Base_Url, {
-                transports: ["websocket"],
-                autoConnect: true,
-                auth: { token }
-            });
-        }
-        return null;
-    }, []);
 
     /* -------------------- MOUNTING -------------------- */
     useEffect(() => {
@@ -113,9 +102,11 @@ export default function Messaging() {
     /* -------------------- SOCKET EVENTS -------------------- */
     useEffect(() => {
         const myId = authState.user?.userId?._id;
-        if (!myId || !socket || isSidebarOnly) return;
+        // Access socket.current since it comes from useNotification ref
+        if (!myId || !socket.current || isSidebarOnly) return;
 
-        socket.emit("join", myId);
+        const s = socket.current;
+        s.emit("join", myId);
 
         const handleNewMessage = (data) => {
             const senderId = data.sender?.userId?._id || data.sender?._id || data.sender;
@@ -126,7 +117,6 @@ export default function Messaging() {
 
         const handleMessagesDeleted = (data) => {
             const { messageIds, deletedBy } = data;
-            // Remove messages that were deleted by the other user
             if (deletedBy !== myId) {
                 dispatch(removeDeletedMessages({ messageIds }));
             }
@@ -134,38 +124,28 @@ export default function Messaging() {
 
         const handleMessageDeletedForEveryone = (data) => {
             const { messageId } = data;
-            // Remove message deleted for everyone
             dispatch(removeDeletedMessages({ messageIds: [messageId] }));
         };
 
-        // Typing indicator handler
         const handleTyping = (data) => {
             if (data.senderId === activeChatUser?.userId?._id) {
                 setIsTyping(data.isTyping);
             }
         };
 
-        // Online presence handlers
-        const handleOnlineList = (users) => setOnlineUsers(new Set(users));
-        const handleUserOnline = ({ userId }) => setOnlineUsers(prev => new Set([...prev, userId]));
-        const handleUserOffline = ({ userId }) => setOnlineUsers(prev => { const n = new Set(prev); n.delete(userId); return n; });
+        s.on("newMessage", handleNewMessage);
+        s.on("messagesDeleted", handleMessagesDeleted);
+        s.on("messageDeletedForEveryone", handleMessageDeletedForEveryone);
+        s.on("userTyping", handleTyping);
 
-        socket.on("newMessage", handleNewMessage);
-        socket.on("messagesDeleted", handleMessagesDeleted);
-        socket.on("messageDeletedForEveryone", handleMessageDeletedForEveryone);
-        socket.on("userTyping", handleTyping);
-        socket.on("onlineUsersList", handleOnlineList);
-        socket.on("userOnline", handleUserOnline);
-        socket.on("userOffline", handleUserOffline);
+        // Online status is now handled globally in NotificationProvider, 
+        // we just consume 'onlineUsers' from the hook.
 
         return () => {
-            socket.off("newMessage", handleNewMessage);
-            socket.off("messagesDeleted", handleMessagesDeleted);
-            socket.off("messageDeletedForEveryone", handleMessageDeletedForEveryone);
-            socket.off("userTyping", handleTyping);
-            socket.off("onlineUsersList", handleOnlineList);
-            socket.off("userOnline", handleUserOnline);
-            socket.off("userOffline", handleUserOffline);
+            s.off("newMessage", handleNewMessage);
+            s.off("messagesDeleted", handleMessagesDeleted);
+            s.off("messageDeletedForEveryone", handleMessageDeletedForEveryone);
+            s.off("userTyping", handleTyping);
         };
     }, [authState.user, activeChatUser, socket, dispatch, isSidebarOnly]);
 
@@ -200,12 +180,7 @@ export default function Messaging() {
         };
     }, [showMenu]);
 
-    /* -------------------- CLEANUP SOCKET -------------------- */
-    useEffect(() => {
-        return () => {
-            if (socket) socket.disconnect();
-        };
-    }, [socket]);
+
 
     /* -------------------- FILE HANDLING -------------------- */
     const handleFileChange = (e) => {
