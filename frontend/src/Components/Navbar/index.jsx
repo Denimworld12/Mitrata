@@ -89,6 +89,25 @@ export default function Navbar() {
                 <div className={styles.rightSection}>
                     {!mounted ? null : showUserUI ? (
                         <>
+                            {/* Search Bar */}
+                            <div className={styles.searchContainer}>
+                                <div className={styles.searchWrapper}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={styles.searchIcon}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                                    </svg>
+                                    <input
+                                        type="text"
+                                        placeholder="Search users, skills..."
+                                        className={styles.searchInput}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && e.target.value.trim()) {
+                                                router.push(`/search?q=${encodeURIComponent(e.target.value.trim())}`);
+                                            }
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
                             {/* Messaging Icon */}
                             <button
                                 className={styles.navIcon}

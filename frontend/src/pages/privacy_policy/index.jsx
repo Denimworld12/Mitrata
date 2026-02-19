@@ -1,29 +1,71 @@
 import React from 'react';
-import Head from 'next/head';
+import { useRouter } from 'next/router';
+import styles from './PrivacyPolicy.module.css';
+import { ChevronLeftIcon } from '@heroicons/react/24/outline';
+import UserLayout from '@/layout/userLayout';
 
 export default function PrivacyPolicy() {
+    const router = useRouter();
+
     return (
-        <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', lineHeight: '1.6' }}>
-            <Head>
-                <title>Privacy Policy - SocialMedia App</title>
-            </Head>
-            <h1>Privacy Policy</h1>
-            <p><strong>Effective Date:</strong> {new Date().toLocaleDateString()}</p>
+        <UserLayout>
+        <div className={styles.container}>
+            <div className={styles.header}>
+                <button onClick={() => router.back()} className={styles.backBtn}>
+                    <ChevronLeftIcon className={styles.backIcon} />
+                    Back
+                </button>
+                <h1 className={styles.title}>Privacy Policy</h1>
+            </div>
 
-            <h2>1. Introduction</h2>
-            <p>Welcome to SocialMedia App. We are committed to protecting your personal information and your right to privacy.</p>
+            <div className={styles.content}>
+                <p className={styles.lastUpdated}>Last Updated: February 20, 2026</p>
 
-            <h2>2. Information We Collect</h2>
-            <p>We collect personal information that you adhere to provide to us, such as name, address, contact information, passwords and security data, and payment information.</p>
+                <section className={styles.section}>
+                    <h2>1. Introduction</h2>
+                    <p>Welcome to SocialMedia. We value your privacy and are committed to protecting your personal information. This Privacy Policy explains how we collect, use, and share your data when you use our platform.</p>
+                </section>
 
-            <h2>3. How We Use Your Information</h2>
-            <p>We use personal information collected via our Services for a variety of business purposes described below. We process your personal information for these purposes in reliance on our legitimate business interests, in order to enter into or perform a contract with you, with your consent, and/or for compliance with our legal obligations.</p>
+                <section className={styles.section}>
+                    <h2>2. Information We Collect</h2>
+                    <ul>
+                        <li><strong>Account Information:</strong> Name, username, email address, and profile picture.</li>
+                        <li><strong>Content:</strong> Posts, comments, likes, and messages you send.</li>
+                        <li><strong>Usage Data:</strong> Information about how you interact with our services, including device information and connection data.</li>
+                    </ul>
+                </section>
 
-            <h2>4. Sharing Your Information</h2>
-            <p>We only share information with your consent, to comply with laws, to provide you with services, to protect your rights, or to fulfill business obligations.</p>
+                <section className={styles.section}>
+                    <h2>3. How We Use Your Information</h2>
+                    <p>We use your data to:</p>
+                    <ul>
+                        <li>Provide and improve our services.</li>
+                        <li>Personalize your experience.</li>
+                        <li>Facilitate communication between users (messaging, voice calls).</li>
+                        <li>Ensure the safety and security of our platform.</li>
+                    </ul>
+                </section>
 
-            <h2>5. Contact Us</h2>
-            <p>If you have questions or comments about this policy, you may email us at support@example.com.</p>
+                <section className={styles.section}>
+                    <h2>4. Data Sharing</h2>
+                    <p>We do not sell your personal data. We may share information with:</p>
+                    <ul>
+                        <li><strong>Service Providers:</strong> Who help us operate the platform (e.g., cloud hosting, image storage).</li>
+                        <li><strong>Legal Authorities:</strong> If required by law or to protect our rights.</li>
+                    </ul>
+                </section>
+
+                <section className={styles.section}>
+                    <h2>5. Your Choices</h2>
+                    <p>You can update your profile information at any time via Settings. You can also delete your account by contacting support.</p>
+                </section>
+
+                <section className={styles.section}>
+                    <h2>6. Contact Us</h2>
+                    <p>If you have questions about this policy, please contact us at <a href="mailto:privacy@socialmedia.com">privacy@socialmedia.com</a>.</p>
+                </section>
+            </div>
         </div>
+        </UserLayout>
     );
 }

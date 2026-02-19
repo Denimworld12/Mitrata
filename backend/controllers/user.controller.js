@@ -460,3 +460,110 @@ export const getAllUserBasedOnUsername = async (req, res) => {
         return res.status(500).json({ message: error.message })
     }
 }
+
+export const searchUsers = async (req, res) => {
+    try {
+        const { q } = req.query;
+        if (!q) return res.json([]);
+
+        const regex = new RegExp(q, 'i'); // Case-insensitive search
+
+        const results = await User.aggregate([
+            {
+                $lookup: {
+                    from: 'profiles',
+                    localField: '_id',
+                    foreignField: 'userId',
+                    as: 'profile'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$profile',
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $match: {
+                    $or: [
+                        { name: regex },
+                        { username: regex },
+                        { email: regex },
+                        { 'profile.bio': regex },
+                        { 'profile.skills': regex },
+                        { 'profile.education.school': regex },
+                        { 'profile.pastWork.company': regex },
+                        { 'profile.pastWork.position': regex }
+                    ]
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    name: 1,
+                    username: 1,
+                    profilePicture: 1,
+                    'profile.bio': 1,
+                    'profile.skills': 1,
+                    'profile.education': 1,
+                    'profile.pastWork': 1,
+                    matchReason: {
+                        $switch: {
+                            branches: [
+                                { case: { $regexMatch: { input: "$name", regex: regex } }, then: "Name match" },
+                                { case: { $regexMatch: { input: "$username", regex: regex } }, then: "Username match" },
+                                { case: { $regexMatch: { input: { $ifNull: ["$profile.bio", ""] }, regex: regex } }, then: "Bio match" },
+                                // Add more complex matching logic if needed for arrays
+                            ],
+                            default: "Related match"
+                        }
+                    }
+                }
+            },
+            { $limit: 20 }
+        ]);
+
+        return res.json(results);
+    } catch (error) {
+        console.error("Search Error:", error);
+        return res.status(500).json({ message: "Search failed" });
+    }
+}
+
+export const getSuggestions = async (req, res) => {
+    try {
+        const suggestions = await User.aggregate([
+            { $sample: { size: 10 } },
+            {
+                $lookup: {
+                    from: 'profiles',
+                    localField: '_id',
+                    foreignField: 'userId',
+                    as: 'profile'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$profile',
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    name: 1,
+                    username: 1,
+                    profilePicture: 1,
+                    'profile.bio': 1,
+                    'profile.skills': 1,
+                    'profile.education': 1,
+                    'profile.pastWork': 1,
+                    matchReason: { $literal: "Suggested for you" }
+                }
+            }
+        ]);
+        return res.json(suggestions);
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+}

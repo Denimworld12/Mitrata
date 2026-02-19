@@ -1,6 +1,4 @@
 .env
 .env.local
 node_modules/
-dist/
-logs/
-backend/uploads/
+api.http
