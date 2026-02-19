@@ -255,6 +255,12 @@ export function CallProvider({ children }) {
 
         const handleCallAnswered = async (data) => {
             if (peerConnection.current) {
+                // Clear the 30s timeout since call is answered
+                if (callTimeout.current) {
+                    clearTimeout(callTimeout.current);
+                    callTimeout.current = null;
+                }
+
                 await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.answer));
 
                 // Process queued ICE candidates
