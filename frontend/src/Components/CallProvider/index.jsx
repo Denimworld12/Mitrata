@@ -34,13 +34,48 @@ export function CallProvider({ children }) {
     const localStream = useRef(null);
     const remoteAudio = useRef(null);
     const ringtoneAudio = useRef(null);
+    const ringbackAudio = useRef(null);
     const durationInterval = useRef(null);
     const callTimeout = useRef(null);
     const iceCandidateQueue = useRef([]);
     // Use a ref for socket logic inside callbacks where we don't want re-creation
     // but rely on socketInstance for effects
 
-    // ... (cleanupCall same) ...
+    // Cleanup function
+    const cleanupCall = useCallback(() => {
+        if (peerConnection.current) {
+            peerConnection.current.close();
+            peerConnection.current = null;
+        }
+        if (localStream.current) {
+            localStream.current.getTracks().forEach(track => track.stop());
+            localStream.current = null;
+        }
+        if (durationInterval.current) {
+            clearInterval(durationInterval.current);
+            durationInterval.current = null;
+        }
+        if (callTimeout.current) {
+            clearTimeout(callTimeout.current);
+            callTimeout.current = null;
+        }
+        if (ringtoneAudio.current) {
+            ringtoneAudio.current.pause();
+            ringtoneAudio.current.currentTime = 0;
+            ringtoneAudio.current = null;
+        }
+        if (ringbackAudio.current) {
+            ringbackAudio.current.pause();
+            ringbackAudio.current.currentTime = 0;
+            ringbackAudio.current = null;
+        }
+        iceCandidateQueue.current = [];
+        setCallState('idle');
+        setRemoteUser(null);
+        setIsMuted(false);
+        setCallDuration(0);
+        setRemoteRinging(false);
+    }, []);
 
     const createPeerConnection = useCallback((targetUserId) => {
         const pc = new RTCPeerConnection(ICE_SERVERS);
@@ -54,7 +89,17 @@ export function CallProvider({ children }) {
             }
         };
 
-        // ... rest of createPeerConnection ...
+        pc.ontrack = (event) => {
+            if (remoteAudio.current) {
+                remoteAudio.current.srcObject = event.streams[0];
+            }
+        };
+
+        pc.oniceconnectionstatechange = () => {
+            if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+                cleanupCall();
+            }
+        };
 
         peerConnection.current = pc;
         return pc;
@@ -67,6 +112,16 @@ export function CallProvider({ children }) {
             // ... (setup stream) ...
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             localStream.current = stream;
+
+            // Play Ringback Tone
+            try {
+                const audio = new Audio('/ringtone/soundreality-telephone-ring-129620.mp3');
+                audio.loop = true;
+                audio.play().catch(e => console.error("Ringback play failed", e));
+                ringbackAudio.current = audio;
+            } catch (e) {
+                console.error("Audio init failed", e);
+            }
 
             setRemoteUser({
                 _id: userId,
@@ -162,7 +217,16 @@ export function CallProvider({ children }) {
         cleanupCall();
     }, [socketInstance, cleanupCall]);
 
-    // ... (toggleMute) ...
+    // Toggle mute
+    const toggleMute = useCallback(() => {
+        if (localStream.current) {
+            const audioTrack = localStream.current.getAudioTracks()[0];
+            if (audioTrack) {
+                audioTrack.enabled = !audioTrack.enabled;
+                setIsMuted(!audioTrack.enabled);
+            }
+        }
+    }, []);
 
     // Socket event listeners
     useEffect(() => {
@@ -205,6 +269,13 @@ export function CallProvider({ children }) {
                 if (callTimeout.current) {
                     clearTimeout(callTimeout.current);
                     callTimeout.current = null;
+                }
+
+                // Stop ringback tone
+                if (ringbackAudio.current) {
+                    ringbackAudio.current.pause();
+                    ringbackAudio.current.currentTime = 0;
+                    ringbackAudio.current = null;
                 }
 
                 await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.answer));
