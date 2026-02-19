@@ -3,7 +3,7 @@ import axios from "axios";
 export const Base_Url = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 export const clientServer = axios.create({
-    baseURL: Base_Url,
+    baseURL: `${Base_Url}/api`,
     timeout: 15000,
 });
 
