@@ -22,6 +22,31 @@ export default function viewProfilePage({ userProfile }) {
     const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState(undefined); // NEW STATE
 
+    if (!userProfile) {
+        return (
+            <UserLayout>
+                <div style={{ textAlign: "center", padding: "50px", color: "white" }}>
+                    <h2>User not found</h2>
+                    <p>The profile you are looking for does not exist or may have been removed.</p>
+                    <button
+                        onClick={() => router.push('/dashboard')}
+                        style={{
+                            marginTop: "20px",
+                            padding: "10px 20px",
+                            background: "#2563eb",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "8px",
+                            cursor: "pointer"
+                        }}
+                    >
+                        Go to Dashboard
+                    </button>
+                </div>
+            </UserLayout>
+        );
+    }
+
     useEffect(() => {
         const connections = userState.connection;
         const profileId = userProfile?.userId?._id;
