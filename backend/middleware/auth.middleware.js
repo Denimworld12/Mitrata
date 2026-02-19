@@ -1,62 +1,45 @@
+import jwt from "jsonwebtoken";
 import User from "../models/users.model.js";
 
 export const verifyToken = async (req, res, next) => {
     try {
-        // 1. Check Header first, then Body, then Query
+        // 1. Extract token from Authorization header ONLY (secure)
         const authHeader = req.headers["authorization"];
-        let token = authHeader?.startsWith("Bearer ") 
-            ? authHeader.split(" ")[1] 
-            : (req.body?.token || req.query?.token);
+        let token = null;
+
+        if (authHeader?.startsWith("Bearer ")) {
+            token = authHeader.split(" ")[1];
+        }
+
+        // 2. Fallback: Check body/query for multipart form compatibility
+        //    (multer populates req.body AFTER parsing, so token may be in body)
+        if (!token && req.body?.token) {
+            token = req.body.token;
+        }
 
         if (!token) {
             return res.status(401).json({ message: "No token, authorization denied" });
         }
 
-        // 2. If token is a hash (not JWT), find user by token in database
-        // This assumes you store the token in your User model
-        const user = await User.findOne({ token: token });
+        // 3. Verify JWT
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+        // 4. Verify user still exists
+        const user = await User.findById(decoded.userId).select("_id");
         if (!user) {
-            return res.status(401).json({ message: "Token is not valid" });
+            return res.status(401).json({ message: "User no longer exists" });
         }
 
-        // 3. Attach user ID to request
+        // 5. Attach user ID to request
         req.userId = user._id;
         next();
     } catch (err) {
-        console.error("Auth Error:", err.message);
-        res.status(401).json({ message: "Token is not valid" });
-    }
-};
-
-// Alternative: If you store token in a separate Session/Token collection
-export const verifyTokenAlt = async (req, res, next) => {
-    try {
-        const authHeader = req.headers["authorization"];
-        let token = authHeader?.startsWith("Bearer ") 
-            ? authHeader.split(" ")[1] 
-            : (req.body?.token || req.query?.token);
-
-        if (!token) {
-            return res.status(401).json({ message: "No token, authorization denied" });
+        if (err.name === "TokenExpiredError") {
+            return res.status(401).json({ message: "Token has expired, please login again" });
         }
-
-        // Find session/token in your database
-        // Adjust model name based on your schema
-        const session = await Session.findOne({ token: token }).populate('userId');
-
-        if (!session || !session.userId) {
-            return res.status(401).json({ message: "Token is not valid" });
+        if (err.name === "JsonWebTokenError") {
+            return res.status(401).json({ message: "Invalid token" });
         }
-
-        // Check if token is expired (if you have expiry)
-        if (session.expiresAt && new Date() > session.expiresAt) {
-            return res.status(401).json({ message: "Token has expired" });
-        }
-
-        req.userId = session.userId._id;
-        next();
-    } catch (err) {
         console.error("Auth Error:", err.message);
         res.status(401).json({ message: "Token is not valid" });
     }

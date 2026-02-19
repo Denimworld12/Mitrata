@@ -1,23 +1,25 @@
 /* Main Layout Container */
 .homeContainer {
     display: flex;
-    margin-top: 5px; /* Aligns content exactly below your 40px navbar */
+    margin-top: 5px;
+    /* Aligns content exactly below your 40px navbar */
     min-height: calc(100vh - 40px);
     width: 100%;
 }
 
 /* Left Sidebar (Fixed/Sticky) */
 .homeContainer_leftBar {
-    flex: 0.2; /* Your 20% ratio */
+    flex: 0.2;
+    /* Your 20% ratio */
     display: flex;
     flex-direction: column;
-    
+
     /* Using sticky instead of fixed allows it to respect the 2-6-2 grid 
        while remaining pinned as you scroll the feed */
     position: sticky;
-    top: 40px; 
+    top: 40px;
     height: calc(100vh - 40px);
-    
+
     background-color: #fff;
     border-right: 1px solid #e5e5e5;
     z-index: 10;
@@ -25,7 +27,8 @@
 
 /* Middle Feed (Scrolling) */
 .homeContainer_feedContainer {
-    flex: 0.6; /* Your 60% ratio */
+    flex: 0.6;
+    /* Your 60% ratio */
     width: 100%;
     min-height: 100vh;
     padding: 0 10px;
@@ -33,7 +36,8 @@
 
 /* Right Sidebar (Scrolling) */
 .homeContainer_extraContainer {
-    flex: 0.2; /* Your 20% ratio */
+    flex: 0.2;
+    /* Your 20% ratio */
     padding: 20px;
 }
 
@@ -42,7 +46,8 @@
     margin-left: 2rem;
     display: flex;
     align-items: center;
-    font-size: 18px; /* Slightly reduced for better fit */
+    font-size: 18px;
+    /* Slightly reduced for better fit */
     margin-bottom: 12px;
     cursor: pointer;
     gap: 0.8rem;
@@ -57,6 +62,30 @@
 .SideOptions svg {
     height: 1.4rem;
     width: 1.4rem;
+}
+
+.SideOptionsActive {
+    color: #0a66c2 !important;
+    background: #e8f0fe;
+    border-radius: 8px;
+    font-weight: 700;
+    padding: 8px 10px;
+    margin-left: 1rem;
+}
+
+.sidebarBadge {
+    background: #ef4444;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    line-height: 1;
 }
 
 .optionName {
@@ -135,16 +164,24 @@
         flex-direction: row !important;
         justify-content: space-around;
         border-right: none;
-        border-top: 1px solid #e5e5e5;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
         z-index: 2000;
         padding-top: 0;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        padding-bottom: env(safe-area-inset-bottom);
+        /* iPhone X+ safe area */
+        height: calc(60px + env(safe-area-inset-bottom));
+        box-shadow: 0 -1px 10px rgba(0, 0, 0, 0.05);
     }
 
     .homeContainer_feedContainer {
         flex: 1;
         width: 100%;
         margin-left: 0;
-        padding-bottom: 80px; /* Prevents content hiding behind bottom nav */
+        padding-bottom: 80px;
+        /* Prevents content hiding behind bottom nav */
     }
 
     .optionName {
@@ -157,17 +194,20 @@
         justify-content: center;
     }
 }
+
 /* --- Right Sidebar (Top Profiles) --- */
 .homeContainer_extraContainer {
     flex: 0.2;
-    padding: 15px 10px; /* Reduced padding to save width */
+    padding: 15px 10px;
+    /* Reduced padding to save width */
     position: sticky;
     top: 40px;
     height: fit-content;
 }
 
 .homeContainer_extraContainer h3 {
-    font-size: 13px; /* Smaller header */
+    font-size: 13px;
+    /* Smaller header */
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: #666;
@@ -179,12 +219,15 @@
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 8px; /* Tight gap */
-    padding: 6px 8px; /* Very compact vertical padding */
+    gap: 8px;
+    /* Tight gap */
+    padding: 6px 8px;
+    /* Very compact vertical padding */
     border-radius: 8px;
     background: #fff;
     border: 1px solid #f0f0f0;
-    margin-bottom: 6px; /* Tighter spacing between cards */
+    margin-bottom: 6px;
+    /* Tighter spacing between cards */
     transition: background 0.2s;
     cursor: pointer;
 }
@@ -203,7 +246,8 @@
 }
 
 .topProfileImg {
-    width: 32px; /* Minimized from 40px/44px */
+    width: 32px;
+    /* Minimized from 40px/44px */
     height: 32px;
     border-radius: 50%;
     object-fit: cover;
@@ -214,16 +258,19 @@
     display: flex;
     flex-direction: column;
     flex: 1;
-    min-width: 0; /* Important for text truncation */
+    min-width: 0;
+    /* Important for text truncation */
 }
 
 .topProfileName {
-    font-size: 13px; /* Slightly smaller */
+    font-size: 13px;
+    /* Slightly smaller */
     font-weight: 600;
     color: #333;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis; /* Prevents layout breaking on long names */
+    text-overflow: ellipsis;
+    /* Prevents layout breaking on long names */
     line-height: 1.2;
 }
 
@@ -244,6 +291,7 @@
 /* Ensure the middle feed takes up correct space */
 .homeContainer_feedContainer {
     flex: 0.6;
-    max-width: 600px; /* Standard feed width */
+    max-width: 600px;
+    /* Standard feed width */
     margin: 0 auto;
 }

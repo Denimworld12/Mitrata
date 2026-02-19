@@ -24,7 +24,7 @@ const messageSlice = createSlice({
             state.isError = false;
             state.errorMessage = null;
         },
-         removeDeletedMessages: (state, action) => {
+        removeDeletedMessages: (state, action) => {
             const { messageIds } = action.payload;
             state.messages = state.messages.filter(
                 msg => !messageIds.includes(msg._id)
@@ -42,7 +42,15 @@ const messageSlice = createSlice({
             })
             .addCase(getMessages.fulfilled, (state, action) => {
                 state.isLoading = false;
-                state.messages = action.payload || [];
+                // Handle paginated response format
+                const payload = action.payload;
+                if (payload && payload.messages) {
+                    state.messages = payload.messages;
+                } else if (Array.isArray(payload)) {
+                    state.messages = payload;
+                } else {
+                    state.messages = [];
+                }
             })
             .addCase(getMessages.rejected, (state, action) => {
                 state.isLoading = false;

@@ -28,19 +28,9 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: 'https://res.cloudinary.com/detvfqvem/image/upload/v1767007231/default_qzkkui.jpg'
     },
-    createAt: {
-        type: Date,
-        default: Date.now
-    },
-    token: {
-        type: String,
-        default: '',
-        index: true
-    }
 }, {
     timestamps: true
 })
-userSchema.index({ token: 1 });
-const User = mongoose.model('user', userSchema);
-export default User;
 
+const User = mongoose.model("user", userSchema);
+export default User;
