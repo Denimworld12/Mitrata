@@ -1,106 +1,202 @@
-import { getAllUser } from '@/config/redux/action/authAction';
-import DashboardLayout from '@/layout/DashboardLayout';
-import UserLayout from '@/layout/userLayout';
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import styles from './index.module.css';
 import { useRouter } from 'next/router';
+import { clientServer } from '@/config';
+import Layout from '@/layout/DashboardLayout';
+import styles from './Search.module.css';
+import { UserCircleIcon, BriefcaseIcon, AcademicCapIcon, SparklesIcon, MagnifyingGlassIcon, UserPlusIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { toast } from 'react-toastify';
 
-export default function Search() {
-    const dispatch = useDispatch();
-    const authState = useSelector((state) => state.auth);
-    const router = useRouter()
-    const [searchTerm, setSearchTerm] = useState('');
+const Search = () => {
+    const router = useRouter();
+    const { q } = router.query;
+    const [localQuery, setLocalQuery] = useState(q || '');
+    const [results, setResults] = useState([]);
+    const [suggestions, setSuggestions] = useState([]);
+    const [loading, setLoading] = useState(false);
 
-    // Fetch all users once
-useEffect(() => {
-    const token = localStorage.getItem("token");
-
-    if (token) {
-        // We fetch if they haven't been fetched yet in this session
-        if (!authState.all_profile_fetched) {
-            dispatch(getAllUser({ token }));
+    useEffect(() => {
+        if (q) {
+            setLocalQuery(q);
+            fetchResults(q);
+        } else {
+            fetchSuggestions();
+            setResults([]);
         }
-    } else {
-        // If someone tries to search without being logged in, send them away
-        router.push('/login');
+    }, [q]);
+
+    const fetchResults = async (query) => {
+        setLoading(true);
+        try {
+            const response = await clientServer.get(`/user/search?q=${encodeURIComponent(query)}`);
+            setResults(response.data);
+        } catch (error) {
+            console.error("Search failed", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchSuggestions = async () => {
+        if (suggestions.length === 0) {
+            setLoading(true);
+            try {
+                const response = await clientServer.get('/user/suggestions');
+                setSuggestions(response.data);
+            } catch (error) {
+                console.error("Failed to fetch suggestions", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+
+    const handleSearch = (e) => {
+        e.preventDefault();
+        if (localQuery.trim()) {
+            router.push(`/search?q=${encodeURIComponent(localQuery.trim())}`);
+        }
+    };
+
+    const navToProfile = (username) => {
+        router.push(`/view_profile/${username}`);
     }
-}, [authState.all_profile_fetched, dispatch, router]);
 
-    // Filter users based on search input
-    // Filter users based on search input AND exclude current user
-    // Filter users based on search input AND exclude current user
-const filteredUsers = authState.all_user?.filter((item) => {
-    // 1. Get IDs safely
-    const loggedInId = authState.user?.userId?._id || authState.user?._id;
-    const itemUserId = item?.userId?._id;
+    // Extracted UserCard component to handle its own connection state
+    const UserCard = ({ user }) => {
+        const [requestStatus, setRequestStatus] = useState(null); // null, 'pending', 'sent'
+        const [loadingConn, setLoadingConn] = useState(false);
 
-    // 2. Double Check: Exclude by ID OR by Username (Extra Safe)
-    const isMe = (itemUserId === loggedInId) || (item?.userId?.username === authState.user?.userId?.username);
+        const handleConnect = async (e) => {
+            e.stopPropagation(); // Prevent card click
+            setLoadingConn(true);
+            try {
+                await clientServer.post('/user/send_connection_request', {
+                    connectionId: user._id
+                });
+                setRequestStatus('sent');
+                // Optional: Show toast
+                // toast.success(`Request sent to ${user.name}`);
+            } catch (error) {
+                console.error("Connection request failed", error);
+                const msg = error.response?.data?.message || "Failed to connect";
+                if (msg.includes("Already connected") || msg.includes("already pending")) {
+                    setRequestStatus('sent'); // Treat as sent/connected
+                } else {
+                    // toast.error(msg);
+                }
+            } finally {
+                setLoadingConn(false);
+            }
+        };
 
-    if (isMe) return false; 
+        return (
+            <div className={styles.card} onClick={() => navToProfile(user.username)}>
+                <div className={styles.cardHeader}>
+                    <img
+                        src={user.profilePicture || '/default-avatar.png'}
+                        alt={user.name}
+                        className={styles.avatar}
+                    />
+                    <div className={styles.userInfo}>
+                        <h3 className={styles.name}>{user.name}</h3>
+                        <p className={styles.username}>@{user.username}</p>
+                    </div>
 
-    // 3. Search Logic
-    const name = item?.userId?.name?.toLowerCase() || "";
-    const username = item?.userId?.username?.toLowerCase() || "";
-    const search = searchTerm.toLowerCase();
+                    <button
+                        className={`${styles.connectBtn} ${requestStatus === 'sent' ? styles.sent : ''}`}
+                        onClick={handleConnect}
+                        disabled={loadingConn || requestStatus === 'sent'}
+                    >
+                        {loadingConn ? (
+                            <span className={styles.loadingDot}>•</span>
+                        ) : requestStatus === 'sent' ? (
+                            <CheckIcon className={styles.btnIcon} />
+                        ) : (
+                            <UserPlusIcon className={styles.btnIcon} />
+                        )}
+                    </button>
+                </div>
 
-    return name.includes(search) || username.includes(search);
-}) || [];
+                <div className={styles.cardBody}>
+                    {/* Match reason removed as requested */}
+
+                    {user.profile?.bio && (
+                        <p className={styles.bio}>{user.profile.bio.substring(0, 60)}...</p>
+                    )}
+
+                    {user.profile?.skills?.length > 0 && (
+                        <div className={styles.skills}>
+                            {user.profile.skills.slice(0, 2).map((skill, index) => (
+                                <span key={index} className={styles.skillTag}>{skill}</span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
 
     return (
-        <UserLayout>
-            <DashboardLayout>
-
-                {/* ✔ Search Bar Component */}
-                <div className={styles.searchBarContainer}>
-                    <input
-                        type="text"
-                        placeholder="Search users by name or username..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className={styles.searchInput}
-                    />
-                    {/* Search Icon SVG */}
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={styles.searchIcon}>
-                        <path fillRule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.61 4.61a.75.75 0 1 1-1.06 1.06l-4.6-4.6A8.25 8.25 0 0 1 2.25 10.5Z" clipRule="evenodd" />
-                    </svg>
+        <Layout>
+            <div className={styles.container}>
+                {/* Search Header */}
+                <div className={styles.searchHeader}>
+                    <form onSubmit={handleSearch} className={styles.searchForm}>
+                        <MagnifyingGlassIcon className={styles.searchIcon} />
+                        <input
+                            type="text"
+                            placeholder="Search people, skills, companies..."
+                            value={localQuery}
+                            onChange={(e) => setLocalQuery(e.target.value)}
+                            className={styles.searchInput}
+                        />
+                        <button type="submit" className={styles.searchBtn}>Search</button>
+                    </form>
                 </div>
-                {/* ✔ Show Users */}
-                {filteredUsers.length > 0 ? (
-                    filteredUsers.map((user) => (
-                        <div
-                            onClick={() => {
-                                router.push('/view_profile/' + user.userId?.username)
-                            }}
-                            key={user.userId?._id || user._id}
-                            className={styles.userCard}
-                        >
-                            <img
-                                src={user.userId?.profilePicture || "/default-avatar.png"}
-                                alt={`${user.userId?.username}`}
-                                className={styles.userProfilePicture}
-                            />
 
-                            <div className={styles.userInfo}>
-                                <p className={styles.userName}>
-                                    {user.userId?.name || "No Name"}
-                                </p>
-                                <span className={styles.userUsername}>
-                                    @{user.userId?.username}
-                                </span>
-                            </div>
-
-                            <button className={styles.actionButton}>
-                                View Profile
-                            </button>
+                {/* Suggestions Section (Horizontal Scroll) */}
+                {!q && suggestions.length > 0 && (
+                    <div className={styles.section}>
+                        <h2 className={styles.sectionTitle}>
+                            <SparklesIcon className={styles.titleIcon} />
+                            Suggested for you
+                        </h2>
+                        <div className={styles.horizontalScroll}>
+                            {suggestions.map(user => (
+                                <div key={user._id} className={styles.scrollItem}>
+                                    <UserCard user={user} />
+                                </div>
+                            ))}
                         </div>
-                    ))
-                ) : (
-                    <p className={styles.noResultsText}>No users found</p>
+                    </div>
                 )}
 
-            </DashboardLayout>
-        </UserLayout>
+                {/* Search Results Section */}
+                {q && (
+                    <div className={styles.section}>
+                        <h2 className={styles.sectionTitle}>
+                            {results.length > 0 ? `Results for "${q}"` : `No matches for "${q}"`}
+                        </h2>
+
+                        {loading ? (
+                            <div className={styles.loading}>Searching...</div>
+                        ) : results.length === 0 ? (
+                            <div className={styles.empty}>
+                                <div className={styles.emptyIcon}>🔍</div>
+                                <p>We couldn't find anyone matching your search.</p>
+                            </div>
+                        ) : (
+                            <div className={styles.grid}>
+                                {results.map(user => (
+                                    <UserCard key={user._id} user={user} />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </Layout>
     );
-}
+};
+
+export default Search;

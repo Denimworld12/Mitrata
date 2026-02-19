@@ -1,8 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSelector, useDispatch } from 'react-redux';
-import styles from './Settings.module.css'; // We'll create this next
-import { logout } from '@/config/redux/action/authAction';
+import styles from './Settings.module.css';
+import { logout } from '@/config/redux/action/authAction/index';
+// Import Heroicons (Solid for active/filled, Outline for general)
+import {
+    ChevronRightIcon,
+    MoonIcon,
+    SunIcon,
+    UserCircleIcon,
+    ShieldCheckIcon,
+    QuestionMarkCircleIcon,
+    ArrowRightOnRectangleIcon,
+    SwatchIcon
+} from '@heroicons/react/24/outline';
+
+import { UserIcon } from '@heroicons/react/24/solid';
+import UserLayout from '@/layout/userLayout';
+import DashboardLayout from '@/layout/DashboardLayout';
 
 export default function Settings() {
     const router = useRouter();
@@ -11,7 +26,6 @@ export default function Settings() {
     const [theme, setTheme] = useState('system'); // light, dark, system
 
     useEffect(() => {
-        // Load saved theme from local storage if any
         const savedTheme = localStorage.getItem('theme') || 'system';
         setTheme(savedTheme);
     }, []);
@@ -19,109 +33,128 @@ export default function Settings() {
     const handleThemeChange = (newTheme) => {
         setTheme(newTheme);
         localStorage.setItem('theme', newTheme);
-        // In a real app, you'd apply the theme class to body/html here
-        // document.documentElement.setAttribute('data-theme', newTheme);
+        // Toggle class on document element for global theme
+        if (newTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else if (newTheme === 'light') {
+            document.documentElement.classList.remove('dark');
+        } else {
+            // System preference
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
     };
 
     const handleLogout = () => {
-        dispatch(logout());
-        router.push('/login');
+        if (window.confirm("Are you sure you want to log out?")) {
+            dispatch(logout());
+            router.push('/login');
+        }
     };
 
     return (
+        <UserLayout>
+                <DashboardLayout>
         <div className={styles.container}>
             <header className={styles.header}>
-                <h1>Settings</h1>
+                <h1 className={styles.title}>Settings</h1>
             </header>
 
             <div className={styles.content}>
-                {/* Profile Card */}
+                {/* Profile Section */}
                 <div className={styles.profileCard} onClick={() => router.push('/profile')}>
-                    <img
-                        src={user?.profilePicture || '/default-avatar.png'}
-                        alt="Profile"
-                        className={styles.avatar}
-                    />
+                    <div className={styles.avatarContainer}>
+                        <img
+                            src={user?.profilePicture || 'https://res.cloudinary.com/detvfqvem/image/upload/v1767007231/default_qzkkui.jpg'}
+                            alt="Profile"
+                            className={styles.avatar}
+                        />
+                    </div>
                     <div className={styles.profileInfo}>
-                        <h2 className={styles.name}>{user?.name || 'User'}</h2>
+                        <h2 className={styles.name}>{user?.name || 'User Name'}</h2>
                         <p className={styles.username}>@{user?.username || 'username'}</p>
+                        <p className={styles.editProfileText}>View Profile</p>
                     </div>
-                    <div className={styles.arrow}>
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="20" height="20">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                        </svg>
-                    </div>
+                    <ChevronRightIcon className={styles.arrowIcon} />
                 </div>
 
-                {/* Group 1: Appearance */}
+                {/* Settings Groups */}
+
+                {/* Appearance */}
+                <div className={styles.sectionTitle}>Preferences</div>
                 <div className={styles.group}>
-                    <div className={styles.groupLabel}>Appearance</div>
                     <div className={styles.item}>
-                        <div className={styles.iconContainer} style={{ background: '#007AFF' }}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="white" width="18" height="18">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
-                            </svg>
+                        <div className={`${styles.iconBox} ${styles.blueIcon}`}>
+                            <SwatchIcon className={styles.icon} />
                         </div>
-                        <span className={styles.itemLabel}>Theme</span>
-                        <select
-                            value={theme}
-                            onChange={(e) => handleThemeChange(e.target.value)}
-                            className={styles.select}
-                        >
-                            <option value="light">Light</option>
-                            <option value="dark">Dark</option>
-                            <option value="system">System</option>
-                        </select>
+                        <span className={styles.label}>Theme</span>
+                        <div className={styles.themeSelector}>
+                            <button
+                                onClick={() => handleThemeChange('light')}
+                                className={`${styles.themeBtn} ${theme === 'light' ? styles.activeTheme : ''}`}
+                                title="Light Mode"
+                            >
+                                <SunIcon className={styles.themeIcon} />
+                            </button>
+                            <button
+                                onClick={() => handleThemeChange('dark')}
+                                className={`${styles.themeBtn} ${theme === 'dark' ? styles.activeTheme : ''}`}
+                                title="Dark Mode"
+                            >
+                                <MoonIcon className={styles.themeIcon} />
+                            </button>
+                            <button
+                                onClick={() => handleThemeChange('system')}
+                                className={`${styles.themeBtn} ${theme === 'system' ? styles.activeTheme : ''}`}
+                                title="System Default"
+                            >
+                                <span style={{ fontSize: '10px', fontWeight: 'bold' }}>AUTO</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                {/* Group 2: Privacy */}
+                {/* Privacy & Support */}
+                <div className={styles.sectionTitle}>Privacy & Support</div>
                 <div className={styles.group}>
-                    <div className={styles.groupLabel}>Privacy & Security</div>
                     <div className={styles.item} onClick={() => router.push('/privacy_policy')}>
-                        <div className={styles.iconContainer} style={{ background: '#34C759' }}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="white" width="18" height="18">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                            </svg>
+                        <div className={`${styles.iconBox} ${styles.greenIcon}`}>
+                            <ShieldCheckIcon className={styles.icon} />
                         </div>
-                        <span className={styles.itemLabel}>Privacy Policy</span>
-                        <div className={styles.arrow}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#C7C7CC" width="16" height="16">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                            </svg>
-                        </div>
+                        <span className={styles.label}>Privacy Policy</span>
+                        <ChevronRightIcon className={styles.arrowIcon} />
                     </div>
-                </div>
 
-                {/* Group 3: Support */}
-                <div className={styles.group}>
-                    <div className={styles.groupLabel}>Support</div>
                     <div className={styles.item}>
-                        <div className={styles.iconContainer} style={{ background: '#FF9500' }}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="white" width="18" height="18">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
-                            </svg>
+                        <div className={`${styles.iconBox} ${styles.orangeIcon}`}>
+                            <QuestionMarkCircleIcon className={styles.icon} />
                         </div>
-                        <span className={styles.itemLabel}>Help & Support</span>
-                        <div className={styles.arrow}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#C7C7CC" width="16" height="16">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                            </svg>
-                        </div>
+                        <span className={styles.label}>Help & Support</span>
+                        <ChevronRightIcon className={styles.arrowIcon} />
                     </div>
                 </div>
 
-                {/* Group 4: Logout */}
+                {/* Account Actions */}
                 <div className={styles.group}>
-                    <div className={styles.item} onClick={handleLogout} style={{ justifyContent: 'center' }}>
-                        <span className={styles.logoutText}>Log Out</span>
+                    <div className={`${styles.item} ${styles.logoutItem}`} onClick={handleLogout}>
+                        <div className={`${styles.iconBox} ${styles.redIcon}`}>
+                            <ArrowRightOnRectangleIcon className={styles.icon} />
+                        </div>
+                        <span className={`${styles.label} ${styles.logoutText}`}>Log Out</span>
                     </div>
                 </div>
 
                 <div className={styles.footer}>
-                    SocialMedia App v1.0.0
+                    <p>Mitrata App v1.2.0</p>
+                    <p>Made with ❤️ By Nikhil R Gupta</p>
                 </div>
             </div>
         </div>
+        </DashboardLayout>
+    </UserLayout>    
+    
     );
 }

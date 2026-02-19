@@ -1,0 +1,308 @@
+/* Main Container */
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+    min-height: 100vh;
+}
+
+/* Search Header & Form */
+.searchHeader {
+    margin-bottom: 40px;
+}
+
+.searchForm {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 8px 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s;
+}
+
+.searchForm:focus-within {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.searchIcon {
+    width: 20px;
+    height: 20px;
+    color: #94a3b8;
+    margin-right: 12px;
+}
+
+.searchInput {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    color: #334155;
+    padding: 8px 0;
+}
+
+.searchBtn {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.searchBtn:hover {
+    background: #2563eb;
+}
+
+/* Section Styling */
+.section {
+    margin-bottom: 48px;
+}
+
+.sectionTitle {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.titleIcon {
+    width: 20px;
+    height: 20px;
+    color: #f59e0b;
+    /* Amber/Gold for spark/suggestions */
+}
+
+/* Horizontal Scroll for Suggestions */
+.horizontalScroll {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding-bottom: 16px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.horizontalScroll::-webkit-scrollbar {
+    height: 6px;
+}
+
+.horizontalScroll::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 4px;
+}
+
+.scrollItem {
+    flex: 0 0 280px;
+    /* Fixed width for horizontal items */
+    scroll-snap-align: start;
+}
+
+/* Grid for Results */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+}
+
+/* Card Styling */
+.card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #f1f5f9;
+    overflow: hidden;
+    transition: all 0.2s;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    height: 100%;
+    /* Ensure consistent height */
+    display: flex;
+    flex-direction: column;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    border-color: #e2e8f0;
+}
+
+.cardHeader {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #fdfdfd;
+    border-bottom: 1px solid #f8fafc;
+}
+
+.avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.userInfo {
+    min-width: 0;
+}
+
+.name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.username {
+    font-size: 13px;
+    color: #64748b;
+    margin: 2px 0 0;
+}
+
+.cardBody {
+    padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.bio {
+    color: #475569;
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex: 1;
+}
+
+.matchReason {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #eff6ff;
+    color: #2563eb;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    align-self: flex-start;
+}
+
+.skills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: auto;
+    /* Push to bottom */
+}
+
+.skillTag {
+    background: #f1f5f9;
+    color: #475569;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* Empty & Loading States */
+.loading,
+.empty {
+    text-align: center;
+    padding: 40px;
+    color: #94a3b8;
+}
+
+.emptyIcon {
+    font-size: 40px;
+    margin-bottom: 16px;
+    display: block;
+}
+
+/* Connect Button */
+.connectBtn {
+    margin-left: auto;
+    /* Push to right */
+    background: #eff6ff;
+    color: #3b82f6;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.connectBtn:hover {
+    background: #dbeafe;
+    transform: scale(1.05);
+}
+
+.connectBtn.sent {
+    background: #dcfce7;
+    color: #16a34a;
+    cursor: default;
+}
+
+.btnIcon {
+    width: 18px;
+    height: 18px;
+}
+
+.loadingDot {
+    animation: pulse 1s infinite;
+    font-size: 20px;
+    line-height: 0;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.5;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.5;
+    }
+}
+
+@media (max-width: 640px) {
+    .container {
+        padding: 16px;
+    }
+
+    .scrollItem {
+        flex: 0 0 240px;
+        /* Slightly smaller on mobile */
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}

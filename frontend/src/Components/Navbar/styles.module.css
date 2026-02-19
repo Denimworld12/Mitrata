@@ -333,3 +333,53 @@
     color: #162ea5;
     letter-spacing: -0.5px;
 }
+
+/* ===== SEARCH BAR ===== */
+.searchContainer {
+    margin-right: 16px;
+    display: flex;
+    align-items: center;
+}
+
+.searchWrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: #f1f5f9;
+    border-radius: 20px;
+    padding: 6px 12px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+.searchWrapper:focus-within {
+    background: #fff;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.searchIcon {
+    width: 18px;
+    height: 18px;
+    color: #94a3b8;
+    margin-right: 8px;
+}
+
+.searchInput {
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 14px;
+    color: #334155;
+    width: 180px;
+}
+
+.searchInput::placeholder {
+    color: #cbd5e1;
+}
+
+@media (max-width: 768px) {
+    .searchContainer {
+        display: none;
+    }
+}

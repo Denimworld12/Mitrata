@@ -7,7 +7,7 @@ import { getAllPosts } from '@/config/redux/action/postAction';
 import { getAllUser } from '@/config/redux/action/authAction';
 import { useNotification } from '@/Components/NotificationProvider';
 
-export default function DashboardLayout({ children }) {
+export default function DashboardLayout({ children, fullWidth = false }) {
     const router = useRouter();
     const dispatch = useDispatch();
     const authState = useSelector((state) => state.auth);
@@ -112,42 +112,47 @@ export default function DashboardLayout({ children }) {
                     ))}
                 </div>
 
-                <div className={styles.homeContainer_feedContainer}>
+                <div
+                    className={styles.homeContainer_feedContainer}
+                    style={fullWidth ? { flex: 0.8, maxWidth: '100%' } : {}}
+                >
                     {children}
                 </div>
-                <div className={styles.homeContainer_extraContainer}>
-                    <h3>Top Profiles</h3>
-                    {authState.all_profile_fetched && topProfiles.length > 0 ? (
-                        topProfiles.slice(0, 5).map((profile) => (
-                            <div
-                                key={profile._id}
-                                className={styles.topProfileCard}
-                                onClick={() => router.push(`/view_profile/${profile.userId?.username}`)}
-                                style={{ cursor: 'pointer' }}
-                            >
-                                <img
-                                    src={profile.userId?.profilePicture || "/default-avatar.png"}
-                                    alt="profile"
-                                    className={styles.topProfileImg}
-                                />
-                                <div className={styles.topProfileInfo}>
-                                    <p className={styles.topProfileName}>
-                                        {profile.userId?.name}
-                                    </p>
-                                    <span className={styles.topProfileUsername}>
-                                        @{profile.userId?.username}
-                                    </span>
-                                    <p style={{ fontSize: '0.7rem', color: '#0a66c2', fontWeight: 'bold' }}>
-                                        {profile.postCount} Posts
-                                    </p>
+                {!fullWidth && (
+                    <div className={styles.homeContainer_extraContainer}>
+                        <h3>Top Profiles</h3>
+                        {authState.all_profile_fetched && topProfiles.length > 0 ? (
+                            topProfiles.slice(0, 5).map((profile) => (
+                                <div
+                                    key={profile._id}
+                                    className={styles.topProfileCard}
+                                    onClick={() => router.push(`/view_profile/${profile.userId?.username}`)}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    <img
+                                        src={profile.userId?.profilePicture || "/default-avatar.png"}
+                                        alt="profile"
+                                        className={styles.topProfileImg}
+                                    />
+                                    <div className={styles.topProfileInfo}>
+                                        <p className={styles.topProfileName}>
+                                            {profile.userId?.name}
+                                        </p>
+                                        <span className={styles.topProfileUsername}>
+                                            @{profile.userId?.username}
+                                        </span>
+                                        <p style={{ fontSize: '0.7rem', color: '#0a66c2', fontWeight: 'bold' }}>
+                                            {profile.postCount} Posts
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                        ))
-                    ) : (
-                        <p>Loading profiles...</p>
-                    )}
+                            ))
+                        ) : (
+                            <p>Loading profiles...</p>
+                        )}
 
-                </div>
+                    </div>
+                )}
             </div>
 
         </div>

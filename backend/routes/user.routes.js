@@ -1,6 +1,6 @@
 
 import multer from "multer";
-import { acceptConnectionRequest, downloadProfile, findSearchUser, getAllUserBasedOnUsername, getMyConnectionRequest, getUserAndProfile, login, logout, register, sendconnectionrequest, updateProfileData, updateUserProfile, uploadProfilePicture, whatAreMyConnection } from "../controllers/user.controller.js";
+import { acceptConnectionRequest, downloadProfile, findSearchUser, getAllUserBasedOnUsername, getMyConnectionRequest, getUserAndProfile, login, logout, register, sendconnectionrequest, updateProfileData, updateUserProfile, uploadProfilePicture, whatAreMyConnection, searchUsers, getSuggestions } from "../controllers/user.controller.js";
 import { Router } from "express"
 import { verifyToken } from "../middleware/auth.middleware.js";
 import { Storage } from "../config/cloudinary.js";
@@ -31,6 +31,10 @@ router.route('/user/get_my_connections').get(verifyToken, whatAreMyConnection);
 router.route('/user/is_accepted_connection_request').post(verifyToken, acceptConnectionRequest);
 
 // Public profile view (anyone can view profiles by username)
+// Public profile view (anyone can view profiles by username)
+router.route('/user/search').get(searchUsers);
+router.route('/user/suggestions').get(getSuggestions);
+
 router.route('/user/get_user_based_on_username').get(getAllUserBasedOnUsername);
 
 // Messaging routes (all protected)
