@@ -49,9 +49,9 @@ app.use("/login", authLimiter);
 app.use("/register", authLimiter);
 
 // ============ ROUTES ============
-app.use(postRoutes);
-app.use(userRoute);
-app.use(notificationRoutes);
+app.use('/api', postRoutes);
+app.use('/api', userRoute);
+app.use('/api', notificationRoutes);
 
 // ============ ONLINE PRESENCE TRACKING ============
 const onlineUsers = new Map(); // userId -> Set of socketIds
