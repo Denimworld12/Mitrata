@@ -17,30 +17,44 @@ import http from "http";
 const app = express();
 const httpServer = http.createServer(app);
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://mitrata.vercel.app",
+  process.env.FRONTEND_URL
+].filter(Boolean); // Remove undefined/null
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log("CORS Blocked:", origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+};
 
 const io = new Server(httpServer, {
   cors: {
-    origin: FRONTEND_URL,
-    methods: ["GET", "POST"]
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
 // ============ SECURITY MIDDLEWARE ============
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" } // allow images from Cloudinary
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
-app.use(cors({
-  origin: FRONTEND_URL,
-  credentials: true
-}));
+app.use(cors(corsOptions));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Rate limiting on auth endpoints
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // max 20 attempts per window
+  windowMs: 15 * 60 * 1000,
+  max: 20,
   message: { message: "Too many attempts, please try again later" },
   standardHeaders: true,
   legacyHeaders: false
@@ -49,6 +63,10 @@ app.use("/login", authLimiter);
 app.use("/register", authLimiter);
 
 // ============ ROUTES ============
+// Simple health check to verify API prefix is working
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', msg: 'Backend is running with /api prefix' });
+});
 app.use('/api', postRoutes);
 app.use('/api', userRoute);
 app.use('/api', notificationRoutes);
