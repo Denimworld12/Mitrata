@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import styles from './styles.module.css';
 import UserLayout from '@/layout/userLayout';
 import { useRouter } from 'next/router';
@@ -8,6 +8,9 @@ import { Base_Url } from '@/config';
 import { pushMessage, resetMessages, removeDeletedMessages } from '@/config/redux/reducer/messageReducer';
 import { getMessages, sendMessage, deleteMessages, deleteChat, deleteMessageForEveryone } from '@/config/redux/action/messageAction';
 import { getAboutUser, getMyConnectionRequests } from '@/config/redux/action/authAction';
+import { useToast } from '@/Components/Toast';
+import { useNotification } from "@/Components/NotificationProvider";
+import { useCall } from "@/Components/CallProvider";
 
 export default function Messaging() {
     const router = useRouter();
@@ -31,21 +34,28 @@ export default function Messaging() {
     const [selectedMessages, setSelectedMessages] = useState([]);
     const [deleting, setDeleting] = useState(false);
     const [showDeleteMenu, setShowDeleteMenu] = useState(false);
+    const [isTyping, setIsTyping] = useState(false);
+    const [onlineUsers, setOnlineUsers] = useState(new Set());
     const deleteMenuRef = useRef(null);
     const longPressTimer = useRef(null);
     const fileInputRef = useRef(null);
     const messagesEndRef = useRef(null);
     const menuRef = useRef(null);
+    const typingTimeoutRef = useRef(null);
+    const toast = useToast();
+    const { callUser } = useCall();
 
     /* -------------------- CHECK IF SIDEBAR ONLY -------------------- */
     const isSidebarOnly = !username || username === "sidebar_panel";
 
-    /* -------------------- SOCKET -------------------- */
+    /* -------------------- SOCKET WITH JWT AUTH -------------------- */
     const socket = useMemo(() => {
         if (typeof window !== 'undefined') {
+            const token = localStorage.getItem('token');
             return io(Base_Url, {
                 transports: ["websocket"],
-                autoConnect: true
+                autoConnect: true,
+                auth: { token }
             });
         }
         return null;
@@ -66,9 +76,9 @@ export default function Messaging() {
             return;
         }
 
-        if (!authState.user) dispatch(getAboutUser({ token }));
+        if (!authState.user) dispatch(getAboutUser());
         if (authState.connectionRequest.length === 0) {
-            dispatch(getMyConnectionRequests({ token }));
+            dispatch(getMyConnectionRequests());
         }
     }, [dispatch, authState.user, authState.connectionRequest.length, mounted, router]);
 
@@ -128,14 +138,34 @@ export default function Messaging() {
             dispatch(removeDeletedMessages({ messageIds: [messageId] }));
         };
 
+        // Typing indicator handler
+        const handleTyping = (data) => {
+            if (data.senderId === activeChatUser?.userId?._id) {
+                setIsTyping(data.isTyping);
+            }
+        };
+
+        // Online presence handlers
+        const handleOnlineList = (users) => setOnlineUsers(new Set(users));
+        const handleUserOnline = ({ userId }) => setOnlineUsers(prev => new Set([...prev, userId]));
+        const handleUserOffline = ({ userId }) => setOnlineUsers(prev => { const n = new Set(prev); n.delete(userId); return n; });
+
         socket.on("newMessage", handleNewMessage);
         socket.on("messagesDeleted", handleMessagesDeleted);
         socket.on("messageDeletedForEveryone", handleMessageDeletedForEveryone);
+        socket.on("userTyping", handleTyping);
+        socket.on("onlineUsersList", handleOnlineList);
+        socket.on("userOnline", handleUserOnline);
+        socket.on("userOffline", handleUserOffline);
 
         return () => {
             socket.off("newMessage", handleNewMessage);
             socket.off("messagesDeleted", handleMessagesDeleted);
             socket.off("messageDeletedForEveryone", handleMessageDeletedForEveryone);
+            socket.off("userTyping", handleTyping);
+            socket.off("onlineUsersList", handleOnlineList);
+            socket.off("userOnline", handleUserOnline);
+            socket.off("userOffline", handleUserOffline);
         };
     }, [authState.user, activeChatUser, socket, dispatch, isSidebarOnly]);
 
@@ -186,7 +216,7 @@ export default function Messaging() {
         );
 
         if (selectedFiles.length + validFiles.length > 5) {
-            alert("You can send a maximum of 5 media files at a time.");
+            toast.warning("You can send a maximum of 5 media files at a time.");
             return;
         }
 
@@ -218,9 +248,13 @@ export default function Messaging() {
 
             setMessage("");
             setSelectedFiles([]);
+            // Emit stop typing
+            if (socket && activeChatUser?.userId?._id) {
+                socket.emit("stopTyping", { receiverId: activeChatUser.userId._id });
+            }
         } catch (error) {
             console.error("Error sending message:", error);
-            alert("Failed to send message. Please try again.");
+            toast.error("Failed to send message. Please try again.");
         } finally {
             setSending(false);
         }
@@ -238,10 +272,10 @@ export default function Messaging() {
         try {
             await dispatch(deleteChat({ receiverId })).unwrap();
             setShowMenu(false);
-            alert("Chat cleared successfully");
+            toast.success("Chat cleared successfully");
         } catch (error) {
             console.error("Error clearing chat:", error);
-            alert("Failed to clear chat. Please try again.");
+            toast.error("Failed to clear chat. Please try again.");
         }
     };
 
@@ -284,10 +318,10 @@ export default function Messaging() {
 
             setSelectionMode(false);
             setSelectedMessages([]);
-            alert("Messages deleted successfully");
+            toast.success("Messages deleted successfully");
         } catch (error) {
             console.error("Error deleting messages:", error);
-            alert("Failed to delete messages. Please try again.");
+            toast.error("Failed to delete messages. Please try again.");
         } finally {
             setDeleting(false);
         }
@@ -369,18 +403,24 @@ export default function Messaging() {
 
     /* -------------------- UI -------------------- */
     return (
-        <UserLayout>
+        // <UserLayout>
             <div className={styles.messagingWrapper}>
                 <div className={styles.messagingMainCard}>
 
                     {/* SIDEBAR */}
                     <div className={`${styles.sidebar} ${!isSidebarOnly ? styles.mobileHidden : ''}`}>
-                        <div className={styles.sidebarHeader} onClick={() => router.push("/dashboard")}>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6">
-                                <path fillRule="evenodd" d="M9.53 2.47a.75.75 0 0 1 0 1.06L4.81 8.25H15a6.75 6.75 0 0 1 0 13.5h-3a.75.75 0 0 1 0-1.5h3a5.25 5.25 0 1 0 0-10.5H4.81l4.72 4.72a.75.75 0 1 1-1.06 1.06l-6-6a.75.75 0 0 1 0-1.06l6-6a.75.75 0 0 1 1.06 0Z" clipRule="evenodd" />
-                            </svg>
-
-                            <h3>back to Home</h3>
+                        <div className={styles.sidebarHeader}>
+                            <div className={styles.sidebarHeaderLeft} onClick={() => router.back()}>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="20" height="20">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+                                </svg>
+                            </div>
+                            <h3>Messages</h3>
+                            <div className={styles.sidebarHeaderRight} onClick={() => router.push('/my_network')}>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="20" height="20">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                </svg>
+                            </div>
                         </div>
 
                         <div className={styles.connectionsList}>
@@ -397,7 +437,7 @@ export default function Messaging() {
                                             src={conn.userId?.profilePicture || "/default-avatar.png"}
                                             alt={conn.userId?.name}
                                         />
-                                        <div className={styles.onlineStatus}></div>
+                                        <div className={`${styles.onlineStatus} ${onlineUsers.has(conn.userId?._id) ? styles.online : styles.offline}`}></div>
                                     </div>
                                     <div className={styles.userMeta}>
                                         <p className={styles.name}>{conn.userId?.name}</p>
@@ -485,11 +525,26 @@ export default function Messaging() {
                                                 />
                                                 <div className={styles.headerInfo}>
                                                     <h4 onClick={() => { router.push(`/view_profile/${activeChatUser.userId.username}`) }}>{activeChatUser.userId.name}</h4>
-                                                    <span>Online</span>
+                                                    <span className={isTyping ? styles.typingStatus : (onlineUsers.has(activeChatUser.userId._id) ? styles.onlineText : styles.offlineText)}>
+                                                        {isTyping ? 'typing...' : (onlineUsers.has(activeChatUser.userId._id) ? 'Online' : 'Offline')}
+                                                    </span>
                                                 </div>
                                             </div>
 
                                             <div className={styles.headerActions} ref={menuRef}>
+                                                <button
+                                                    className={styles.menuBtn}
+                                                    onClick={() => callUser(activeChatUser.userId._id, {
+                                                        name: activeChatUser.userId.name,
+                                                        avatar: activeChatUser.userId.profilePicture
+                                                    })}
+                                                    title="Voice Call"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="24" height="24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+                                                    </svg>
+                                                </button>
+
                                                 <button
                                                     className={styles.menuBtn}
                                                     onClick={() => setShowMenu(!showMenu)}
@@ -771,6 +826,6 @@ export default function Messaging() {
                     </div>
                 )}
             </div>
-        </UserLayout>
+        // {/* </UserLayout> */}
     );
 }

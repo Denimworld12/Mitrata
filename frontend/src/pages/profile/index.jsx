@@ -3,7 +3,7 @@ import styles from "./index.module.css"
 import React, { useEffect, useState, useMemo } from 'react'
 import { Base_Url, clientServer } from '@/config'
 import { useDispatch, useSelector } from 'react-redux'
-import { getAboutUser, getConnectionRequest,  updateUserProfile } from '@/config/redux/action/authAction'
+import { getAboutUser, getConnectionRequest, updateUserProfile } from '@/config/redux/action/authAction'
 import { useRouter } from 'next/router'
 import { getAllPosts } from '@/config/redux/action/postAction'
 import DashboardLayout from '@/layout/DashboardLayout' // Added for Tablet/Mobile logic
@@ -58,7 +58,7 @@ export default function Profile() {
       document.body.style.paddingRight = '0px';
     };
   }, [isEditModalOpen]);
-   useEffect(() => {
+  useEffect(() => {
     if (userProfile && userProfile.userId) { // Added userId check
       setFormData({
         name: userProfile.userId?.name || "",
@@ -70,22 +70,22 @@ export default function Profile() {
       setIsDirty(false); // Reset dirty state on sync
     }
   }, [userProfile, isEditModalOpen]);
-  
+
   useEffect(() => {
     const token = localStorage.getItem('token');
-    
+
     if (token) {
-        // 1. Fetch user profile, connection requests, and posts immediately
-        // using the token directly from localStorage
-        dispatch(getAboutUser({ token }));
-        dispatch(getConnectionRequest({ token }));
-        dispatch(getAllPosts({ token }));
+      // 1. Fetch user profile, connection requests, and posts immediately
+      // using the token directly from localStorage
+      dispatch(getAboutUser());
+      dispatch(getConnectionRequest());
+      dispatch(getAllPosts());
     } else {
-        // 2. No token? Redirect to login immediately
-        router.push('/login');
+      // 2. No token? Redirect to login immediately
+      router.push('/login');
     }
-}, [dispatch, router]); // Dependency array should be stable
-const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('token') : false;
+  }, [dispatch, router]); // Dependency array should be stable
+  const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('token') : false;
   const userPosts = useMemo(() => {
     if (postState.posts && userProfile?.userId?._id) { // Added optional chaining
       return postState.posts.filter(post => post.userId?._id === userProfile.userId._id);
@@ -96,7 +96,7 @@ const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('toke
   const recentPosts = userPosts.slice(0, 3);
   const hasMorePosts = userPosts.length > 3;
 
-  
+
 
   // Wrapper to track if user touched the form
   const updateForm = (newData) => {
@@ -132,15 +132,13 @@ const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('toke
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
     const result = await dispatch(updateUserProfile({
-      token,
       ...formData
     }));
 
     if (updateUserProfile.fulfilled.match(result)) {
       setIsEditModalOpen(false);
-      dispatch(getAboutUser({ token }));
+      dispatch(getAboutUser());
     }
   };
 
@@ -148,14 +146,12 @@ const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('toke
     const file = e.target.files[0];
     if (file) {
       const fData = new FormData();
-      const token = localStorage.getItem('token');
-      fData.append('token', token);
       fData.append('profilePicture', file);
       try {
         await clientServer.post('/user/update_profile_picture', fData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        dispatch(getAboutUser({ token }));
+        dispatch(getAboutUser());
       } catch (error) {
         console.error("Profile picture update failed", error);
       }
@@ -253,17 +249,17 @@ const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('toke
               ))}
 
               {/* --- NEW: SHOW ALL ACTIVITY BUTTON --- */}
-              
-                <button
-                  className={styles.showAllActivityBtn}
-                  onClick={() => router.push(`/activity/${userProfile?.userId?.username}`)} // Added optional chaining
-                >
-                  Show all activity ({userPosts.length})
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="16">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                  </svg>
-                </button>
-             
+
+              <button
+                className={styles.showAllActivityBtn}
+                onClick={() => router.push(`/activity/${userProfile?.userId?.username}`)} // Added optional chaining
+              >
+                Show all activity ({userPosts.length})
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="16">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+              </button>
+
             </>
           ) : (
             <p className={styles.noDataText}>No activity yet.</p>
@@ -273,8 +269,8 @@ const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('toke
 
       {/* --- ENHANCED EDIT MODAL --- */}
       {isEditModalOpen && (
-        <div 
-          className={styles.modalOverlay} 
+        <div
+          className={styles.modalOverlay}
           onClick={handleSafeClose}
           style={{ zIndex: 10001 }} /* Increased to clear Dashboard nav exactly */
         >

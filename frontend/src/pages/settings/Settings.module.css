@@ -1,0 +1,185 @@
+.container {
+    max-width: 768px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f2f2f7;
+    /* iOS grouped background color */
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.header {
+    padding: 20px 0 10px;
+}
+
+.header h1 {
+    font-size: 34px;
+    font-weight: 700;
+    color: #000;
+    margin: 0;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Profile Card */
+.profileCard {
+    background: #fff;
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.profileCard:active {
+    background: #e5e5ea;
+}
+
+.avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.profileInfo {
+    flex: 1;
+}
+
+.name {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    color: #000;
+}
+
+.username {
+    font-size: 15px;
+    color: #8e8e93;
+    margin: 0;
+}
+
+/* Groups */
+.group {
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.groupLabel {
+    padding: 0 0 8px 16px;
+    font-size: 13px;
+    text-transform: uppercase;
+    color: #8e8e93;
+    margin-bottom: -4px;
+    /* Adjust for visually pleasing spacing */
+    margin-top: 10px;
+    /* Space above group label */
+}
+
+/* Wait, groupLabel should be outside .group generally in iOS but let's put it inside for simpler structure 
+   Actually, iOS group headers are outside. Let's adjust slightly:
+   The .group container should just hold the items. 
+   The label should be separate. But simpler is inside or separate. 
+   Let's keep inside but fix padding.
+*/
+.groupLabel {
+    padding: 8px 16px 6px;
+    background: #f2f2f7;
+    /* Match container bg so it looks outside */
+}
+
+
+.item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background: #fff;
+    border-bottom: 1px solid #c6c6c8;
+    cursor: pointer;
+    min-height: 48px;
+    transition: background 0.2s;
+}
+
+.item:last-child {
+    border-bottom: none;
+}
+
+.item:active {
+    background: #e5e5ea;
+}
+
+.iconContainer {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+}
+
+.itemLabel {
+    flex: 1;
+    font-size: 17px;
+    color: #000;
+}
+
+.select {
+    font-size: 17px;
+    color: #8e8e93;
+    border: none;
+    background: transparent;
+    text-align: right;
+    cursor: pointer;
+    outline: none;
+}
+
+.logoutText {
+    color: #ff3b30;
+    font-size: 17px;
+    font-weight: 500;
+    text-align: center;
+    width: 100%;
+}
+
+.footer {
+    text-align: center;
+    color: #8e8e93;
+    font-size: 13px;
+    margin-top: 20px;
+    padding-bottom: 40px;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+    .container {
+        padding: 0;
+        background: #f2f2f7;
+    }
+
+    .header {
+        padding: 16px 16px 10px;
+        background: #f2f2f7;
+    }
+
+    .content {
+        gap: 20px;
+        padding-bottom: 80px;
+        /* Space for bottom nav */
+    }
+
+    .group,
+    .profileCard {
+        border-radius: 0;
+        /* Edge-to-edge on mobile typically, but let's keep rounded inset for "modern" look or square if preferred. 
+                           iOS Settings is Grouped (inset) or Plain. Let's stick to Inset (rounded) but add margin on mobile. */
+        margin: 0 16px;
+    }
+}
