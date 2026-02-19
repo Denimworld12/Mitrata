@@ -6,12 +6,13 @@ import Profile from "../models/profile.model.js";
 
 import bcrypt from "bcrypt";
 
-import crypto from "crypto"
+import jwt from "jsonwebtoken";
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs"
 import PDFDocument from "pdfkit";
 import mongoose from "mongoose";
 import ConnectionRequest from "../models/connection.model.js";
+import Notification from "../models/notification.model.js";
 
 import ConvertUserDataToPdf from "./PdfFormat.js";
 
@@ -24,10 +25,34 @@ export const register = async (req, res) => {
         if (!name || !email || !password || !username) {
             return res.status(400).json({ message: "All fields are required" })
         }
+
+        // Password strength validation
+        if (password.length < 8) {
+            return res.status(400).json({ message: "Password must be at least 8 characters" });
+        }
+
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ message: "Invalid email format" });
+        }
+
+        // Username validation (alphanumeric + underscores only)
+        const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/;
+        if (!usernameRegex.test(username)) {
+            return res.status(400).json({ message: "Username must be 3-30 characters, alphanumeric and underscores only" });
+        }
+
         const user = await User.findOne({ email });
         if (user) {
             return res.status(400).json({ message: "User already exists" });
         }
+
+        const existingUsername = await User.findOne({ username });
+        if (existingUsername) {
+            return res.status(400).json({ message: "Username already taken" });
+        }
+
         const HashedPassword = await bcrypt.hash(password, 10)
         const newUser = new User({
             name,
@@ -47,60 +72,66 @@ export const register = async (req, res) => {
         return res.status(500).json({ message: error.message });
     }
 }
+
 export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
-        if (!email || !password) return res.status(400).json({ message: "All feild are required " });
-        const user = await User.findOne({
-            email
-        })
+        if (!email || !password) return res.status(400).json({ message: "All fields are required" });
+
+        const user = await User.findOne({ email });
         if (!user) return res.status(404).json({ message: "User does not exist" });
+
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({ message: "Invalid creadential" });
-        const token = crypto.randomBytes(32).toString("hex");
-        await User.updateOne({ _id: user._id }, { $set: { token } });
-        return res.json({ token })
+        if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+
+        // Sign JWT with userId and 7-day expiry
+        const token = jwt.sign(
+            { userId: user._id },
+            process.env.JWT_SECRET,
+            { expiresIn: "7d" }
+        );
+
+        return res.json({ token });
 
     } catch (error) {
-        return res.status(404).json({ error });
+        return res.status(500).json({ message: error.message });
     }
 }
+
+export const logout = async (req, res) => {
+    // JWT is stateless — client removes the token
+    // For extra security, you could add a token blacklist collection
+    return res.json({ message: "Logged out successfully" });
+};
 
 
 export const uploadProfilePicture = async (req, res) => {
     try {
-        const { token } = req.body;
-        const user = await User.findOne({ token });
-        if (!user) return res.status(404).json({ message: "Invalid credentials" });
+        // req.userId is set by verifyToken middleware
+        const user = await User.findById(req.userId);
+        if (!user) return res.status(404).json({ message: "User not found" });
 
-        // --- NEW: DELETE OLD PICTURE FROM CLOUDINARY ---
-        // Check if there is an existing picture and if it is a Cloudinary URL
+        // Delete old picture from Cloudinary
         if (user.profilePicture && user.profilePicture.includes("cloudinary")) {
             try {
-                // Example URL: .../upload/v1234/folder/image_name.jpg
                 const urlParts = user.profilePicture.split('/');
                 const fileNameWithExtension = urlParts[urlParts.length - 1];
-                const folderName = urlParts[urlParts.length - 2]; // e.g., "profile_pics"
-                
+                const folderName = urlParts[urlParts.length - 2];
                 const publicId = `${folderName}/${fileNameWithExtension.split('.')[0]}`;
-                
-                // Delete the old file from Cloudinary
                 await cloudinary.uploader.destroy(publicId);
                 console.log("Old profile picture deleted from Cloudinary:", publicId);
             } catch (cloudErr) {
                 console.error("Cloudinary Delete Error:", cloudErr);
-                // We don't block the upload if the old delete fails
             }
         }
 
-        // --- SAVE NEW PICTURE ---
-        // req.file.path contains the new Cloudinary URL provided by your storage config
-        user.profilePicture = req.file.path; 
+        // Save new picture
+        user.profilePicture = req.file.path;
         await user.save();
 
-        return res.json({ 
-            message: "Profile successfully updated", 
-            profilePicture: user.profilePicture 
+        return res.json({
+            message: "Profile successfully updated",
+            profilePicture: user.profilePicture
         });
 
     } catch (error) {
@@ -111,28 +142,33 @@ export const uploadProfilePicture = async (req, res) => {
 
 export const updateUserProfile = async (req, res) => {
     try {
-        const { token, newUserdata } = req.body;
+        const { newUserdata } = req.body;
 
-        // 1. Find the USER first because the token is stored there
-        const userFound = await User.findOne({ token });
-        if (!userFound) return res.status(404).json({ message: "User not found bhai" });
+        // req.userId from verifyToken middleware
+        const userFound = await User.findById(req.userId);
+        if (!userFound) return res.status(404).json({ message: "User not found" });
 
-        // 2. Find the PROFILE using the User's ID (userFound._id)
         const profile = await Profile.findOne({ userId: userFound._id });
-        if (!profile) return res.status(404).json({ message: "Profile not found bhai" });
+        if (!profile) return res.status(404).json({ message: "Profile not found" });
 
-        // 3. Update Profile fields (bio, currentPost, pastWork, education)
-        // We use Object.assign to merge newUserdata into the profile document
-        Object.assign(profile, newUserdata);
+        // Sanitize: only allow specific profile fields
+        const allowedFields = ['bio', 'currentPost', 'pastWork', 'education'];
+        const sanitized = {};
+        for (const key of allowedFields) {
+            if (newUserdata[key] !== undefined) {
+                sanitized[key] = newUserdata[key];
+            }
+        }
+        Object.assign(profile, sanitized);
         await profile.save();
 
-        // 4. Update User fields (name)
+        // Update User name if provided
         if (newUserdata.name) {
             userFound.name = newUserdata.name;
             await userFound.save();
         }
 
-        return res.json({ message: "Updated successfully mere bhai!" });
+        return res.json({ message: "Updated successfully!" });
 
     } catch (error) {
         console.error(error);
@@ -144,15 +180,12 @@ export const updateUserProfile = async (req, res) => {
 
 export const getUserAndProfile = async (req, res) => {
     try {
-        const { token } = req.query;
-
-        // Find user by token
-        const user = await User.findOne({ token });
+        // req.userId from verifyToken middleware
+        const user = await User.findById(req.userId);
         if (!user) {
             return res.status(404).json({ message: "user not found" });
         }
 
-        // Find profile linked to this user
         const userProfile = await Profile.findOne({ userId: user._id })
             .populate("userId", "name email username profilePicture createAt");
 
@@ -169,24 +202,33 @@ export const getUserAndProfile = async (req, res) => {
 
 export const updateProfileData = async (req, res) => {
     try {
-        const { token, ...newProfileData } = req.body
-        const userProfile = await User.findOne({ token: token })
-        if (!userProfile) return req.status(404).json({ message: "user not found" })
-        const profile_to_update = await Profile.findOne({ userId: userProfile._id })
-        Object.assign(profile_to_update, newProfileData)
-        await profile_to_update.save()
-        return res.json({ message: "profile updated sucessfully" })
+        const { ...newProfileData } = req.body;
+
+        // req.userId from verifyToken middleware
+        const userProfile = await User.findById(req.userId);
+        if (!userProfile) return res.status(404).json({ message: "user not found" });
+
+        const profile_to_update = await Profile.findOne({ userId: userProfile._id });
+        if (!profile_to_update) return res.status(404).json({ message: "profile not found" });
+
+        // Sanitize: remove any token or userId fields from the update
+        delete newProfileData.token;
+        delete newProfileData.userId;
+
+        Object.assign(profile_to_update, newProfileData);
+        await profile_to_update.save();
+        return res.json({ message: "profile updated successfully" });
     } catch (error) {
-        return res.status(505).json({ message: error.message })
+        return res.status(500).json({ message: error.message });
     }
 }
+
 export const findSearchUser = async (req, res) => {
     try {
         const profiles = await Profile.find().populate('userId', 'name username email profilePicture');
         return res.json({ profiles });
     } catch (error) {
-        return res.status(505).json({ message: error.message })
-
+        return res.status(500).json({ message: error.message });
     }
 }
 
@@ -216,11 +258,12 @@ export const downloadProfile = async (req, res) => {
 
 
 export const sendconnectionrequest = async (req, res) => {
-    const { token, connectionId } = req.body;
+    const { connectionId } = req.body;
     try {
-        const user = await User.findOne({ token });
+        // req.userId from verifyToken middleware
+        const user = await User.findById(req.userId);
         if (!user) return res.status(400).json({ message: 'user not found' });
-        
+
         const connectionUser = await User.findOne({ _id: connectionId });
         if (!connectionUser) return res.status(404).json({ message: 'connection not found' });
 
@@ -254,6 +297,29 @@ export const sendconnectionrequest = async (req, res) => {
         });
 
         await request.save();
+
+        // Create persistent notification
+        await Notification.create({
+            userId: connectionUser._id,
+            type: 'connection_request',
+            fromUser: user._id,
+            message: `${user.name} sent you a connection request`
+        });
+
+        // Emit real-time socket event
+        const io = req.app.get('socketio');
+        if (io) {
+            io.to(connectionUser._id.toString()).emit('connectionRequest', {
+                fromUser: {
+                    _id: user._id,
+                    name: user.name,
+                    username: user.username,
+                    profilePicture: user.profilePicture
+                },
+                message: `${user.name} sent you a connection request`
+            });
+        }
+
         return res.json({ message: "Request sent successfully" });
     } catch (error) {
         return res.status(500).json({ message: error.message });
@@ -261,21 +327,19 @@ export const sendconnectionrequest = async (req, res) => {
 }
 
 export const getMyConnectionRequest = async (req, res) => {
-    const { token } = req.query;
-
     try {
-        const user = await User.findOne({ token });
+        // req.userId from verifyToken middleware
+        const user = await User.findById(req.userId);
         if (!user) return res.status(400).json({ message: "user not found" });
 
-        // Get ALL requests (sent + received)
         const connections = await ConnectionRequest.find({
             $or: [
                 { userId: user._id },
                 { connectionId: user._id }
             ]
         })
-        .populate('userId', 'name username email profilePicture')
-        .populate('connectionId', 'name username email profilePicture');
+            .populate('userId', 'name username email profilePicture')
+            .populate('connectionId', 'name username email profilePicture');
 
         const result = connections.map(conn => {
             const iAmSender = conn.userId._id.toString() === user._id.toString();
@@ -296,21 +360,19 @@ export const getMyConnectionRequest = async (req, res) => {
 }
 
 export const whatAreMyConnection = async (req, res) => {
-    const { token } = req.query;
-    
     try {
-        const user = await User.findOne({ token });
+        // req.userId from verifyToken middleware
+        const user = await User.findById(req.userId);
         if (!user) return res.status(400).json({ message: 'user not found' });
 
-        // Get ONLY ACCEPTED connections
         const myConnections = await ConnectionRequest.find({
             $or: [
                 { userId: user._id, status_accepted: true },
                 { connectionId: user._id, status_accepted: true }
             ]
         })
-        .populate('userId', 'name username email profilePicture')
-        .populate('connectionId', 'name username email profilePicture');
+            .populate('userId', 'name username email profilePicture')
+            .populate('connectionId', 'name username email profilePicture');
 
         const result = myConnections.map(conn => {
             const iAmSender = conn.userId._id.toString() === user._id.toString();
@@ -330,10 +392,11 @@ export const whatAreMyConnection = async (req, res) => {
 }
 
 export const acceptConnectionRequest = async (req, res) => {
-    const { token, requestId, action_type } = req.body;
+    const { requestId, action_type } = req.body;
 
     try {
-        const user = await User.findOne({ token });
+        // req.userId from verifyToken middleware
+        const user = await User.findById(req.userId);
         if (!user) return res.status(404).json({ message: "User not found" });
 
         const connection = await ConnectionRequest.findOne({ _id: requestId });
@@ -343,18 +406,42 @@ export const acceptConnectionRequest = async (req, res) => {
 
         // ONLY the receiver can accept/reject
         if (connection.connectionId.toString() !== user._id.toString()) {
-            return res.status(403).json({ 
-                message: "You can only accept requests sent to you" 
+            return res.status(403).json({
+                message: "You can only accept requests sent to you"
             });
         }
 
         connection.status_accepted = (action_type === 'accept');
         await connection.save();
 
-        return res.status(200).json({ 
-            message: action_type === 'accept' 
-                ? "Connection accepted" 
-                : "Connection rejected" 
+        // If accepted, notify the sender
+        if (action_type === 'accept') {
+            const senderUser = await User.findById(connection.userId);
+            await Notification.create({
+                userId: connection.userId,
+                type: 'connection_accepted',
+                fromUser: user._id,
+                message: `${user.name} accepted your connection request`
+            });
+
+            const io = req.app.get('socketio');
+            if (io) {
+                io.to(connection.userId.toString()).emit('connectionAccepted', {
+                    fromUser: {
+                        _id: user._id,
+                        name: user.name,
+                        username: user.username,
+                        profilePicture: user.profilePicture
+                    },
+                    message: `${user.name} accepted your connection request`
+                });
+            }
+        }
+
+        return res.status(200).json({
+            message: action_type === 'accept'
+                ? "Connection accepted"
+                : "Connection rejected"
         });
     } catch (error) {
         return res.status(500).json({ message: error.message });
@@ -370,6 +457,6 @@ export const getAllUserBasedOnUsername = async (req, res) => {
             .populate('userId', 'name username email profilePicture');
         return res.json({ "profile": userProfile })
     } catch (error) {
-        return res.status(505).json({ message: error.message })
+        return res.status(500).json({ message: error.message })
     }
 }

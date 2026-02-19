@@ -32,10 +32,11 @@ const postSlice = createSlice({
             })
             .addCase(getAllPosts.fulfilled, (state, action) => {
                 state.isLoading = false,
-                state.message = action.payload,
-                state.isError = false,
-                state.postFetched = true,
-                state.posts = action.payload.posts.reverse()
+                    state.message = action.payload,
+                    state.isError = false,
+                    state.postFetched = true,
+                    // Server returns sorted posts, no need to .reverse()
+                    state.posts = action.payload.posts || []
             })
             .addCase(getAllPosts.rejected, (state, action) => {
                 state.message = action.payload,
@@ -45,12 +46,12 @@ const postSlice = createSlice({
             .addCase(createPost.fulfilled, (state, action) => {
                 state.message = action.payload
                 state.isLoading = false
-                state.isError= false
+                state.isError = false
             })
             .addCase(createPost.rejected, (state, action) => {
                 state.message = action.payload
                 state.isLoading = false
-                state.isError= true
+                state.isError = true
             }
             )
             .addCase(getAllComments.fulfilled, (state, action) => {
@@ -82,7 +83,7 @@ const postSlice = createSlice({
                 state.isError = true
             }
             )
-        }
+    }
 })
 export const { reset, resetPostId } = postSlice.actions
 export default postSlice.reducer

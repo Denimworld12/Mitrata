@@ -1,4 +1,5 @@
 import { getMyConnectionRequests, acceptConnectionRequest, getConnectionRequest } from '@/config/redux/action/authAction';
+import { useToast } from '@/Components/Toast';
 import DashboardLayout from '@/layout/DashboardLayout'
 import UserLayout from '@/layout/userLayout'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
@@ -10,15 +11,16 @@ export default function MyNetwork() {
     const dispatch = useDispatch();
     const authState = useSelector((state) => state.auth);
     const router = useRouter();
-    
+
     const [activeTab, setActiveTab] = useState('connections');
     const [isMounted, setIsMounted] = useState(false);
+    const toast = useToast();
 
     const refreshData = useCallback(() => {
         const token = localStorage.getItem("token");
         if (token) {
-            dispatch(getMyConnectionRequests({ token }));
-            dispatch(getConnectionRequest({ token }));
+            dispatch(getMyConnectionRequests());
+            dispatch(getConnectionRequest());
         }
     }, [dispatch]);
 
@@ -37,7 +39,7 @@ export default function MyNetwork() {
     const { pendingReceived, pendingSent, myConnections } = useMemo(() => {
         const allRequests = authState.connection || [];
         const acceptedConnections = authState.connectionRequest || [];
-        
+
         return {
             // Requests I RECEIVED and are PENDING
             pendingReceived: allRequests.filter(
@@ -53,19 +55,16 @@ export default function MyNetwork() {
     }, [authState.connection, authState.connectionRequest]);
 
     const handleAction = async (requestId, action) => {
-        const token = localStorage.getItem("token");
-        
         try {
             await dispatch(acceptConnectionRequest({
-                token,
                 connectionId: requestId,
                 action: action
             })).unwrap();
-            
+
             refreshData();
         } catch (error) {
             console.error("Failed to update connection:", error);
-            alert(error.message || "Failed to update connection");
+            toast.error(error.message || "Failed to update connection");
         }
     };
 

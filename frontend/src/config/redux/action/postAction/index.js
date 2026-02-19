@@ -2,25 +2,25 @@ import { createAsyncThunk } from "@reduxjs/toolkit"
 import { clientServer } from "@/config";
 
 export const getAllPosts = createAsyncThunk(
-  "post/getAllPosts",
-  async (_, thunkapi) => {
-    try {
-      const token = localStorage.getItem("token"); // or whatever key you used
+    "post/getAllPosts",
+    async (params, thunkapi) => {
+        try {
+            // Token is auto-attached via axios interceptor
+            const response = await clientServer.get("/posts", {
+                params: {
+                    page: params?.page || 1,
+                    limit: params?.limit || 20
+                }
+            });
 
-      const response = await clientServer.get("/posts", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+            return thunkapi.fulfillWithValue(response.data);
 
-      return thunkapi.fulfillWithValue(response.data);
-
-    } catch (error) {
-      return thunkapi.rejectWithValue(
-        error.response?.data || error.message
-      );
+        } catch (error) {
+            return thunkapi.rejectWithValue(
+                error.response?.data || error.message
+            );
+        }
     }
-  }
 );
 
 
@@ -30,19 +30,21 @@ export const createPost = createAsyncThunk(
         const { file, body } = userData
         try {
             const formData = new FormData()
-            formData.append('token', localStorage.getItem('token'))
             formData.append('body', body)
-            formData.append('media', file)
-            const response = clientServer.post('/post', formData)
-            
-            if ((await response).status === 200) {
+            if (file) formData.append('media', file)
+            // Token is auto-attached via axios interceptor
+            const response = await clientServer.post('/post', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            })
+
+            if (response.status === 200) {
                 return thunkapi.fulfillWithValue("Post successfully")
             }
             else {
                 return thunkapi.rejectWithValue('post not uploaded')
             }
         } catch (error) {
-            return thunkapi.rejectWithValue(error.response.data)
+            return thunkapi.rejectWithValue(error.response?.data || { message: "Post failed" })
         }
     }
 )
@@ -52,8 +54,8 @@ export const deletePost = createAsyncThunk(
     'post/deletePost',
     async (postId, thunkapi) => {
         try {
+            // Token is auto-attached via axios interceptor
             const response = await clientServer.post('/delete_post', {
-                token: localStorage.getItem('token'),
                 post_id: postId
             })
             if (response.status === 200) {
@@ -62,7 +64,7 @@ export const deletePost = createAsyncThunk(
                 return thunkapi.rejectWithValue("Post not deleted")
             }
         } catch (error) {
-            return thunkapi.rejectWithValue(error.response.data)
+            return thunkapi.rejectWithValue(error.response?.data || { message: "Delete failed" })
         }
     }
 )
@@ -71,9 +73,9 @@ export const incrementLike = createAsyncThunk(
     'post/incrementLike',
     async (postId, thunkapi) => {
         try {
+            // Token is auto-attached via axios interceptor
             const response = await clientServer.post('/increment_like', {
-                post_id: postId,
-                token: localStorage.getItem('token')
+                post_id: postId
             })
             thunkapi.dispatch(getAllPosts());
             if (response.status === 200) {
@@ -82,7 +84,7 @@ export const incrementLike = createAsyncThunk(
                 return thunkapi.rejectWithValue("like not incremented")
             }
         } catch (error) {
-            return thunkapi.rejectWithValue(error.response.data)
+            return thunkapi.rejectWithValue(error.response?.data || { message: "Like failed" })
         }
     }
 )
@@ -98,11 +100,11 @@ export const getAllComments = createAsyncThunk(
                 }
             })
             return thunkapi.fulfillWithValue({
-                comments: response.data.comments ||[],
+                comments: response.data.comments || [],
                 postId: postData.postId
             })
         } catch (error) {
-            return thunkapi.rejectWithValue(error.response.data)
+            return thunkapi.rejectWithValue(error.response?.data || { message: "Failed to load comments" })
         }
     }
 )
@@ -113,8 +115,8 @@ export const commentPost = createAsyncThunk(
     async (commentData, thunkapi) => {
         const { postId, commentBody } = commentData
         try {
+            // Token is auto-attached via axios interceptor
             const response = await clientServer.post('/comment_post', {
-                token: localStorage.getItem('token'),
                 post_id: postId,
                 commentBody: commentBody
             })
@@ -125,7 +127,7 @@ export const commentPost = createAsyncThunk(
                 return thunkapi.rejectWithValue("Comment not added")
             }
         } catch (error) {
-            return thunkapi.rejectWithValue(error.response.data)
+            return thunkapi.rejectWithValue(error.response?.data || { message: "Comment failed" })
         }
     }
 )
