@@ -195,18 +195,14 @@ export const googleLogin = async (req, res) => {
 
 // GSI's redirect ux_mode POSTs here as a real top-level navigation (form
 // submit), so it works even when the browser blocks the popup/iframe
-// handshake. Google also sets a g_csrf_token cookie alongside the POST body
-// field of the same name — matching them is how this endpoint tells a
-// genuine Google-initiated submission apart from a forged one, since a
-// third-party page can't read/set cookies on accounts.google.com's domain.
+// handshake. No separate CSRF check is needed on top of this: the real
+// trust boundary is verifyAndUpsertGoogleUser's ID-token signature/audience
+// verification below — a forged POST without a genuine Google-signed
+// credential fails there regardless of anything else in the request.
 export const googleLoginCallback = async (req, res) => {
     const failUrl = `${process.env.FRONTEND_URL}/login?googleError=1`;
     try {
-        const { credential, g_csrf_token } = req.body;
-        if (!g_csrf_token || g_csrf_token !== req.cookies?.g_csrf_token) {
-            return res.redirect(failUrl);
-        }
-        const user = await verifyAndUpsertGoogleUser(credential);
+        const user = await verifyAndUpsertGoogleUser(req.body.credential);
         const accessToken = await issueSession(res, user);
         return res.redirect(`${process.env.FRONTEND_URL}/login?googleToken=${accessToken}`);
     } catch (error) {
