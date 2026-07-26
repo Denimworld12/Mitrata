@@ -9,7 +9,8 @@ export const getAllPosts = createAsyncThunk(
             const response = await clientServer.get("/posts", {
                 params: {
                     page: params?.page || 1,
-                    limit: params?.limit || 20
+                    limit: params?.limit || 20,
+                    ...(params?.feed ? { feed: params.feed } : {})
                 }
             });
 
@@ -69,22 +70,53 @@ export const deletePost = createAsyncThunk(
     }
 )
 
-export const incrementLike = createAsyncThunk(
-    'post/incrementLike',
+export const reactToPost = createAsyncThunk(
+    'post/reactToPost',
+    async ({ postId, type }, thunkapi) => {
+        try {
+            // Token is auto-attached via axios interceptor (unlike the old
+            // raw-fetch handleVote this replaces, which bypassed the 401-refresh
+            // interceptor clientServer provides).
+            const response = await clientServer.post(`/react/${postId}`, { type });
+            return thunkapi.fulfillWithValue({ postId, ...response.data });
+        } catch (error) {
+            return thunkapi.rejectWithValue(error.response?.data || { message: "Reaction failed" })
+        }
+    }
+)
+
+export const getLikedPosts = createAsyncThunk(
+    'post/getLikedPosts',
+    async (_arg, thunkapi) => {
+        try {
+            const response = await clientServer.get('/user/liked_posts');
+            return thunkapi.fulfillWithValue(response.data);
+        } catch (error) {
+            return thunkapi.rejectWithValue(error.response?.data || { message: "Failed to load liked posts" })
+        }
+    }
+)
+
+export const toggleBookmark = createAsyncThunk(
+    'post/toggleBookmark',
     async (postId, thunkapi) => {
         try {
-            // Token is auto-attached via axios interceptor
-            const response = await clientServer.post('/increment_like', {
-                post_id: postId
-            })
-            thunkapi.dispatch(getAllPosts());
-            if (response.status === 200) {
-                return thunkapi.fulfillWithValue("like incremented")
-            } else {
-                return thunkapi.rejectWithValue("like not incremented")
-            }
+            const response = await clientServer.post('/user/bookmark', { postId });
+            return thunkapi.fulfillWithValue({ postId, ...response.data });
         } catch (error) {
-            return thunkapi.rejectWithValue(error.response?.data || { message: "Like failed" })
+            return thunkapi.rejectWithValue(error.response?.data || { message: "Failed to update bookmark" })
+        }
+    }
+)
+
+export const getBookmarkedPosts = createAsyncThunk(
+    'post/getBookmarkedPosts',
+    async (_arg, thunkapi) => {
+        try {
+            const response = await clientServer.get('/user/bookmarked_posts');
+            return thunkapi.fulfillWithValue(response.data);
+        } catch (error) {
+            return thunkapi.rejectWithValue(error.response?.data || { message: "Failed to load saved posts" })
         }
     }
 )

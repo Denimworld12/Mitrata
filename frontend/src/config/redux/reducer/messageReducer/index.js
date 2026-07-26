@@ -1,8 +1,9 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { getMessages, sendMessage, deleteChat, deleteMessageForEveryone, deleteMessages } from "../../action/messageAction";
+import { getMessages, sendMessage, deleteChat, deleteMessageForEveryone, deleteMessages, getConversations, markMessagesRead } from "../../action/messageAction";
 
 const initialState = {
     messages: [],
+    conversations: [],
     isLoading: false,
     isError: false,
     errorMessage: null,
@@ -29,6 +30,15 @@ const messageSlice = createSlice({
             state.messages = state.messages.filter(
                 msg => !messageIds.includes(msg._id)
             );
+        },
+
+        /* The other person just read our messages (socket "messagesRead") —
+           flip isRead on our own sent messages in the currently open thread
+           so the sent/read tick updates live. */
+        markMyMessagesRead: (state) => {
+            state.messages.forEach((msg) => {
+                msg.isRead = true;
+            });
         }
     },
 
@@ -128,9 +138,21 @@ const messageSlice = createSlice({
                 state.isLoading = false;
                 state.isError = true;
                 state.errorMessage = action.payload?.message || "Failed to delete message for everyone";
+            })
+
+            /* ---------------- CONVERSATIONS ---------------- */
+            .addCase(getConversations.fulfilled, (state, action) => {
+                state.conversations = action.payload.conversations || [];
+            })
+
+            /* ---------------- MARK READ ---------------- */
+            .addCase(markMessagesRead.fulfilled, (state, action) => {
+                const { senderId } = action.payload;
+                const convo = state.conversations.find((c) => c.userId === senderId);
+                if (convo) convo.unreadCount = 0;
             });
     }
 });
 
-export const { pushMessage, resetMessages, removeDeletedMessages } = messageSlice.actions;
+export const { pushMessage, resetMessages, removeDeletedMessages, markMyMessagesRead } = messageSlice.actions;
 export default messageSlice.reducer;
