@@ -7,18 +7,28 @@ import Profile from "../models/profile.model.js";
 import bcrypt from "bcrypt";
 
 import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs"
 import PDFDocument from "pdfkit";
 import mongoose from "mongoose";
 import ConnectionRequest from "../models/connection.model.js";
 import Notification from "../models/notification.model.js";
+import Post from "../models/posts.model.js";
+import Comment from "../models/comments.model.js";
+import Message from "../models/message.model.js";
+import Story from "../models/story.model.js";
+import Report from "../models/report.model.js";
 
 import ConvertUserDataToPdf from "./PdfFormat.js";
+import { escapeRegex } from "../utils/regex.js";
+import { issueOtp } from "./otp.controller.js";
+import { issueSession, hashToken, refreshCookieName } from "../utils/session.js";
+
+const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
 
 
 export const register = async (req, res) => {
-    console.log(req.body);
     try {
         const { name, email, password, username } = req.body;
 
@@ -65,10 +75,25 @@ export const register = async (req, res) => {
             userId: newUser._id
         });
         await profile.save();
-        return res.json({ message: "user registered successfully" })
+
+        // Account exists but is unusable until the OTP sent here is verified
+        // (see login's emailVerified gate below) — matches Play Store's
+        // expectation of verified accounts without a separate signup step.
+        await issueOtp(email, "signup");
+
+        return res.json({ message: "Registered — check your email for a verification code", email, needsVerification: true })
     }
 
     catch (error) {
+        // Two signups for the same email/username landing within the same
+        // findOne-then-save window both pass the checks above and race to
+        // insert — the unique index (see users.model.js) is what actually
+        // stops the duplicate, so surface it as the same clean 400 those
+        // checks would have given, not a raw Mongo error via 500.
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern || {})[0] || "field";
+            return res.status(400).json({ message: `${field === "email" ? "User" : "Username"} already exists` });
+        }
         return res.status(500).json({ message: error.message });
     }
 }
@@ -80,28 +105,152 @@ export const login = async (req, res) => {
 
         const user = await User.findOne({ email });
         if (!user) return res.status(404).json({ message: "User does not exist" });
+        if (!user.active) return res.status(403).json({ message: "This account has been suspended" });
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
-        // Sign JWT with userId and 7-day expiry
-        const token = jwt.sign(
-            { userId: user._id },
-            process.env.JWT_SECRET,
-            { expiresIn: "7d" }
-        );
+        if (!user.emailVerified) {
+            return res.status(403).json({
+                message: "Please verify your email before logging in",
+                needsVerification: true,
+                email: user.email
+            });
+        }
 
-        return res.json({ token });
+        const accessToken = await issueSession(res, user);
+        return res.json({ token: accessToken });
 
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
 }
 
+export const googleLogin = async (req, res) => {
+    try {
+        if (!googleClient) {
+            return res.status(501).json({ message: "Google login is not configured on this server" });
+        }
+        const { idToken } = req.body;
+        if (!idToken) return res.status(400).json({ message: "idToken is required" });
+
+        const ticket = await googleClient.verifyIdToken({
+            idToken,
+            audience: process.env.GOOGLE_CLIENT_ID
+        });
+        const payload = ticket.getPayload();
+
+        let user = await User.findOne({ email: payload.email });
+        if (!user) {
+            const usernameBase = payload.email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "");
+            let username = usernameBase;
+            let suffix = 0;
+            while (await User.findOne({ username })) {
+                suffix += 1;
+                username = `${usernameBase}${suffix}`;
+            }
+            user = new User({
+                name: payload.name || usernameBase,
+                email: payload.email,
+                username,
+                googleId: payload.sub,
+                profilePicture: payload.picture || undefined,
+                // Google already verified this address — no OTP step needed.
+                emailVerified: true
+            });
+            await user.save();
+            await new Profile({ userId: user._id }).save();
+        } else if (!user.active) {
+            return res.status(403).json({ message: "This account has been suspended" });
+        } else if (!user.googleId || !user.emailVerified) {
+            user.googleId = user.googleId || payload.sub;
+            user.emailVerified = true;
+            await user.save();
+        }
+
+        const accessToken = await issueSession(res, user);
+        return res.json({ token: accessToken });
+    } catch (error) {
+        console.error("Google login error:", error.message);
+        return res.status(401).json({ message: "Invalid Google token" });
+    }
+};
+
+// Client sends the userId of the session that's expiring (decoded client-side
+// from its own — possibly just-expired — access token, not trusted on its
+// own) purely to know which per-account cookie to look at. The actual trust
+// boundary is still the signed refresh JWT + its hash match below.
+export const refreshAccessToken = async (req, res) => {
+    try {
+        const { userId } = req.body || {};
+        const token = userId ? req.cookies?.[refreshCookieName(userId)] : null;
+        if (!token) return res.status(401).json({ message: "No refresh token" });
+
+        const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
+        const user = await User.findById(decoded.userId);
+        if (!user || !user.active) return res.status(401).json({ message: "User no longer exists" });
+        if (user.refreshTokenHash !== hashToken(token)) {
+            return res.status(401).json({ message: "Refresh token has been revoked" });
+        }
+
+        const accessToken = await issueSession(res, user); // rotate refresh token too
+        return res.json({ token: accessToken });
+    } catch (error) {
+        return res.status(401).json({ message: "Refresh token invalid or expired, please login again" });
+    }
+};
+
+// Only signs the current account out — other accounts' cookies (see
+// switchAccount) are untouched so quick-switching still works afterward.
 export const logout = async (req, res) => {
-    // JWT is stateless — client removes the token
-    // For extra security, you could add a token blacklist collection
-    return res.json({ message: "Logged out successfully" });
+    try {
+        const { userId } = req.body || {};
+        if (userId) {
+            await User.findByIdAndUpdate(userId, { refreshTokenHash: null });
+            res.clearCookie(refreshCookieName(userId), { path: "/api" });
+        }
+        return res.json({ message: "Logged out successfully" });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+// Instant switch to an already-logged-in account on this browser, no
+// password re-entry — works as long as that account's refresh cookie is
+// still there and unexpired (30 days). Falls back to a normal login
+// whenever it isn't (e.g. first time switching to it, or it expired).
+export const switchAccount = async (req, res) => {
+    try {
+        const { userId } = req.body;
+        if (!userId) return res.status(400).json({ message: "userId is required" });
+
+        const cookieName = refreshCookieName(userId);
+        const token = req.cookies?.[cookieName];
+        if (!token) return res.status(401).json({ message: "Please log in to this account", needsLogin: true });
+
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
+        } catch {
+            res.clearCookie(cookieName, { path: "/api" });
+            return res.status(401).json({ message: "Session expired, please log in again", needsLogin: true });
+        }
+
+        const user = await User.findById(decoded.userId);
+        if (!user || !user.active) {
+            res.clearCookie(cookieName, { path: "/api" });
+            return res.status(401).json({ message: "Account unavailable", needsLogin: true });
+        }
+        if (user.refreshTokenHash !== hashToken(token)) {
+            res.clearCookie(cookieName, { path: "/api" });
+            return res.status(401).json({ message: "Session expired, please log in again", needsLogin: true });
+        }
+
+        const accessToken = await issueSession(res, user);
+        return res.json({ token: accessToken });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
 };
 
 
@@ -140,6 +289,55 @@ export const uploadProfilePicture = async (req, res) => {
     }
 }
 
+// Same shape as uploadProfilePicture — old banner cleaned up in Cloudinary
+// before the new one is saved. The frontend resizes/crops to the exact
+// banner size before this ever gets called; this doesn't re-validate
+// dimensions server-side (trusting the client here, same as every other
+// image upload in this app).
+export const uploadCoverPhoto = async (req, res) => {
+    try {
+        const user = await User.findById(req.userId);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        if (user.coverPhoto && user.coverPhoto.includes("cloudinary")) {
+            try {
+                const urlParts = user.coverPhoto.split('/');
+                const fileNameWithExtension = urlParts[urlParts.length - 1];
+                const folderName = urlParts[urlParts.length - 2];
+                const publicId = `${folderName}/${fileNameWithExtension.split('.')[0]}`;
+                await cloudinary.uploader.destroy(publicId);
+                console.log("Old cover photo deleted from Cloudinary:", publicId);
+            } catch (cloudErr) {
+                console.error("Cloudinary Delete Error:", cloudErr);
+            }
+        }
+
+        user.coverPhoto = req.file.path;
+        await user.save();
+
+        return res.json({
+            message: "Cover photo updated",
+            coverPhoto: user.coverPhoto
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
+// Generic image upload — the cover picker for Profile Highlights (and
+// anything else that just needs "give me a URL for this image") reuses this
+// instead of a bespoke multer route per feature.
+export const uploadImage = async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ message: "No image provided" });
+        return res.json({ url: req.file.path });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
 export const updateUserProfile = async (req, res) => {
     try {
         const { newUserdata } = req.body;
@@ -152,13 +350,26 @@ export const updateUserProfile = async (req, res) => {
         if (!profile) return res.status(404).json({ message: "Profile not found" });
 
         // Sanitize: only allow specific profile fields
-        const allowedFields = ['bio', 'currentPost', 'pastWork', 'education'];
+        const allowedFields = ['bio', 'currentPost', 'pastWork', 'education', 'highlights'];
         const sanitized = {};
         for (const key of allowedFields) {
             if (newUserdata[key] !== undefined) {
                 sanitized[key] = newUserdata[key];
             }
         }
+
+        // Highlights come straight from client input — validate at this trust
+        // boundary rather than trusting array length/field shape.
+        if (Array.isArray(sanitized.highlights)) {
+            sanitized.highlights = sanitized.highlights
+                .slice(0, 10)
+                .filter((h) => h && typeof h.cover === 'string' && h.cover)
+                .map((h) => ({
+                    title: typeof h.title === 'string' ? h.title.slice(0, 40) : '',
+                    cover: h.cover
+                }));
+        }
+
         Object.assign(profile, sanitized);
         await profile.save();
 
@@ -181,13 +392,10 @@ export const updateUserProfile = async (req, res) => {
 export const getUserAndProfile = async (req, res) => {
     try {
         // req.userId from verifyToken middleware
-        const user = await User.findById(req.userId);
-        if (!user) {
-            return res.status(404).json({ message: "user not found" });
-        }
-
-        const userProfile = await Profile.findOne({ userId: user._id })
-            .populate("userId", "name email username profilePicture createAt");
+        // req.userId is already a verified-to-exist user (see verifyToken) —
+        // no need to re-fetch the User doc just to read its own id back.
+        const userProfile = await Profile.findOne({ userId: req.userId })
+            .populate("userId", "name email username profilePicture coverPhoto createAt role googleId");
 
         if (!userProfile) {
             return res.status(404).json({ message: "profile not found" });
@@ -204,11 +412,8 @@ export const updateProfileData = async (req, res) => {
     try {
         const { ...newProfileData } = req.body;
 
-        // req.userId from verifyToken middleware
-        const userProfile = await User.findById(req.userId);
-        if (!userProfile) return res.status(404).json({ message: "user not found" });
-
-        const profile_to_update = await Profile.findOne({ userId: userProfile._id });
+        // Same redundant-fetch note as getUserAndProfile above.
+        const profile_to_update = await Profile.findOne({ userId: req.userId });
         if (!profile_to_update) return res.status(404).json({ message: "profile not found" });
 
         // Sanitize: remove any token or userId fields from the update
@@ -225,7 +430,14 @@ export const updateProfileData = async (req, res) => {
 
 export const findSearchUser = async (req, res) => {
     try {
-        const profiles = await Profile.find().populate('userId', 'name username email profilePicture');
+        // No caller in the app uses this unfiltered anymore (see getSuggestions
+        // / searchUsers for the real "find people" flows) — capped rather than
+        // deleted, in case something external still hits it, since returning
+        // literally every profile in the database on one call doesn't scale.
+        const profiles = await Profile.find()
+            .populate('userId', 'name username email profilePicture')
+            .limit(200)
+            .lean();
         return res.json({ profiles });
     } catch (error) {
         return res.status(500).json({ message: error.message });
@@ -303,7 +515,8 @@ export const sendconnectionrequest = async (req, res) => {
             userId: connectionUser._id,
             type: 'connection_request',
             fromUser: user._id,
-            message: `${user.name} sent you a connection request`
+            message: `${user.name} sent you a connection request`,
+            metadata: { requestId: request._id }
         });
 
         // Emit real-time socket event
@@ -316,7 +529,8 @@ export const sendconnectionrequest = async (req, res) => {
                     username: user.username,
                     profilePicture: user.profilePicture
                 },
-                message: `${user.name} sent you a connection request`
+                message: `${user.name} sent you a connection request`,
+                requestId: request._id
             });
         }
 
@@ -328,21 +542,24 @@ export const sendconnectionrequest = async (req, res) => {
 
 export const getMyConnectionRequest = async (req, res) => {
     try {
-        // req.userId from verifyToken middleware
-        const user = await User.findById(req.userId);
-        if (!user) return res.status(400).json({ message: "user not found" });
+        // req.userId from verifyToken middleware — already confirmed to exist
+        // there, so re-fetching the User doc here just to read its own _id
+        // back was a wasted round trip on every call.
+        const userId = req.userId;
 
         const connections = await ConnectionRequest.find({
             $or: [
-                { userId: user._id },
-                { connectionId: user._id }
+                { userId },
+                { connectionId: userId }
             ]
         })
             .populate('userId', 'name username email profilePicture')
-            .populate('connectionId', 'name username email profilePicture');
+            .populate('connectionId', 'name username email profilePicture')
+            .limit(1000)
+            .lean();
 
         const result = connections.map(conn => {
-            const iAmSender = conn.userId._id.toString() === user._id.toString();
+            const iAmSender = conn.userId._id.toString() === userId.toString();
             const otherUser = iAmSender ? conn.connectionId : conn.userId;
 
             return {
@@ -361,21 +578,22 @@ export const getMyConnectionRequest = async (req, res) => {
 
 export const whatAreMyConnection = async (req, res) => {
     try {
-        // req.userId from verifyToken middleware
-        const user = await User.findById(req.userId);
-        if (!user) return res.status(400).json({ message: 'user not found' });
+        // Same redundant-fetch note as getMyConnectionRequest above.
+        const userId = req.userId;
 
         const myConnections = await ConnectionRequest.find({
             $or: [
-                { userId: user._id, status_accepted: true },
-                { connectionId: user._id, status_accepted: true }
+                { userId, status_accepted: true },
+                { connectionId: userId, status_accepted: true }
             ]
         })
             .populate('userId', 'name username email profilePicture')
-            .populate('connectionId', 'name username email profilePicture');
+            .populate('connectionId', 'name username email profilePicture')
+            .limit(1000)
+            .lean();
 
         const result = myConnections.map(conn => {
-            const iAmSender = conn.userId._id.toString() === user._id.toString();
+            const iAmSender = conn.userId._id.toString() === userId.toString();
             const otherUser = iAmSender ? conn.connectionId : conn.userId;
 
             return {
@@ -454,7 +672,7 @@ export const getAllUserBasedOnUsername = async (req, res) => {
         const users = await User.findOne({ username })
         if (!users) return res.status(404).json({ message: 'user not found' })
         const userProfile = await Profile.findOne({ userId: users._id })
-            .populate('userId', 'name username email profilePicture');
+            .populate('userId', 'name username email profilePicture coverPhoto');
         return res.json({ "profile": userProfile })
     } catch (error) {
         return res.status(500).json({ message: error.message })
@@ -466,7 +684,10 @@ export const searchUsers = async (req, res) => {
         const { q } = req.query;
         if (!q) return res.json([]);
 
-        const regex = new RegExp(q, 'i'); // Case-insensitive search
+        // Escaped so regex metacharacters in user input (".", "(", "+", etc.)
+        // can't throw, match garbage, or — with a crafted pattern — pin a CPU
+        // core via catastrophic backtracking (ReDoS) on an unauthenticated route.
+        const regex = new RegExp(escapeRegex(q.slice(0, 100)), 'i');
 
         const results = await User.aggregate([
             {
@@ -532,7 +753,15 @@ export const searchUsers = async (req, res) => {
 
 export const getSuggestions = async (req, res) => {
     try {
+        const myConnections = await ConnectionRequest.find({
+            $or: [{ userId: req.userId }, { connectionId: req.userId }]
+        });
+        const excludedIds = [req.userId, ...myConnections.map(c =>
+            String(c.userId) === String(req.userId) ? c.connectionId : c.userId
+        )];
+
         const suggestions = await User.aggregate([
+            { $match: { _id: { $nin: excludedIds.map(id => new mongoose.Types.ObjectId(id)) } } },
             { $sample: { size: 10 } },
             {
                 $lookup: {
@@ -567,3 +796,90 @@ export const getSuggestions = async (req, res) => {
         return res.status(500).json({ message: error.message });
     }
 }
+
+const cloudinaryPublicId = (url) => {
+    const urlParts = url.split('/');
+    const fileNameWithExtension = urlParts[urlParts.length - 1];
+    const folderName = urlParts[urlParts.length - 2];
+    return `${folderName}/${fileNameWithExtension.split('.')[0]}`;
+};
+
+// Play Store requires an in-app path to permanently delete an account and
+// its data — this removes everything the user owns or is referenced in,
+// not just the User document itself.
+export const deleteMyAccount = async (req, res) => {
+    try {
+        const { password } = req.body;
+        const user = await User.findById(req.userId);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        // Password-based accounts must confirm with their password right
+        // before an irreversible delete; Google-only accounts have no
+        // password to check, so the (already-required) auth token is the
+        // only confirmation available for them.
+        if (user.password) {
+            if (!password) return res.status(400).json({ message: "Password is required to delete your account" });
+            const isMatch = await bcrypt.compare(password, user.password);
+            if (!isMatch) return res.status(400).json({ message: "Incorrect password" });
+        }
+
+        const userId = user._id;
+
+        const myPosts = await Post.find({ userId }).select("_id media").lean();
+        const postIds = myPosts.map((p) => p._id);
+
+        const myMessages = await Message.find({ $or: [{ sender: userId }, { receiver: userId }] })
+            .select("media")
+            .lean();
+
+        const myStories = await Story.find({ userId }).select("media mediaType").lean();
+
+        // Cloudinary cleanup — best-effort, same pattern as every other
+        // delete path in this app (a failed remote delete shouldn't block
+        // the account from actually being removed).
+        const cloudDeletes = [];
+        for (const post of myPosts) {
+            if (post.media && post.media.includes("cloudinary")) {
+                cloudDeletes.push(cloudinary.uploader.destroy(cloudinaryPublicId(post.media)));
+            }
+        }
+        for (const msg of myMessages) {
+            for (const m of msg.media || []) {
+                if (m.publicId) {
+                    cloudDeletes.push(cloudinary.uploader.destroy(m.publicId, { resource_type: m.mediaType === "video" ? "video" : "image" }));
+                }
+            }
+        }
+        for (const story of myStories) {
+            if (story.media && story.media.includes("cloudinary")) {
+                cloudDeletes.push(cloudinary.uploader.destroy(cloudinaryPublicId(story.media), { resource_type: story.mediaType === "video" ? "video" : "image" }));
+            }
+        }
+        if (user.profilePicture?.includes("cloudinary")) {
+            cloudDeletes.push(cloudinary.uploader.destroy(cloudinaryPublicId(user.profilePicture)));
+        }
+        if (user.coverPhoto?.includes("cloudinary")) {
+            cloudDeletes.push(cloudinary.uploader.destroy(cloudinaryPublicId(user.coverPhoto)));
+        }
+        await Promise.allSettled(cloudDeletes);
+
+        await Promise.all([
+            Comment.deleteMany({ $or: [{ post_Id: { $in: postIds } }, { userId }] }),
+            Post.deleteMany({ userId }),
+            Message.deleteMany({ $or: [{ sender: userId }, { receiver: userId }] }),
+            Story.deleteMany({ userId }),
+            ConnectionRequest.deleteMany({ $or: [{ userId }, { connectionId: userId }] }),
+            Notification.deleteMany({ $or: [{ userId }, { fromUser: userId }] }),
+            Report.deleteMany({ reporterId: userId }),
+            Profile.deleteOne({ userId }),
+        ]);
+
+        await User.deleteOne({ _id: userId });
+
+        res.clearCookie("refreshToken", { path: "/api" });
+        return res.json({ message: "Account permanently deleted" });
+    } catch (error) {
+        console.error("Delete account error:", error);
+        return res.status(500).json({ message: error.message });
+    }
+};
