@@ -24,13 +24,27 @@ const hashToken = (token) => crypto.createHash("sha256").update(token).digest("h
 // cookie is still there and unexpired, otherwise it's a normal re-login.
 export const refreshCookieName = (userId) => `rt_${userId}`;
 
+// Frontend (vercel.app) and backend (onrender.com) are different sites in
+// production — a genuinely cross-site relationship, not just cross-port
+// like local dev. SameSite=Lax cookies are never attached to cross-site
+// XHR/fetch (only top-level GET navigations), so every /auth/refresh call
+// silently carried no cookie at all once the 15-minute access token expired,
+// bouncing the user to login. SameSite=None (paired with Secure, required
+// alongside it) is what actually lets a cross-site XHR send this cookie;
+// local dev stays "lax" since localhost:PORT is same-site regardless of port.
+const isCrossSiteDeploy = process.env.NODE_ENV === "production";
+
+export const refreshCookieOptions = () => ({
+    httpOnly: true,
+    secure: isCrossSiteDeploy,
+    sameSite: isCrossSiteDeploy ? "none" : "lax",
+    path: "/api"
+});
+
 const setRefreshCookie = (res, refreshToken, userId) => {
     res.cookie(refreshCookieName(userId), refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: REFRESH_TOKEN_TTL_MS,
-        path: "/api"
+        ...refreshCookieOptions(),
+        maxAge: REFRESH_TOKEN_TTL_MS
     });
 };
 

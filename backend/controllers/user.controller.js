@@ -23,7 +23,7 @@ import Report from "../models/report.model.js";
 import ConvertUserDataToPdf from "./PdfFormat.js";
 import { escapeRegex } from "../utils/regex.js";
 import { issueOtp } from "./otp.controller.js";
-import { issueSession, hashToken, refreshCookieName } from "../utils/session.js";
+import { issueSession, hashToken, refreshCookieName, refreshCookieOptions } from "../utils/session.js";
 
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
 
@@ -242,7 +242,7 @@ export const logout = async (req, res) => {
         const { userId } = req.body || {};
         if (userId) {
             await User.findByIdAndUpdate(userId, { refreshTokenHash: null });
-            res.clearCookie(refreshCookieName(userId), { path: "/api" });
+            res.clearCookie(refreshCookieName(userId), refreshCookieOptions());
         }
         return res.json({ message: "Logged out successfully" });
     } catch (error) {
@@ -267,17 +267,17 @@ export const switchAccount = async (req, res) => {
         try {
             decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
         } catch {
-            res.clearCookie(cookieName, { path: "/api" });
+            res.clearCookie(cookieName, refreshCookieOptions());
             return res.status(401).json({ message: "Session expired, please log in again", needsLogin: true });
         }
 
         const user = await User.findById(decoded.userId);
         if (!user || !user.active) {
-            res.clearCookie(cookieName, { path: "/api" });
+            res.clearCookie(cookieName, refreshCookieOptions());
             return res.status(401).json({ message: "Account unavailable", needsLogin: true });
         }
         if (user.refreshTokenHash !== hashToken(token)) {
-            res.clearCookie(cookieName, { path: "/api" });
+            res.clearCookie(cookieName, refreshCookieOptions());
             return res.status(401).json({ message: "Session expired, please log in again", needsLogin: true });
         }
 
@@ -911,7 +911,7 @@ export const deleteMyAccount = async (req, res) => {
 
         await User.deleteOne({ _id: userId });
 
-        res.clearCookie("refreshToken", { path: "/api" });
+        res.clearCookie("refreshToken", refreshCookieOptions());
         return res.json({ message: "Account permanently deleted" });
     } catch (error) {
         console.error("Delete account error:", error);
