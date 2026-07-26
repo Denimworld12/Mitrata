@@ -1,86 +1,277 @@
-/* Main Layout Container */
-.homeContainer {
-    display: flex;
-    margin-top: 5px;
-    /* Aligns content exactly below your 40px navbar */
-    min-height: calc(100vh - 40px);
-    width: 100%;
+/* Ambient background — two blurred gradient orbs, fixed corners, drift slowly */
+.orbTopLeft,
+.orbBottomRight {
+    position: fixed;
+    width: 46vw;
+    max-width: 620px;
+    aspect-ratio: 1;
+    background-image: url('/brand/orb-violet.png');
+    background-size: cover;
+    opacity: var(--mt-orb-opacity);
+    filter: blur(60px);
+    pointer-events: none;
+    z-index: -1;
+    animation: mtDrift 32s ease-in-out infinite;
 }
 
-/* Left Sidebar (Fixed/Sticky) */
-.homeContainer_leftBar {
-    flex: 0.2;
-    /* Your 20% ratio */
+.orbTopLeft {
+    top: -18vw;
+    left: -18vw;
+}
+
+.orbBottomRight {
+    bottom: -18vw;
+    right: -18vw;
+    background-image: url('/brand/orb-sunset.png');
+    animation-duration: 38s;
+    animation-delay: -6s;
+}
+
+/* Root shell: ONE fixed-viewport flex row — sidebar spans full height on the
+   left, everything else (header + page content) is the content column on the
+   right. The whole shell is exactly 100vh with NO page-level scroll; only
+   .mainRow scrolls internally. This is what makes pages like Messaging able
+   to fill "the remaining height/width" exactly, with no magic-number vh math —
+   they just size to 100% of an ancestor that's already the right size. */
+.shellRoot {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Left Sidebar — full shell height, the ONLY place the logo lives.
+   Translucent (veil + blur), not solid, so the ambient orb glow bleeds
+   through it like the rest of the shell's glass surfaces. */
+.sidebar {
+    flex: 0 0 252px;
+    height: 100%;
     display: flex;
     flex-direction: column;
-
-    /* Using sticky instead of fixed allows it to respect the 2-6-2 grid 
-       while remaining pinned as you scroll the feed */
-    position: sticky;
-    top: 40px;
-    height: calc(100vh - 40px);
-
-    background-color: #fff;
-    border-right: 1px solid #e5e5e5;
-    z-index: 10;
+    background: var(--mt-veil);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-right: 1px solid var(--mt-border);
+    z-index: 3;
+    padding: 20px 0;
 }
 
-/* Middle Feed (Scrolling) */
-.homeContainer_feedContainer {
-    flex: 0.6;
-    /* Your 60% ratio */
-    width: 100%;
-    min-height: 100vh;
-    padding: 0 10px;
+/* --- Sidebar logo (real brand assets, recolored with the gradient via mask) --- */
+.sidebarLogoRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 4px 1rem 20px;
+    position: relative;
 }
 
-/* Right Sidebar (Scrolling) */
-.homeContainer_extraContainer {
-    flex: 0.2;
-    /* Your 20% ratio */
-    padding: 20px;
+.sidebarLogo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.portalSwitcherWrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.portalSwitcherBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: 1px solid var(--mt-border);
+    background: var(--mt-surface);
+    color: var(--mt-ink2);
+    cursor: pointer;
+}
+
+.portalSwitcherMenu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 220px;
+    background: var(--mt-surface);
+    border: 1px solid var(--mt-border);
+    border-radius: 14px;
+    box-shadow: var(--mt-shadow);
+    padding: 6px;
+    z-index: 50;
+}
+
+.portalSwitcherItem {
+    padding: 8px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.portalSwitcherItem:hover {
+    background: var(--mt-sunken);
+}
+
+.portalSwitcherItemActive {
+    background: var(--mt-grad-soft);
+}
+
+.portalSwitcherTitle {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mt-ink);
+}
+
+.portalSwitcherSubtitle {
+    font-size: 11px;
+    color: var(--mt-ink3);
+}
+
+.portalOverline {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--mt-ink3);
+    margin: 0 1rem 10px;
+}
+
+.backToAppBtn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 1rem 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px dashed var(--mt-border);
+    color: var(--mt-ink2);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.backToAppBtn:hover {
+    background: var(--mt-sunken);
+    color: var(--mt-ink);
+}
+
+.sidebarLogoMark {
+    display: block;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    background: var(--mt-grad);
+    -webkit-mask-image: url('/brand/mitrata-mark.png');
+    mask-image: url('/brand/mitrata-mark.png');
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+}
+
+.sidebarLogoWordmark {
+    display: inline-block;
+    font-family: var(--mt-font-display);
+    font-size: 21px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    background: var(--mt-grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+}
+
+.sidebarLogoTagline {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--mt-ink3);
+    margin-top: 2px;
+}
+
+.navList {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* Single sliding indicator behind the active row — replaces a per-item static
+   highlight so switching pages animates the pill instead of jump-cutting it. */
+.activePill {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    top: 0;
+    height: 42px;
+    border-radius: 12px;
+    background: var(--mt-grad-soft);
+    border: 1px solid var(--mt-border);
+    transition: transform 0.42s var(--mt-ease);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.activePill::before {
+    content: '';
+    position: absolute;
+    left: -1rem;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--mt-grad);
 }
 
 /* --- Sidebar Navigation Items --- */
 .SideOptions {
-    margin-left: 2rem;
+    margin-left: 1rem;
+    margin-right: 1rem;
     display: flex;
     align-items: center;
-    font-size: 18px;
-    /* Slightly reduced for better fit */
-    margin-bottom: 12px;
+    height: 42px;
+    font-size: 14.5px;
+    font-weight: 500;
+    color: var(--mt-ink2);
+    margin-bottom: 4px;
     cursor: pointer;
     gap: 0.8rem;
-    transition: all 0.2s ease;
+    padding: 0 12px;
+    border-radius: 12px;
+    transition: color 0.2s var(--mt-ease);
+    position: relative;
+    z-index: 1;
 }
 
 .SideOptions:hover {
-    transform: translateX(5px);
-    color: #060dc8;
+    color: var(--mt-ink);
 }
 
-.SideOptions svg {
-    height: 1.4rem;
-    width: 1.4rem;
+.navIcon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
 }
 
 .SideOptionsActive {
-    color: #0a66c2 !important;
-    background: #e8f0fe;
-    border-radius: 8px;
-    font-weight: 700;
-    padding: 8px 10px;
-    margin-left: 1rem;
+    color: var(--mt-ink) !important;
+    font-weight: 600;
 }
 
 .sidebarBadge {
-    background: #ef4444;
+    background: var(--mt-grad);
     color: white;
     font-size: 10px;
     font-weight: 700;
     min-width: 18px;
     height: 18px;
-    border-radius: 50%;
+    border-radius: 999px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -90,164 +281,296 @@
 
 .optionName {
     display: flex;
+}
+
+/* --- "New post" pill (desktop sidebar only, spec: gradient, feather icon, glow) --- */
+.newPostBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 44px;
+    margin: 10px 1rem 0;
+    border: none;
+    border-radius: 999px;
+    background: var(--mt-grad);
+    color: #fff;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 10px 24px -12px rgba(4, 71, 255, .7);
+    transition: transform 0.2s var(--mt-ease);
+}
+
+.newPostBtn:hover {
+    transform: translateY(-2px);
+}
+
+/* --- Mobile bottom tab bar (curated 5-slot layout: Home, Reels, +, Groups, Chats) --- */
+.mobileNavList {
+    display: none;
+}
+
+.mobileTabItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    flex: 1;
+    height: 100%;
+    color: var(--mt-ink2);
+    cursor: pointer;
+}
+
+.mobileTabActive {
+    color: var(--mt-ink);
+}
+
+.mobileTabActive .navIcon {
+    color: var(--mt-ink);
+}
+
+.mobileTabLabel {
+    font-size: 10px;
     font-weight: 500;
 }
 
-/* --- Top Profiles Section --- */
-.topTitle {
-    font-size: 15px;
-    font-weight: 600;
-    margin-bottom: 15px;
-    color: #444;
-}
-
-.topProfileCard {
-    width: 100%;
+.mobileTabBadge {
+    position: absolute;
+    top: 2px;
+    right: 22%;
+    background: var(--mt-grad);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 999px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    justify-content: center;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+.mobileFab {
+    display: none;
+}
+
+/* --- Bottom user chip --- */
+.userChipWrap {
+    position: relative;
+    margin-top: auto;
+}
+
+.userChip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 1rem 0;
     padding: 10px;
-    border-radius: 12px;
-    background: #fdfdfd;
-    border: 1px solid #eee;
-    margin-bottom: 8px;
-    transition: all 0.2s;
+    border-radius: 14px;
+    border: 1px solid var(--mt-border);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.userChip:hover {
+    background: var(--mt-sunken);
+}
+
+.userChipAvatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.userChipInfo {
+    flex: 1;
+    min-width: 0;
+}
+
+.userChipName {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mt-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.userChipHandle {
+    font-size: 11.5px;
+    color: var(--mt-ink3);
+}
+
+.userChipSwitchBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    border: 1px solid var(--mt-border);
+    background: var(--mt-surface);
+    color: var(--mt-ink2);
+    flex-shrink: 0;
     cursor: pointer;
 }
 
-.topProfileCard:hover {
-    background: #f0f2ff;
-    border-color: #060dc8;
+.userChipSwitchBtn:hover {
+    color: var(--mt-ink);
 }
 
-.topProfileImg {
-    width: 40px;
-    height: 40px;
+/* Portal/account switcher menu opens upward from the bottom user chip
+   instead of downward (like it did from the top logo row) — there's no
+   room below it. */
+.portalSwitcherMenuUp {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 1rem;
+    right: 1rem;
+    top: auto;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.portalSwitcherDivider {
+    height: 1px;
+    background: var(--mt-border);
+    margin: 6px 4px;
+}
+
+.portalSwitcherOverline {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mt-ink3);
+    padding: 4px 10px 2px;
+}
+
+.portalSwitcherAccountRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.portalSwitcherAccountAvatar {
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     object-fit: cover;
+    flex-shrink: 0;
 }
 
-.topProfileInfo {
+/* --- Content column: header (Navbar) + main row (feed + right rail) ---
+   height:100% of the fixed-height shellRoot, overflow hidden — only .mainRow
+   scrolls. This is what gives pages like Messaging an exact "remaining
+   height/width" to fill via height:100%, no vh-minus-magic-number math. */
+.contentColumn {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
-.topProfileName {
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
+.mainRow {
+    flex: 1;
+    min-height: 0;
+    /* required for a flex child to actually be scrollable, not grow forever */
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px 10px 60px;
+    overflow-y: auto;
 }
 
-.topProfileUsername {
-    font-size: 12px;
-    color: #888;
+/* Messaging wants every pixel of the content column, not a centered card
+   with dead space around it — this only wins at desktop widths (the
+   <1224px .mainRow override below still applies its own bottom padding,
+   which is real space reserved for the fixed bottom tab bar, not slack). */
+.mainRowFlush {
+    padding: 0;
+    gap: 0;
 }
 
-/* --- RESPONSIVE DESIGN (< 1024px) --- */
-@media (max-width: 1224px) {
-    .homeContainer {
-        flex-direction: column;
-        margin-top: 5px;
-    }
-
-    .homeContainer_extraContainer {
-        display: none !important;
-    }
-
-    .homeContainer_leftBar {
-        position: fixed;
-        bottom: 0;
-        top: auto;
-        left: 0;
-        width: 100%;
-        height: 65px;
-        flex-direction: row !important;
-        justify-content: space-around;
-        border-right: none;
-        border-top: 1px solid rgba(0, 0, 0, 0.1);
-        z-index: 2000;
-        padding-top: 0;
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        padding-bottom: env(safe-area-inset-bottom);
-        /* iPhone X+ safe area */
-        height: calc(60px + env(safe-area-inset-bottom));
-        box-shadow: 0 -1px 10px rgba(0, 0, 0, 0.05);
-    }
-
-    .homeContainer_feedContainer {
-        flex: 1;
-        width: 100%;
-        margin-left: 0;
-        padding-bottom: 80px;
-        /* Prevents content hiding behind bottom nav */
-    }
-
-    .optionName {
-        display: none !important;
-    }
-
-    .SideOptions {
-        margin: 0 !important;
-        flex: 1;
-        justify-content: center;
-    }
+.feedContainer {
+    flex: 1;
+    min-width: 0;
+    max-width: 600px;
 }
 
-/* --- Right Sidebar (Top Profiles) --- */
-.homeContainer_extraContainer {
-    flex: 0.2;
-    padding: 15px 10px;
-    /* Reduced padding to save width */
+.extraContainer {
+    flex: 0 0 280px;
     position: sticky;
-    top: 40px;
-    height: fit-content;
+    top: 0;
+    /* sticky relative to .mainRow, which is now the scrolling ancestor */
 }
 
-.homeContainer_extraContainer h3 {
-    font-size: 13px;
-    /* Smaller header */
+.extraContainer h3 {
+    font-size: 11px;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #666;
+    letter-spacing: 0.08em;
+    color: var(--mt-ink3);
     margin-bottom: 12px;
 }
 
-/* --- Minimized Profile Card --- */
+.trendingCard {
+    padding: 12px;
+    border-radius: 14px;
+    background: var(--mt-surface);
+    border: 1px solid var(--mt-border);
+    box-shadow: var(--mt-shadow);
+    margin-bottom: 16px;
+}
+
+.trendingRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 4px;
+}
+
+.trendingTag {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mt-accent);
+}
+
+.trendingCount {
+    font-size: 11.5px;
+    color: var(--mt-ink3);
+}
+
 .topProfileCard {
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 8px;
-    /* Tight gap */
-    padding: 6px 8px;
-    /* Very compact vertical padding */
-    border-radius: 8px;
-    background: #fff;
-    border: 1px solid #f0f0f0;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 12px;
+    background: var(--mt-surface);
+    border: 1px solid var(--mt-border);
     margin-bottom: 6px;
-    /* Tighter spacing between cards */
-    transition: background 0.2s;
+    transition: box-shadow 0.2s, transform 0.2s var(--mt-ease);
     cursor: pointer;
 }
 
 .topProfileCard:hover {
-    background: #f6f8fa;
-    border-color: #0a66c2;
-}
-
-/* --- Ranking Number --- */
-.rankNumber {
-    font-size: 11px;
-    font-weight: 700;
-    color: #999;
-    min-width: 12px;
+    box-shadow: var(--mt-shadow);
+    transform: translateY(-1px);
 }
 
 .topProfileImg {
     width: 32px;
-    /* Minimized from 40px/44px */
     height: 32px;
     border-radius: 50%;
     object-fit: cover;
@@ -259,39 +582,156 @@
     flex-direction: column;
     flex: 1;
     min-width: 0;
-    /* Important for text truncation */
 }
 
 .topProfileName {
     font-size: 13px;
-    /* Slightly smaller */
     font-weight: 600;
-    color: #333;
+    color: var(--mt-ink);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    /* Prevents layout breaking on long names */
     line-height: 1.2;
 }
 
 .topProfileUsername {
     font-size: 11px;
-    color: #888;
+    color: var(--mt-ink3);
     line-height: 1.2;
 }
 
-/* --- Minimized Post Badge --- */
-.postCountBadge {
-    font-size: 10px;
-    color: #0a66c2;
-    font-weight: 600;
-    margin-top: 1px;
+.connectBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 999px;
+    background: var(--mt-grad);
+    color: #fff;
+    cursor: pointer;
+    transition: transform 0.15s var(--mt-ease);
 }
 
-/* Ensure the middle feed takes up correct space */
-.homeContainer_feedContainer {
-    flex: 0.6;
-    max-width: 600px;
-    /* Standard feed width */
-    margin: 0 auto;
+.connectBtn:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.connectBtn:disabled {
+    cursor: default;
+}
+
+.connectBtnSent {
+    background: var(--mt-sunken);
+    color: var(--mt-ink2);
+}
+
+/* --- RESPONSIVE DESIGN (< 1225px): sidebar becomes bottom tab bar --- */
+@media (max-width: 1224px) {
+    .shellRoot {
+        flex-direction: column;
+    }
+
+    .extraContainer {
+        display: none !important;
+    }
+
+    .mainRow {
+        padding: 20px 10px 80px;
+        /* keeps content clear of the bottom tab bar */
+    }
+
+    .sidebar {
+        position: fixed;
+        bottom: 0;
+        top: auto;
+        left: 0;
+        width: 100%;
+        height: auto;
+        flex-direction: row !important;
+        justify-content: space-around;
+        border-right: none;
+        border-top: 1px solid var(--mt-border);
+        z-index: 2000;
+        padding: 0;
+        /* Solid, not the translucent --mt-veil used elsewhere — a
+           see-through bottom bar reads as broken/unfinished on mobile,
+           especially over busy feed content scrolling underneath it. */
+        background: var(--mt-surface);
+        padding-bottom: env(safe-area-inset-bottom);
+        height: calc(60px + env(safe-area-inset-bottom));
+        box-shadow: 0 -1px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .userChipWrap,
+    .sidebarLogoRow,
+    .portalOverline,
+    .backToAppBtn,
+    .newPostBtn {
+        display: none;
+    }
+
+    /* App shell: the full desktop nav list is replaced by .mobileNavList below.
+       Admin portal: only 3 items, so it keeps using .navList as a compact bar. */
+    .navList:not(.navListPortal) {
+        display: none;
+    }
+
+    .navListPortal {
+        flex-direction: row;
+        flex: 1;
+    }
+
+    .navListPortal .optionName {
+        font-size: 10px;
+        font-weight: 500;
+    }
+
+    .navListPortal .SideOptions {
+        margin: 0 !important;
+        height: auto;
+        flex: 1;
+        flex-direction: column;
+        gap: 2px;
+        justify-content: center;
+        border-radius: 0;
+    }
+
+    .navListPortal .sidebarBadge {
+        position: absolute;
+        top: 2px;
+        right: 18%;
+    }
+
+    /* The sliding pill assumes a vertical column layout; the portal's mobile
+       bar is horizontal, so fall back to the plain color+weight active state. */
+    .activePill {
+        display: none;
+    }
+
+    .mobileNavList {
+        display: flex;
+        flex: 1;
+        align-items: center;
+        justify-content: space-around;
+    }
+
+    .mobileFab {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 44px;
+        width: 44px;
+        height: 44px;
+        margin: 0 2px;
+        border: none;
+        border-radius: 999px;
+        background: var(--mt-grad);
+        color: #fff;
+        cursor: pointer;
+        transform: translateY(-10px);
+        box-shadow: 0 10px 24px -12px rgba(4, 71, 255, .7);
+    }
 }

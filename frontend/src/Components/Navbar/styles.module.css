@@ -1,38 +1,47 @@
 .container {
-    position: fixed;
+    position: sticky;
     top: 0;
     width: 100%;
-    z-index: 2000;
-    transition: transform 0.3s ease-in-out;
-    background: white;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    z-index: 4;
+    background: var(--mt-veil);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--mt-border);
 }
 
-.navVisible {
-    transform: translateY(0);
-}
-
-.navHidden {
-    transform: translateY(-100%);
+/* Inside the app shell, the sidebar already shows the logo — only show it
+   here below the shell's sidebar-to-bottom-bar breakpoint (1224px). */
+@media (min-width: 1225px) {
+    .inShell .logo {
+        display: none;
+    }
 }
 
 .navbar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 12px;
     max-width: 1200px;
     margin: 0 auto;
     height: 65px;
     padding: 0 1rem;
 }
 
+/* Inside the shell, the header spans the content column edge-to-edge —
+   the column itself already provides the width constraint. */
+.inShell .navbar {
+    max-width: none;
+    margin: 0;
+}
+
 .rightSection {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    margin-left: auto;
 }
 
-/* ===== NAV ICONS (Message, Bell) ===== */
+/* ===== NAV ICONS (Message, Bell, Theme) ===== */
 .navIcon {
     position: relative;
     display: flex;
@@ -44,18 +53,23 @@
     background: transparent;
     border: none;
     cursor: pointer;
-    color: #555;
-    transition: all 0.2s;
+    color: var(--mt-ink2);
+    transition: all 0.2s var(--mt-ease);
 }
 
 .navIcon:hover {
-    background: #f1f5f9;
-    color: #0a66c2;
+    background: var(--mt-sunken);
+    color: var(--mt-accent);
 }
 
 .navIcon svg {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
+}
+
+/* Theme toggle specifically rotates on hover, rather than lifting/shifting */
+.themeToggle:hover {
+    transform: rotate(-25deg);
 }
 
 /* Badge */
@@ -65,28 +79,23 @@
     right: 2px;
     min-width: 18px;
     height: 18px;
-    background: #ef4444;
+    background: var(--mt-live);
     color: white;
     font-size: 10px;
     font-weight: 700;
-    border-radius: 50%;
+    border-radius: 999px;
     display: flex;
     align-items: center;
     justify-content: center;
     line-height: 1;
     padding: 0 4px;
-    border: 2px solid white;
-    animation: badgePop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 2px solid var(--mt-surface);
+    animation: badgePop 0.3s cubic-bezier(0.16, 1, 0.3, 1), mtPulse 2.4s ease-in-out infinite;
 }
 
 @keyframes badgePop {
-    from {
-        transform: scale(0);
-    }
-
-    to {
-        transform: scale(1);
-    }
+    from { transform: scale(0); }
+    to { transform: scale(1); }
 }
 
 /* ===== NOTIFICATION DROPDOWN ===== */
@@ -99,25 +108,30 @@
     top: 50px;
     right: -50px;
     width: 340px;
-    background: white;
-    border-radius: 14px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-    border: 1px solid #e5e7eb;
+    background: var(--mt-surface);
+    border-radius: 18px;
+    box-shadow: var(--mt-shadow-lg);
+    border: 1px solid var(--mt-border);
     overflow: hidden;
-    animation: slideIn 0.2s ease-out;
+    animation: slideIn 0.2s var(--mt-ease);
     z-index: 100;
 }
 
 .notifDropdownHeader {
     padding: 14px 18px;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--mt-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
 }
 
 .notifDropdownHeader h4 {
     margin: 0;
+    font-family: var(--font-display);
     font-size: 1rem;
-    color: #1a1a1a;
-    font-weight: 700;
+    font-weight: 500;
+    color: var(--mt-ink);
 }
 
 .notifDropdownList {
@@ -130,13 +144,13 @@
     align-items: center;
     gap: 10px;
     padding: 12px 18px;
-    border-bottom: 1px solid #fafafa;
+    border-bottom: 1px solid var(--mt-sunken);
     cursor: pointer;
     transition: background 0.15s;
 }
 
 .notifDropdownItem:hover {
-    background: #f8fafc;
+    background: var(--mt-sunken);
 }
 
 .notifDropdownAvatar {
@@ -156,7 +170,7 @@
     margin: 0;
     font-size: 0.85rem;
     font-weight: 600;
-    color: #333;
+    color: var(--mt-ink);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -165,7 +179,7 @@
 .notifDropdownMsg {
     margin: 2px 0 0;
     font-size: 0.78rem;
-    color: #888;
+    color: var(--mt-ink2);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -173,7 +187,7 @@
 
 .notifDropdownTime {
     font-size: 0.7rem;
-    color: #bbb;
+    color: var(--mt-ink3);
     white-space: nowrap;
     flex-shrink: 0;
 }
@@ -181,7 +195,7 @@
 .notifEmpty {
     text-align: center;
     padding: 30px 20px;
-    color: #aaa;
+    color: var(--mt-ink3);
     font-size: 0.85rem;
 }
 
@@ -192,26 +206,32 @@
     gap: 10px;
     cursor: pointer;
     padding: 4px 8px;
-    border-radius: 50px;
+    border-radius: 999px;
     transition: background 0.2s;
 }
 
 .appProfile:hover {
-    background: #f1f5f9;
+    background: var(--mt-sunken);
 }
 
 .miniAvatar {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid #162ea5;
+    border: 2px solid transparent;
+    background: var(--mt-grad) border-box;
+    -webkit-mask:
+        linear-gradient(#fff 0 0) padding-box,
+        linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
 }
 
 .desktopName {
     font-weight: 600;
-    font-size: 0.95rem;
-    color: #333;
+    font-size: 0.9rem;
+    color: var(--mt-ink);
 }
 
 /* ===== MENU ===== */
@@ -223,77 +243,87 @@
     position: absolute;
     top: 50px;
     right: 0;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    background: var(--mt-surface);
+    border-radius: 14px;
+    box-shadow: var(--mt-shadow-lg);
     padding: 12px;
-    width: 180px;
-    border: 1px solid #eee;
+    width: 220px;
+    max-height: 70vh;
+    overflow-y: auto;
+    border: 1px solid var(--mt-border);
     display: flex;
     flex-direction: column;
     gap: 8px;
-    animation: slideIn 0.2s ease-out;
+    animation: slideIn 0.2s var(--mt-ease);
+}
+
+.menuDivider {
+    height: 1px;
+    background: var(--mt-border);
+    margin: 2px 0;
+}
+
+.menuOverline {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mt-ink3);
+    margin: 0 0 -2px 12px;
+}
+
+.switchAccountAvatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
 }
 
 @keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.profileMenuItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--mt-ink);
+    padding: 10px 12px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.profileMenuItem:hover {
+    background: var(--mt-sunken);
 }
 
 .logoutBtn {
-    color: #ef4444;
-    padding: 10px;
-    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--mt-danger);
+    padding: 10px 12px;
+    border-radius: 999px;
     font-size: 0.9rem;
     font-weight: 700;
     cursor: pointer;
-    text-align: center;
-    background: #fff5f5;
+    background: color-mix(in srgb, var(--mt-danger) 12%, transparent);
     transition: 0.2s;
 }
 
 .logoutBtn:hover {
-    background: #fee2e2;
-}
-
-.mobileToggle {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    cursor: pointer;
-    padding: 10px 5px;
-}
-
-.mobileToggle span {
-    width: 4px;
-    height: 4px;
-    background: #666;
-    border-radius: 50%;
-}
-
-.welcomeTextMobile {
-    display: none;
-    font-size: 0.8rem;
-    color: #666;
-    padding: 0 5px 8px 5px;
-    border-bottom: 1px solid #f0f0f0;
+    background: color-mix(in srgb, var(--mt-danger) 20%, transparent);
 }
 
 /* ===== TABLET & MOBILE ===== */
 @media (max-width: 1024px) {
     .desktopName {
         display: none;
-    }
-
-    .welcomeTextMobile {
-        display: block;
     }
 
     .miniAvatar {
@@ -318,24 +348,33 @@
 }
 
 .buttonJoin {
-    background: #162ea5;
+    background: var(--mt-grad);
     color: white;
     padding: 8px 20px;
-    border-radius: 50px;
+    border-radius: 999px;
     font-weight: 600;
     cursor: pointer;
 }
 
 .logo {
     cursor: pointer;
-    font-size: 1.4rem;
-    font-weight: 800;
-    color: #162ea5;
-    letter-spacing: -0.5px;
+    width: 90px;
+    height: 28px;
+    background: var(--mt-grad);
+    -webkit-mask-image: url('/brand/mitrata-wordmark.png');
+    mask-image: url('/brand/mitrata-wordmark.png');
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: left center;
+    mask-position: left center;
 }
 
 /* ===== SEARCH BAR ===== */
 .searchContainer {
+    flex: 1;
+    max-width: 420px;
     margin-right: 16px;
     display: flex;
     align-items: center;
@@ -345,24 +384,26 @@
     position: relative;
     display: flex;
     align-items: center;
-    background: #f1f5f9;
-    border-radius: 20px;
+    width: 100%;
+    background: var(--mt-sunken);
+    border-radius: 999px;
     padding: 6px 12px;
     border: 1px solid transparent;
     transition: all 0.2s;
 }
 
 .searchWrapper:focus-within {
-    background: #fff;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    background: var(--mt-surface);
+    border-color: var(--mt-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--mt-accent) 15%, transparent);
 }
 
 .searchIcon {
     width: 18px;
     height: 18px;
-    color: #94a3b8;
+    color: var(--mt-ink3);
     margin-right: 8px;
+    flex-shrink: 0;
 }
 
 .searchInput {
@@ -370,12 +411,24 @@
     background: transparent;
     outline: none;
     font-size: 14px;
-    color: #334155;
-    width: 180px;
+    color: var(--mt-ink);
+    width: 100%;
+    min-width: 0;
 }
 
 .searchInput::placeholder {
-    color: #cbd5e1;
+    color: var(--mt-ink3);
+}
+
+.kbdChip {
+    font-size: 11px;
+    color: var(--mt-ink3);
+    background: var(--mt-surface);
+    border: 1px solid var(--mt-border);
+    border-radius: 6px;
+    padding: 1px 6px;
+    margin-left: 8px;
+    font-family: var(--mt-font-ui);
 }
 
 @media (max-width: 768px) {

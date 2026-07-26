@@ -1,5 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { getAboutUser, loginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, acceptConnectionRequest, downloadResume, updateUserProfile, logout } from "../../action/authAction/index";
+import { getAboutUser, loginUser, googleLoginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, acceptConnectionRequest, downloadResume, updateUserProfile, logout, verifyOtp, resendOtp, sendOtp, resetPasswordAction, deleteAccount, switchAccountAction } from "../../action/authAction/index";
+import { rememberAccount } from "../../../savedAccounts";
 
 
 
@@ -59,6 +60,23 @@ const authSlice = createSlice({
                 state.isError = true
                 state.message = action.payload.message || 'Login failed';
             })
+            .addCase(googleLoginUser.pending, (state) => {
+                state.isLoading = true
+                state.message = "signing in with Google"
+            })
+            .addCase(googleLoginUser.fulfilled, (state) => {
+                state.isLoading = false
+                state.isSuccess = true
+                state.isError = false
+                state.loggedIn = true
+                state.isTokenThere = true
+                state.message = "Login successful"
+            })
+            .addCase(googleLoginUser.rejected, (state, action) => {
+                state.isLoading = false
+                state.isError = true
+                state.message = action.payload?.message || 'Google login failed';
+            })
             .addCase(registerUser.pending, (state) => {
                 state.isLoading = true
                 state.isError = false
@@ -69,11 +87,10 @@ const authSlice = createSlice({
                 state.isLoading = false;
                 state.isError = false;
                 state.isSuccess = true;
-                state.loggedIn = true;
-                state.isTokenThere = true
-
-                state.user = action.payload.user || null;
-                state.message = action.payload.message || "Registration success, please log in.";
+                // No token yet — the account exists but is unverified until
+                // the OTP flow completes (see verifyOtp below), so this
+                // shouldn't look logged-in.
+                state.message = action.payload.message || "Registration successful";
             })
             .addCase(registerUser.rejected, (state, action) => {
                 state.isLoading = false;
@@ -89,6 +106,7 @@ const authSlice = createSlice({
 
                 // state.connection = action.payload.connection,
                 // state.connectionRequest = action.payload.connectionRequest
+                if (action.payload?.userId) rememberAccount(action.payload.userId);
             })
             .addCase(getAboutUser.rejected, (state) => {
                 state.isLoading = false;
@@ -183,6 +201,107 @@ const authSlice = createSlice({
                 state.all_user = [];
                 state.connectionRequest = [];
                 state.all_profile_fetched = false;
+            })
+            .addCase(sendOtp.pending, (state) => {
+                state.isLoading = true
+                state.isError = false
+            })
+            .addCase(sendOtp.fulfilled, (state, action) => {
+                state.isLoading = false
+                state.isError = false
+                state.message = action.payload.message
+            })
+            .addCase(sendOtp.rejected, (state, action) => {
+                state.isLoading = false
+                state.isError = true
+                state.message = action.payload?.message || "Failed to send code"
+            })
+            .addCase(resendOtp.pending, (state) => {
+                state.isLoading = true
+            })
+            .addCase(resendOtp.fulfilled, (state, action) => {
+                state.isLoading = false
+                state.isError = false
+                state.message = action.payload.message
+            })
+            .addCase(resendOtp.rejected, (state, action) => {
+                state.isLoading = false
+                state.isError = true
+                state.message = action.payload?.message || "Failed to resend code"
+            })
+            .addCase(verifyOtp.pending, (state) => {
+                state.isLoading = true
+                state.isError = false
+            })
+            .addCase(verifyOtp.fulfilled, (state, action) => {
+                state.isLoading = false
+                state.isError = false
+                state.message = action.payload.message
+                // Only the "signup" purpose auto-issues a session token —
+                // reset_password hands back a resetToken instead, no login here.
+                if (action.meta.arg?.purpose === "signup" && action.payload.token) {
+                    state.loggedIn = true
+                    state.isTokenThere = true
+                }
+            })
+            .addCase(verifyOtp.rejected, (state, action) => {
+                state.isLoading = false
+                state.isError = true
+                state.message = action.payload?.message || "Verification failed"
+            })
+            .addCase(resetPasswordAction.pending, (state) => {
+                state.isLoading = true
+                state.isError = false
+            })
+            .addCase(resetPasswordAction.fulfilled, (state, action) => {
+                state.isLoading = false
+                state.isError = false
+                state.message = action.payload.message
+            })
+            .addCase(resetPasswordAction.rejected, (state, action) => {
+                state.isLoading = false
+                state.isError = true
+                state.message = action.payload?.message || "Reset failed"
+            })
+            .addCase(deleteAccount.fulfilled, (state) => {
+                state.user = null;
+                state.isError = false;
+                state.isLoading = false;
+                state.loggedIn = false;
+                state.isTokenThere = false;
+                state.message = "Account deleted";
+                state.profileFetched = false;
+                state.connection = [];
+                state.all_user = [];
+                state.connectionRequest = [];
+                state.all_profile_fetched = false;
+            })
+            .addCase(deleteAccount.rejected, (state, action) => {
+                state.isLoading = false
+                state.isError = true
+                state.message = action.payload?.message || "Failed to delete account"
+            })
+            .addCase(deleteAccount.pending, (state) => {
+                state.isLoading = true
+            })
+            .addCase(switchAccountAction.pending, (state) => {
+                state.isLoading = true
+                state.isError = false
+            })
+            .addCase(switchAccountAction.fulfilled, (state) => {
+                state.isLoading = false
+                state.isError = false
+                state.loggedIn = true
+                state.isTokenThere = true
+                // Stale data from whichever account was active before —
+                // every page refetches on the next mount anyway.
+                state.user = null
+                state.profileFetched = false
+            })
+            .addCase(switchAccountAction.rejected, (state, action) => {
+                state.isLoading = false
+                state.isError = true
+                state.message = action.payload?.message || "Switch failed"
             })
 
     }

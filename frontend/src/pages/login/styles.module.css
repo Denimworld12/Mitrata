@@ -1,216 +1,238 @@
-.container{
+.container {
+    min-height: 100svh;
     display: flex;
-    justify-content: center;
-    height: 90svh;
     align-items: center;
-    background-color: #fbffe8 ;
-    margin-top: 50px;
-}
-.cardContainer {
-    height: 80vh;
-    display: flex;  
     justify-content: center;
-    overflow: hidden;
-    width: 80vw;
-    background: white;
-    /* align-items: center; */
-    border-radius: 10px;
-    box-shadow: 10px  10px 30px rgba(0, 0, 0, 0.1)  ;
+    padding: 40px 20px;
+    background: var(--mt-canvas);
 }
 
+.cardContainer {
+    width: 900px;
+    max-width: 100%;
+    min-height: 560px;
+    display: flex;
+    overflow: hidden;
+    border-radius: 28px;
+    border: 1px solid var(--mt-border);
+    background: var(--mt-surface);
+    box-shadow: var(--mt-shadow-lg);
+}
 
 .cardContainer_left {
-    flex:0.6;
-    padding: 2rem;
+    flex: 1.1;
+    padding: 48px 44px;
     text-align: center;
-}
-    .cardHeading{
-        font-size: 1.5rem;
-        font-weight: bold;
-    }
-    .inputField{
-        width: 100%;
-        padding: 0.5rem;
-        margin: 1rem 0;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        font-size: 1rem;
-    }
-    .inputRow{
-        display: flex;
-        justify-content: center;
-        gap: 1rem;
-        width: fit-content;
-    }
-    .inputContainer{
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin-top: 2rem;
-        width: 100%;
-        justify-content: center;
-        padding-top: 2rem;
-        max-width: 400px;
-        margin: 0 auto ;
-
-    }
-    .buttonWithOutline{
-        font-weight: bold;
-        font-size:x-large;
-        background-color: transparent;
-        border: none;
-        color: rgb(0, 60, 128);
-        cursor: pointer;
-        font-size: 1rem;
-        margin-top: 1rem;
-        background-color: rgb(234, 232, 232);
-        margin: 12px;
-        padding: 15px;
-        border-radius: 25px;
-        width: 100%;
-        cursor: pointer;
-    }
-.cardContainer_right {
-    flex:0.4;
-    height: 100%;
-    background-color: #044e9c;
-    color: white;
     display: flex;
     flex-direction: column;
-    justify-self: center;
+    justify-content: center;
+}
+
+.cardHeading {
+    font-family: var(--mt-font-display);
+    font-size: 1.7rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--mt-ink);
+    margin: 0;
+}
+
+.inputField {
+    width: 100%;
+    padding: 12px 16px;
+    margin: 8px 0;
+    border: 1px solid var(--mt-border);
+    background: var(--mt-canvas);
+    border-radius: 999px;
+    font-size: 0.95rem;
+    color: var(--mt-ink);
+    outline: none;
+    transition: border-color 0.18s;
+}
+
+.inputField:focus {
+    border-color: var(--mt-accent, #0447ff);
+}
+
+.inputError {
+    border-color: var(--mt-danger);
+}
+
+.inputRow {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+}
+
+.inputRow .inputField {
+    width: 50%;
+}
+
+.inputContainer {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 380px;
+    margin: 20px auto 0;
+}
+
+.cardContainer_right {
+    flex: 0.9;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 10px;
     padding: 2rem;
-    font-size: 1.2rem;
-    font-weight: bold;
-   
+    background: var(--mt-grad);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 500;
+    text-align: center;
 }
 
-.accButton{
-   background-color: rgb(255, 255, 255);
-    margin-top: 10px;
-    padding: 0.5rem 1rem;
-    border-radius: 25px;
-    
+.rightOrb {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.55;
+    mix-blend-mode: overlay;
+    pointer-events: none;
 }
 
+.rightContent {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
 
+.rightLogo {
+    width: 120px;
+    height: 38px;
+    background: #fff;
+    -webkit-mask-image: url('/brand/mitrata-wordmark.png');
+    mask-image: url('/brand/mitrata-wordmark.png');
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    margin-bottom: 6px;
+}
 
+.accButton {
+    background: #fff;
+    color: #000;
+    margin-top: 6px;
+    padding: 10px 22px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: transform 0.18s;
+}
 
-/* ... keep all your existing code above ... */
+.accButton:hover {
+    transform: translateY(-2px);
+}
 
-/* Responsive for Tablet and Mobile */
-@media (max-width: 992px) {
+/* Account chooser — offered instead of a blank sign-in form whenever this
+   browser has a still-possibly-valid session for one or more accounts. */
+.accountChoice {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    border: 1px solid var(--mt-border);
+    border-radius: 14px;
+    background: var(--mt-canvas);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.accountChoice:hover:not(:disabled) {
+    background: var(--mt-grad-soft);
+    border-color: var(--mt-border-2, var(--mt-border));
+}
+
+.accountChoice:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.accountChoiceAvatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.accountChoiceInfo {
+    min-width: 0;
+}
+
+.accountChoiceName {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--mt-ink);
+    margin: 0;
+}
+
+.accountChoiceEmail {
+    font-size: 12.5px;
+    color: var(--mt-ink3);
+}
+
+.accountChoiceOther {
+    width: 100%;
+    padding: 12px 14px;
+    margin-top: 4px;
+    border: 1px dashed var(--mt-border);
+    border-radius: 14px;
+    background: transparent;
+    color: var(--mt-ink2);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.accountChoiceOther:hover:not(:disabled) {
+    background: var(--mt-sunken);
+}
+
+@media (max-width: 860px) {
     .cardContainer {
-        width: 90vw; /* Take more width on smaller screens */
-        height: auto; /* Let the content define the height */
-        min-height: 70vh;
-        flex-direction: column; /* Stack left and right vertically */
+        flex-direction: column-reverse;
+        width: 100%;
+        min-height: 0;
     }
 
     .cardContainer_left {
-        flex: 1; /* Take full space */
-        width: 100%;
-        padding: 1.5rem;
+        padding: 40px 24px;
     }
 
     .cardContainer_right {
-        flex: none; /* Don't grow/shrink */
-        width: 100%;
-        padding: 2rem 1rem;
-        height: auto;
-        border-radius: 0; /* Optional: adjust if you want round bottom */
+        padding: 32px 20px;
     }
 
     .inputRow {
-        flex-direction: column; /* Stack Username and Name vertically on mobile */
-        width: 100%;
+        flex-direction: column;
         gap: 0;
     }
 
-    .inputContainer {
-        margin-top: 1rem;
-        padding-top: 1rem;
-    }
-}
-
-/* Specific for Mobile Phones */
-@media (max-width: 480px) {
-    .container {
-        height: auto;
-        padding: 20px 0;
-        min-height: 100svh;
-    }
-
-    .cardContainer {
-        width: 95vw;
-        border-radius: 15px;
-    }
-
-    .cardHeading {
-        font-size: 1.2rem;
-    }
-
-    .buttonWithOutline {
-        font-size: 0.9rem;
-        padding: 12px;
-    }
-}
-
-/* ... keep all your existing code ... */
-
-/* --- TABLET & MOBILE FIX --- */
-@media (max-width: 1024px) {
-    .container {
-        /* Add enough top padding to clear the 70px-80px navbar */
-        padding-top: 100px; 
-        height: auto; /* Allow the page to scroll */
-        min-height: 100vh;
-        align-items: flex-start; /* Start from top instead of centering vertically */
-    }
-
-    .cardContainer {
-        flex-direction: column; /* Stack blue box below the form */
-        height: auto;
-        width: 90vw;
-        margin-bottom: 50px; /* Space at the bottom */
-    }
-
-    .cardContainer_left {
-        flex: 1;
-        padding: 2.5rem 1.5rem;
-    }
-
-    .cardContainer_right {
-        flex: none;
-        width: 100%;
-        padding: 2rem;
-        height: auto;
-        /* Keep the blue box visible and not too tall */
-    }
-
-    /* Fix the Username/Name row for tablet widths */
-    .inputRow {
-        flex-direction: row; /* Keep side-by-side on wide tablets */
-        width: 100%;
-    }
-
-    .inputRow .inputField {
-        width: 50%; /* Each takes half width */
-    }
-}
-
-/* --- MOBILE SPECIFIC (< 600px) --- */
-@media (max-width: 600px) {
-    .inputRow {
-        flex-direction: column; /* Stack inputs only on small mobile */
-    }
-    
     .inputRow .inputField {
         width: 100%;
-    }
-
-    .cardHeading {
-        font-size: 1.8rem;
     }
 }

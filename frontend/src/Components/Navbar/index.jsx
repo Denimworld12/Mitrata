@@ -2,34 +2,26 @@ import React, { useEffect, useState, useRef } from 'react'
 import styles from './styles.module.css'
 import { useRouter } from 'next/router'
 import { useDispatch, useSelector } from 'react-redux';
-import { getAboutUser } from '@/config/redux/action/authAction';
+import { getAboutUser, logout, switchAccountAction, clearLocalSession } from '@/config/redux/action/authAction';
 import { reset, setTokenNotThere, setTokenThere } from '@/config/redux/reducer/authReducer';
 import { useNotification } from '@/Components/NotificationProvider';
+import { getSavedAccounts } from '@/config/savedAccounts';
+import { Search, MessageCircle, Bell, SunMoon, CircleUser, LogOut, ChevronsUpDown } from 'lucide-react';
 
-export default function Navbar() {
+export default function Navbar({ inShell = false }) {
     const router = useRouter();
     const dispatch = useDispatch();
     const authState = useSelector((state) => state.auth);
     const menuRef = useRef(null);
     const notifRef = useRef(null);
+    const searchRef = useRef(null);
 
-    const [prevScrollPos, setPrevScrollPos] = useState(0);
-    const [visible, setVisible] = useState(true);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+    const [isDark, setIsDark] = useState(false);
 
     const { unreadCount, clearUnread, recentNotifs } = useNotification();
-
-    useEffect(() => {
-        const handleScroll = () => {
-            const currentScrollPos = window.pageYOffset;
-            setVisible(prevScrollPos > currentScrollPos || currentScrollPos < 10);
-            setPrevScrollPos(currentScrollPos);
-        };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, [prevScrollPos]);
 
     useEffect(() => {
         setMounted(true);
@@ -41,6 +33,7 @@ export default function Navbar() {
             dispatch(setTokenNotThere());
             dispatch(reset());
         }
+        setIsDark(document.documentElement.getAttribute('data-mt-theme') === 'dark');
     }, [dispatch]);
 
     // Close menus on outside click
@@ -57,18 +50,70 @@ export default function Navbar() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Cmd/Ctrl+K focuses the search box, matching the kbd hint shown next to it
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                searchRef.current?.focus();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
     const showUserUI = mounted && (authState.isTokenThere || authState.loggedIn);
 
+    // Was clearing localStorage by hand instead of calling the real /logout
+    // endpoint — that endpoint is what actually revokes this account's
+    // server-side session (see refreshCookieName on the backend); skipping
+    // it left the account's refresh cookie alive and unrevoked forever,
+    // even though the UI looked logged out.
     const handleLogout = () => {
-        localStorage.removeItem('token');
+        dispatch(logout());
         router.push("/login");
-        dispatch(reset());
         setIsMenuOpen(false);
+    };
+
+    // Switching accounts here works the same way as the sidebar's switcher
+    // (see DashboardLayout) — each account keeps its own httpOnly refresh
+    // cookie, so this is instant with no password as long as that cookie's
+    // still valid, only falling back to a normal sign-in otherwise. This is
+    // also the ONLY place mobile users can reach account switching from,
+    // since the sidebar (and its switcher) is hidden entirely on mobile.
+    const [switchingAccountId, setSwitchingAccountId] = useState(null);
+    const savedAccounts = getSavedAccounts().filter((a) => a.email !== authState.user?.userId?.email);
+
+    const handleSwitchAccount = async (acc) => {
+        setIsMenuOpen(false);
+        setSwitchingAccountId(acc.userId);
+        const result = await dispatch(switchAccountAction({ userId: acc.userId }));
+        setSwitchingAccountId(null);
+        if (switchAccountAction.fulfilled.match(result)) {
+            window.location.href = '/dashboard';
+        } else {
+            clearLocalSession();
+            router.push(`/login?email=${encodeURIComponent(acc.email)}`);
+        }
+    };
+
+    const handleAddAccount = () => {
+        setIsMenuOpen(false);
+        clearLocalSession();
+        router.push('/login');
     };
 
     const handleNotifToggle = () => {
         setShowNotifDropdown(!showNotifDropdown);
         if (!showNotifDropdown) clearUnread();
+    };
+
+    const toggleTheme = () => {
+        const next = !isDark;
+        setIsDark(next);
+        localStorage.setItem('theme', next ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-mt-theme', next ? 'dark' : 'light');
+        document.documentElement.classList.toggle('dark', next);
     };
 
     const formatTime = (date) => {
@@ -82,9 +127,9 @@ export default function Navbar() {
     };
 
     return (
-        <div className={`${styles.container} ${visible ? styles.navVisible : styles.navHidden}`}>
+        <div className={`${styles.container} ${inShell ? styles.inShell : ''}`}>
             <nav className={styles.navbar}>
-                <h1 className={styles.logo} onClick={() => router.push(authState.isTokenThere ? "/dashboard" : "/")}>Mitrata</h1>
+                <div className={styles.logo} onClick={() => router.push(authState.isTokenThere ? "/dashboard" : "/")} role="img" aria-label="Mitrata" />
 
                 <div className={styles.rightSection}>
                     {!mounted ? null : showUserUI ? (
@@ -92,12 +137,11 @@ export default function Navbar() {
                             {/* Search Bar */}
                             <div className={styles.searchContainer}>
                                 <div className={styles.searchWrapper}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={styles.searchIcon}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                                    </svg>
+                                    <Search className={styles.searchIcon} strokeWidth={1.8} />
                                     <input
+                                        ref={searchRef}
                                         type="text"
-                                        placeholder="Search users, skills..."
+                                        placeholder="Search people, skills…"
                                         className={styles.searchInput}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' && e.target.value.trim()) {
@@ -105,8 +149,14 @@ export default function Navbar() {
                                             }
                                         }}
                                     />
+                                    <kbd className={styles.kbdChip}>⌘K</kbd>
                                 </div>
                             </div>
+
+                            {/* Theme toggle */}
+                            <button className={`${styles.navIcon} ${styles.themeToggle}`} onClick={toggleTheme} title="Toggle theme">
+                                <SunMoon strokeWidth={1.8} />
+                            </button>
 
                             {/* Messaging Icon */}
                             <button
@@ -114,9 +164,7 @@ export default function Navbar() {
                                 onClick={() => router.push("/messaging/sidebar_panel")}
                                 title="Messages"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
-                                </svg>
+                                <MessageCircle strokeWidth={1.8} />
                             </button>
 
                             {/* Notification Bell */}
@@ -126,18 +174,22 @@ export default function Navbar() {
                                     onClick={handleNotifToggle}
                                     title="Notifications"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                                    </svg>
+                                    <Bell strokeWidth={1.8} />
                                     {unreadCount > 0 && (
                                         <span className={styles.badge}>{unreadCount > 9 ? '9+' : unreadCount}</span>
                                     )}
                                 </button>
 
                                 {showNotifDropdown && (
-                                    <div className={styles.notifDropdown}>
+                                    <div className={`${styles.notifDropdown} mt-dropdown-enter`}>
                                         <div className={styles.notifDropdownHeader}>
                                             <h4>Notifications</h4>
+                                            <span
+                                                style={{ cursor: 'pointer', fontSize: 12, color: 'var(--mt-accent)' }}
+                                                onClick={() => { setShowNotifDropdown(false); router.push('/notifications'); }}
+                                            >
+                                                See all
+                                            </span>
                                         </div>
                                         <div className={styles.notifDropdownList}>
                                             {recentNotifs.length === 0 ? (
@@ -159,30 +211,61 @@ export default function Navbar() {
                                 )}
                             </div>
 
-                            {/* Profile */}
-                            <div onClick={() => router.push("/profile")} className={styles.appProfile}>
-                                <img
-                                    src={authState.user?.userId?.profilePicture || "/default-avatar.png"}
-                                    className={styles.miniAvatar}
-                                    alt="pfp"
-                                />
-                                <span className={styles.desktopName}>
-                                    {authState.user?.userId?.name?.split(" ")[0] || "User"}
-                                </span>
-                            </div>
-
-                            {/* Three-dot menu for Logout */}
+                            {/* Profile — click opens a small menu (Profile / Logout) instead
+                                of navigating straight there; the old separate three-dot
+                                menu was just a second, redundant way to reach Logout. */}
                             <div className={styles.menuWrapper} ref={menuRef}>
-                                <div className={styles.mobileToggle} onClick={() => setIsMenuOpen(!isMenuOpen)}>
-                                    <span></span><span></span><span></span>
+                                <div onClick={() => setIsMenuOpen(!isMenuOpen)} className={styles.appProfile}>
+                                    <img
+                                        src={authState.user?.userId?.profilePicture || "/default-avatar.svg"}
+                                        className={styles.miniAvatar}
+                                        alt="pfp"
+                                    />
+                                    <span className={styles.desktopName}>
+                                        {authState.user?.userId?.name?.split(" ")[0] || "User"}
+                                    </span>
                                 </div>
 
                                 {isMenuOpen && (
-                                    <div className={styles.dropdownMenu}>
-                                        <div className={styles.welcomeTextMobile}>
-                                            Hey, {authState.user?.userId?.name?.split(" ")[0]}
+                                    <div className={`${styles.dropdownMenu} mt-dropdown-enter`}>
+                                        <div
+                                            onClick={() => { setIsMenuOpen(false); router.push("/profile"); }}
+                                            className={styles.profileMenuItem}
+                                        >
+                                            <CircleUser size={16} strokeWidth={1.8} />
+                                            Profile
                                         </div>
+
+                                        {savedAccounts.length > 0 && (
+                                            <>
+                                                <div className={styles.menuDivider} />
+                                                <p className={styles.menuOverline}>Switch account</p>
+                                                {savedAccounts.map((acc) => (
+                                                    <div
+                                                        key={acc.email}
+                                                        className={styles.profileMenuItem}
+                                                        onClick={() => !switchingAccountId && handleSwitchAccount(acc)}
+                                                        style={switchingAccountId ? { opacity: 0.6, pointerEvents: 'none' } : undefined}
+                                                    >
+                                                        <img
+                                                            src={acc.profilePicture || '/default-avatar.svg'}
+                                                            alt=""
+                                                            className={styles.switchAccountAvatar}
+                                                        />
+                                                        {switchingAccountId === acc.userId ? 'Switching…' : acc.name}
+                                                    </div>
+                                                ))}
+                                            </>
+                                        )}
+
+                                        <div className={styles.menuDivider} />
+                                        <div className={styles.profileMenuItem} onClick={handleAddAccount}>
+                                            <ChevronsUpDown size={16} strokeWidth={1.8} />
+                                            Add another account
+                                        </div>
+
                                         <div onClick={handleLogout} className={styles.logoutBtn}>
+                                            <LogOut size={16} strokeWidth={1.8} />
                                             Logout
                                         </div>
                                     </div>

@@ -1,10 +1,15 @@
 import UserLayout from '@/layout/userLayout'
 import { useRouter } from 'next/router'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import styles from './styles.module.css'
-import { loginUser, registerUser } from '@/config/redux/action/authAction'
+import { loginUser, registerUser, googleLoginUser, verifyOtp, resendOtp, switchAccountAction } from '@/config/redux/action/authAction'
 import { emptyMessage } from '@/config/redux/reducer/authReducer'
+import { getSavedAccounts } from '@/config/savedAccounts'
+import Button from '@/Components/ui/Button'
+import GoogleLoginButton from '@/Components/ui/GoogleLoginButton'
+
+const RESEND_COOLDOWN_S = 60;
 
 function LoginComponent() {
   const authState = useSelector((state) => state.auth);
@@ -14,11 +19,32 @@ function LoginComponent() {
   const [userLoginMethod, setUserLoginMethod] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
+  // Landing here from "Add another account" (or just visiting /login with no
+  // explicit target) shouldn't strand you — if there's a still-valid session
+  // for an account on this browser, offer to jump straight back into it
+  // instead of only ever showing a blank sign-in form.
+  const [savedAccounts, setSavedAccounts] = useState([]);
+  const [showChooser, setShowChooser] = useState(false);
+  const [switchingAccountId, setSwitchingAccountId] = useState(null);
+
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
-  const [usernameError, setUsernameError] = useState(""); 
+  const [usernameError, setUsernameError] = useState("");
+
+  // Set once registration succeeds (or an unverified account tries to log
+  // in) — switches the whole form over to the OTP-entry screen below.
+  const [verifyingEmail, setVerifyingEmail] = useState(null);
+  const [otp, setOtp] = useState("");
+  const [resendIn, setResendIn] = useState(0);
+  const resendTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    resendTimerRef.current = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(resendTimerRef.current);
+  }, [resendIn]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -29,6 +55,41 @@ function LoginComponent() {
     }
   }, []);
 
+  // Arriving from the sidebar's "switch account" — prefill the picked
+  // account's email straight into sign-in mode instead of the signup form.
+  // With no specific target (e.g. plain "Add another account", or just
+  // landing here directly), show the account chooser instead when there's
+  // at least one still-possibly-valid saved session to offer.
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (router.query.email) {
+      setEmail(String(router.query.email));
+      setUserLoginMethod(true);
+      setShowChooser(false);
+      return;
+    }
+    const accounts = getSavedAccounts();
+    setSavedAccounts(accounts);
+    setShowChooser(accounts.length > 0);
+  }, [router.isReady, router.query.email]);
+
+  const handleChooserSwitch = async (acc) => {
+    setSwitchingAccountId(acc.userId);
+    const result = await dispatch(switchAccountAction({ userId: acc.userId }));
+    setSwitchingAccountId(null);
+    if (switchAccountAction.fulfilled.match(result)) {
+      // Full reload, not a client-side push — see the identical note in
+      // DashboardLayout's handleSwitchAccount for why.
+      window.location.href = '/dashboard';
+    } else {
+      // That account's session actually expired — fall through to a normal,
+      // prefilled sign-in instead of leaving them stuck.
+      setEmail(acc.email);
+      setUserLoginMethod(true);
+      setShowChooser(false);
+    }
+  };
+
   useEffect(() => {
     dispatch(emptyMessage());
     setUsernameError(""); 
@@ -38,6 +99,12 @@ function LoginComponent() {
     const result = await dispatch(loginUser({ email, password }));
     if (loginUser.fulfilled.match(result)) {
       router.push('/dashboard');
+    } else if (result.payload?.needsVerification) {
+      // Account exists but was never OTP-verified (e.g. they closed the tab
+      // right after signing up) — send them to the same verify screen
+      // instead of leaving them stuck on a "please verify" error message.
+      setVerifyingEmail(result.payload.email || email);
+      setResendIn(RESEND_COOLDOWN_S);
     }
   };
 
@@ -71,7 +138,23 @@ function LoginComponent() {
 
     const result = await dispatch(registerUser({ username, name, email, password }));
     if (registerUser.fulfilled.match(result)) {
-      setUserLoginMethod(true);
+      setVerifyingEmail(email);
+      setResendIn(RESEND_COOLDOWN_S);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const result = await dispatch(verifyOtp({ email: verifyingEmail, otp, purpose: 'signup' }));
+    if (verifyOtp.fulfilled.match(result)) {
+      router.push('/dashboard');
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendIn > 0) return;
+    const result = await dispatch(resendOtp({ email: verifyingEmail, purpose: 'signup' }));
+    if (resendOtp.fulfilled.match(result)) {
+      setResendIn(RESEND_COOLDOWN_S);
     }
   };
 
@@ -82,65 +165,173 @@ function LoginComponent() {
       <div className={styles.container}>
         <div className={styles.cardContainer}>
           <div className={styles.cardContainer_left}>
-            <p className={styles.cardHeading}>{userLoginMethod ? 'SignIn' : 'Signup'}</p>
-            
+            <p className={styles.cardHeading}>
+              {verifyingEmail ? 'Verify your email' : showChooser ? 'Choose an account' : (userLoginMethod ? 'SignIn' : 'Signup')}
+            </p>
+
             {/* General API Status Messages */}
             {authState.message && (
-              <div style={{ color: authState.isError ? "red" : "green", marginBottom: "10px" }}>
+              <div className={`text-sm mb-2.5 font-medium ${authState.isError ? 'text-danger' : 'text-success'}`}>
                 {authState.message}
               </div>
             )}
 
             {/* Error specifically for Spaces */}
-            {usernameError && !userLoginMethod && (
-               <div style={{ 
-                 background: '#fee2e2', 
-                 color: '#b91c1c', 
-                 padding: '8px', 
-                 borderRadius: '4px', 
-                 fontSize: '12px', 
-                 marginBottom: '10px',
-                 border: '1px solid #f87171' 
-               }}>
-                 ⚠️ {usernameError}
+            {usernameError && !userLoginMethod && !verifyingEmail && (
+               <div className="text-danger px-2.5 py-2 rounded-sm text-xs mb-2.5 border" style={{ background: 'var(--mt-grad-soft)', borderColor: 'var(--mt-danger)' }}>
+                 {usernameError}
                </div>
             )}
 
+            {showChooser && !verifyingEmail ? (
+              <div className={styles.inputContainer}>
+                {savedAccounts.map((acc) => (
+                  <button
+                    key={acc.email}
+                    type="button"
+                    onClick={() => !switchingAccountId && handleChooserSwitch(acc)}
+                    disabled={!!switchingAccountId}
+                    className={styles.accountChoice}
+                  >
+                    <img
+                      src={acc.profilePicture || '/default-avatar.svg'}
+                      alt=""
+                      className={styles.accountChoiceAvatar}
+                    />
+                    <div className={styles.accountChoiceInfo}>
+                      <p className={styles.accountChoiceName}>{acc.name}</p>
+                      <span className={styles.accountChoiceEmail}>
+                        {switchingAccountId === acc.userId ? 'Signing in…' : acc.email}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setShowChooser(false)}
+                  className={styles.accountChoiceOther}
+                  disabled={!!switchingAccountId}
+                >
+                  + Use another account
+                </button>
+              </div>
+            ) : verifyingEmail ? (
+              <div className={styles.inputContainer}>
+                <p className="text-sm mb-3" style={{ color: 'var(--mt-ink2)' }}>
+                  We sent a 6-digit code to <strong>{verifyingEmail}</strong>
+                </p>
+                <input
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="000000"
+                  maxLength={6}
+                  className={styles.inputField}
+                  style={{ textAlign: 'center', fontSize: '1.4rem', letterSpacing: '0.4em' }}
+                />
+
+                <Button
+                  onClick={handleVerifyOtp}
+                  className="w-full mt-3 !rounded-full !py-3.5 !text-base"
+                  loading={authState.isLoading}
+                  disabled={otp.length !== 6}
+                >
+                  Verify
+                </Button>
+
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={resendIn > 0}
+                  className="text-sm mt-3"
+                  style={{ background: 'none', border: 'none', cursor: resendIn > 0 ? 'default' : 'pointer', color: resendIn > 0 ? 'var(--mt-ink3)' : 'var(--mt-accent, #0447ff)' }}
+                >
+                  {resendIn > 0 ? `Resend code in ${resendIn}s` : 'Resend code'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setVerifyingEmail(null); setOtp(""); dispatch(emptyMessage()); }}
+                  className="text-sm mt-2"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mt-ink3)' }}
+                >
+                  Use a different email
+                </button>
+              </div>
+            ) : (
             <div className={styles.inputContainer}>
               {!userLoginMethod && (
                 <div className={styles.inputRow}>
-                  <input 
-                    value={username} 
-                    onChange={onUsernameChange} 
-                    type="text" 
-                    placeholder="Username (No spaces)" 
-                    className={`${styles.inputField} ${usernameError ? styles.inputError : ''}`} 
+                  <input
+                    value={username}
+                    onChange={onUsernameChange}
+                    type="text"
+                    placeholder="Username"
+                    className={`${styles.inputField} ${usernameError ? styles.inputError : ''}`}
                   />
                   <input onChange={(e) => setName(e.target.value)} type="text" placeholder="Name" className={styles.inputField} />
                 </div>
               )}
-              <input onChange={(e) => setEmail(e.target.value)} type="text" placeholder="Email" className={styles.inputField} />
+              <input value={email} onChange={(e) => setEmail(e.target.value)} type="text" placeholder="Email" className={styles.inputField} />
               <input onChange={(e) => setPassword(e.target.value)} type="password" placeholder="Password" className={styles.inputField} />
 
-              <button
+              {userLoginMethod && (
+                <div style={{ textAlign: 'right', marginTop: '2px' }}>
+                  <span
+                    onClick={() => router.push('/forgot-password')}
+                    className="text-sm"
+                    style={{ cursor: 'pointer', color: 'var(--mt-ink3)' }}
+                  >
+                    Forgot password?
+                  </span>
+                </div>
+              )}
+
+              <Button
                 onClick={() => userLoginMethod ? handleLogin() : handleRegister()}
-                className={styles.buttonWithOutline}
+                className="w-full mt-3 !rounded-full !py-3.5 !text-base"
+                loading={authState.isLoading}
                 // Disable button if there is a space error
                 disabled={!!usernameError && !userLoginMethod}
               >
                 {userLoginMethod ? 'SignIn' : 'Signup'}
-              </button>
+              </Button>
+
+              <div className="flex items-center gap-3 my-3 text-xs text-gray-400">
+                <span className="flex-1 h-px bg-gray-200" />
+                or
+                <span className="flex-1 h-px bg-gray-200" />
+              </div>
+
+              <GoogleLoginButton
+                onCredential={async (idToken) => {
+                  const result = await dispatch(googleLoginUser(idToken));
+                  if (googleLoginUser.fulfilled.match(result)) {
+                    router.push('/dashboard');
+                  }
+                }}
+              />
             </div>
+            )}
           </div>
 
           <div className={styles.cardContainer_right}>
-            {userLoginMethod ? 'Create an account? ' : 'Already have an account? '}
-            <span
-              onClick={() => setUserLoginMethod(!userLoginMethod)}
-              className={styles.accButton}
-              style={{ color: "blue", cursor: "pointer" }}>
-              {userLoginMethod ? 'Signup' : 'SignIn'}
-            </span>
+            <img src="/brand/orb-violet.png" alt="" className={styles.rightOrb} />
+            <div className={styles.rightContent}>
+              <span className={styles.rightLogo} role="img" aria-label="Mitrata" />
+              {!showChooser && !verifyingEmail && (
+                <>
+                  <span>{userLoginMethod ? 'Create an account? ' : 'Already have an account? '}</span>
+                  <span
+                    onClick={() => setUserLoginMethod(!userLoginMethod)}
+                    className={styles.accButton}>
+                    {userLoginMethod ? 'Signup' : 'SignIn'}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
