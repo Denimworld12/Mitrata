@@ -53,7 +53,16 @@ app.use(helmet({
   // back to this origin — the default "same-origin" COOP silently blocks that.
   crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
 }));
-app.use(cors(corsOptions));
+// Google's redirect-mode sign-in POSTs here as a real top-level browser
+// navigation, not a JS fetch/XHR — browsers send a literal Origin: "null"
+// for that kind of cross-site form submission, which the origin check above
+// (correctly) rejects for everything else. CORS was never relevant to this
+// route in the first place: nothing reads the response via JS, so there's
+// nothing for a CORS header to protect here.
+app.use((req, res, next) => {
+  if (req.path === "/api/auth/google/callback") return next();
+  return cors(corsOptions)(req, res, next);
+});
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
