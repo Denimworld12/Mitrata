@@ -110,6 +110,35 @@ export const deleteMessages = createAsyncThunk(
     }
 );
 
+// One row per conversation — last message preview + unread count. Backs the
+// sidebar list, replacing the hardcoded "Click to chat" placeholder.
+export const getConversations = createAsyncThunk(
+    "message/getConversations",
+    async (_arg, thunkApi) => {
+        try {
+            const response = await clientServer.get('/user/conversations');
+            return response.data;
+        } catch (error) {
+            const message = error.response?.data?.message || error.message || "Failed to load conversations";
+            return thunkApi.rejectWithValue({ message });
+        }
+    }
+);
+
+export const markMessagesRead = createAsyncThunk(
+    "message/markMessagesRead",
+    async (payload, thunkApi) => {
+        try {
+            const { senderId } = payload;
+            const response = await clientServer.post('/user/mark_read', { senderId });
+            return { ...response.data, senderId };
+        } catch (error) {
+            const message = error.response?.data?.message || error.message || "Failed to mark messages read";
+            return thunkApi.rejectWithValue({ message });
+        }
+    }
+);
+
 // Delete message for everyone
 export const deleteMessageForEveryone = createAsyncThunk(
     "message/deleteMessageForEveryone",

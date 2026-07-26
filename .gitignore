@@ -1,0 +1,7 @@
+# macOS
+.DS_Store
+
+# Design handoff/reference material — not app source, not needed in the repo
+design_handoff_mitrata_redesign/
+design_handoff_mitrata_redesign 2/
+new_updated_design.zip

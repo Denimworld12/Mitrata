@@ -1,911 +1,808 @@
-/* --- Minimized Card Layout --- */
+/* Mitrata dashboard feed — restyled to design tokens (tokens.css) */
+
 .scrollcomponent {
-    display: flex;
-    justify-content: center;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    gap: 0.5rem; /* Decreased from 1rem to minimize vertical space */
-    overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 1rem;
+  overflow-y: auto;
+}
+.scrollcomponent::-webkit-scrollbar {
+  display: none;
 }
 
+/* --- Segmented feed tabs --- */
+.feedTabs {
+  position: relative;
+  display: flex;
+  width: 90%;
+  max-width: 560px;
+  margin: 12px 12px 0 12px;
+  padding: 4px;
+  background: var(--mt-sunken);
+  border: 1px solid var(--mt-border);
+  border-radius: 999px;
+  box-sizing: border-box;
+}
+
+.feedTabsIndicator {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  height: calc(100% - 8px);
+  border-radius: 999px;
+  background: var(--mt-grad);
+  transition: transform 0.38s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.feedTab {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 0.5rem 0.6rem;
+  font-family: var(--mt-font-ui);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--mt-ink2);
+  cursor: pointer;
+  border-radius: 999px;
+  transition: color 0.2s var(--mt-ease);
+}
+
+.feedTabActive {
+  color: #fff;
+}
+
+.feedNote {
+  width: 90%;
+  max-width: 560px;
+  margin: 0 0 0.6rem 0;
+  font-size: 0.85rem;
+  color: var(--mt-ink3);
+  text-align: center;
+}
+
+/* --- Stories strip --- */
+.storiesStrip {
+  display: flex;
+  gap: 0.9rem;
+  width: 90%;
+  max-width: 560px;
+  margin: 12px 12px 0 12px;
+  padding: 0.2rem 0.1rem 0.4rem 0.1rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  box-sizing: border-box;
+}
+.storiesStrip::-webkit-scrollbar {
+  display: none;
+}
+
+.storyItem {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: 66px;
+  cursor: pointer;
+}
+
+.storyRing {
+  position: relative;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  padding: 2.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.storyRingDashed {
+  background: transparent;
+  border: 2.5px dashed var(--mt-border-2);
+  padding: 2.5px;
+}
+
+.storyAvatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--mt-surface);
+  background: var(--mt-sunken);
+}
+
+.storyAddBadge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--mt-grad);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--mt-surface);
+}
+
+.storyLabel {
+  font-size: 0.72rem;
+  color: var(--mt-ink2);
+  max-width: 66px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Composer card --- */
 .createPostContainer {
-    display: flex;
-    height: 60px; /* Decreased from 70px */
-    width: 90%;   /* Increased width from 80% to make it feel more compact */
-    padding-left: 0.6rem;
-    padding-right: .5rem;
-    padding: inline 0.8rem;
-    gap: 0.6rem;  /* Decreased from 1.0rem */
-    align-items: center;
-    background: rgb(255, 251, 212);
-    margin: 8px;  /* Decreased from 12px */
-    border-radius: 12px; /* Smoother minimization */
-    outline: none;
-    position: relative;
+  width: 90%;
+  max-width: 560px;
+  box-sizing: border-box;
+  background: var(--mt-surface);
+  border: 1px solid var(--mt-border);
+  border-radius: 22px;
+  box-shadow: var(--mt-shadow);
+  margin: 12px;
+  padding: 1rem 1.1rem;
 }
 
-.singleCard {
-    width: 100%;
-    max-width: 550px; /* NEW: Added max-width to prevent cards from being too wide on desktop */
-    background: #fff;
-    border-radius: 12px; /* Minimized from 14px */
-    margin-bottom: 0.8rem; /* Decreased from 1.4rem */
-    border: 1px solid #eaeaea;
-    overflow: hidden;
-    box-shadow: 0 0 4px rgba(0,0,0,0.08);
-    box-sizing: border-box;
-}
-
-.singleCard_profileContainer {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;   /* Decreased from 0.8rem */
-    padding: 0.6rem 0.8rem; /* Decreased from 0.8rem 1rem */
+.composerTop {
+  display: flex;
+  width: 100%;
+  gap: 0.8rem;
+  align-items: flex-start;
 }
 
 .userProfile {
-    width: 38px;  /* Decreased from 48px */
-    height: 38px; /* Decreased from 48px */
-    border-radius: 50%;
-    object-fit: cover;
-    border: 1.5px solid #eee;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--mt-border);
+  flex-shrink: 0;
 }
 
-.postBody {
-    padding: 0 0.8rem 0.6rem 0.8rem; /* Decreased from 1rem 1.3rem */
-    width: 100%;
-    box-sizing: border-box;
+.textareaWrap {
+  position: relative;
+  width: 100%;
 }
 
-.postImage {
-    width: 100%;
-    border-radius: 10px; /* Minimized from 12px */
-    margin-top: 0.5rem; /* Decreased from 0.8rem */
-    object-fit: contain; 
-    max-height: 350px;  /* Decreased from 420px to minimize height */
-    background: #f1f1f1;
+.tagSuggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  max-width: 280px;
+  margin-top: 4px;
+  padding: 6px;
+  background: var(--mt-surface);
+  border: 1px solid var(--mt-border);
+  border-radius: 12px;
+  box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.35);
 }
 
-/* --- Keyboard Aware Mobile Logic --- */
-@media (max-width: 600px) {
-    .commentsOverlay {
-        align-items: flex-end; 
-        height: 100dvh; /* dvh handles keyboard resizing perfectly */
-        width: 100vw;
-        background: #00000060;
-        backdrop-filter: blur(4px);
-        position: fixed;
-        top: 0;
-        left: 0;
-        display: flex;
-        justify-content: center;
-        z-index: 10000 !important; 
-        animation: fadeIn 0.2s ease;
-    }
-
-    .commentsPopup {
-        width: 100%;
-        height: 80dvh; /* Adjusts as keyboard moves */
-        max-height: 80dvh;
-        border-radius: 15px 15px 0 0;
-        display: flex;
-        flex-direction: column;
-        background: #fff;
-        animation: slideUp 0.25s ease;
-        position: relative; /* Keeps children in flow */
-    }
-
-    .commentInputBar {
-        position: sticky; /* Sticks to the top of the keyboard */
-        bottom: 0;
-        padding: 0.8rem 1rem;
-        padding-bottom: max(0.8rem, env(safe-area-inset-bottom)); /* Dynamic padding for notches */
-        background: #fff;
-        border-top: 1px solid #e6e6e6;
-        z-index: 5;
-    }
-    
-    .singleCard {
-        border-radius: 0;
-        margin-bottom: 0.5rem; /* Minimized for mobile feed */
-    }
+.tagSuggestionItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  font-family: var(--mt-font-ui);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--mt-ink);
+  text-align: left;
+  cursor: pointer;
 }
-.scrollcomponent{
-    display: flex;
-    justify-content: center;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    gap: 1rem;
-    overflow-y: auto;
-}
-.scrollcomponent::-webkit-scrollbar {
-    display: none;
-}
-.createPostContainer{
-    display: flex;
-    height: 70px;
-    width: 80%;
-    padding-left:0.6rem;
-    padding-right:.5rem;
-    padding: inline 0.8rem ;
-    gap: 1.0rem;
-    align-items: center;
-    background: rgb(255, 251, 212);
-    margin: 12px;
-    border-radius: 15px;
-    outline: none;
-    position: relative;
-}
-.uploadButton{
-    position: absolute;
-    right: 0px;
-    bottom: -19px;
-    background-color: rgba(255, 255, 255, 0);
-    border: none;
-}
-.uploadButton >svg
-{
-    width: 1.9rem;
-    margin-right: 0.5rem;
-
-
-}
-.userProfile{
-
-    border-radius: 100%;
-    height: 60%;
-    /* width: 50%; */
-}
-.createPostContainer >textarea{
-    width: 100%;
+.tagSuggestionItem:hover {
+  background: var(--mt-grad-soft);
 }
 
-.fab{ 
-    
-    display: flex;
-    justify-content: center;
-}
-.fab > svg{
-   
-    width:1.4rem ;
-     
+.tagSuggestionCount {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--mt-ink3);
 }
 
 .postTextarea {
-    width: 100%;
-    min-height: 40px;
-    max-height: 180px; 
-    resize: none;
-    overflow-y: auto;              /* ENABLE SCROLL WHEN NEEDED */
-
-    /* HIDE SCROLLBAR */
-    scrollbar-width: none;         /* Firefox */
+  width: 100%;
+  min-height: 42px;
+  max-height: 180px;
+  resize: none;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 0.6rem 0;
+  font-size: 15px;
+  font-family: var(--mt-font-ui);
+  color: var(--mt-ink);
+  background: transparent;
+  border: none;
+  outline: none;
 }
-.postTextarea::-webkit-scrollbar { /* Chrome, Edge, Safari */
-    display: none;
+.postTextarea::-webkit-scrollbar {
+  display: none;
 }
-
-.postTextarea {
-    padding: 0.6rem 0.8rem;
-    font-size: 16px;
-    background: #fafafa;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    outline: none;
-    transition: border 0.2s ease;
+.postTextarea::placeholder {
+  color: var(--mt-ink3);
 }
 
-.postTextarea:focus {
-    border-color: #999;
+.composerDivider {
+  height: 1px;
+  width: 100%;
+  background: var(--mt-border);
+  margin: 0.7rem 0 0.7rem 0;
+}
+
+.createPostFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.uploadFileSection {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid var(--mt-border);
+  background: var(--mt-surface);
+  color: var(--mt-ink2);
+  transition: background 0.15s var(--mt-ease), border-color 0.15s var(--mt-ease), color 0.15s var(--mt-ease);
+}
+.fab:hover {
+  background: var(--mt-sunken);
+  border-color: var(--mt-border-2);
+  color: var(--mt-ink);
+}
+.fab svg {
+  width: 18px;
+  height: 18px;
+}
+
+.uploadFileSection > span {
+  font-size: 0.85rem;
+  color: var(--mt-ink2);
+}
+
+.uploadButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 999px;
+  padding: 0.55rem 1.1rem;
+  background: var(--mt-grad);
+  color: #fff;
+  font-family: var(--mt-font-ui);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: filter 0.15s var(--mt-ease), transform 0.15s var(--mt-ease);
+}
+.uploadButton:hover {
+  filter: brightness(1.08);
+}
+.uploadButton:active {
+  transform: scale(0.97);
+}
+.uploadButton svg {
+  width: 18px;
+  height: 18px;
+}
+
+.loadMoreBtn {
+  display: block;
+  width: fit-content;
+  margin: 0.5rem auto 1.5rem;
+  border: 1px solid var(--mt-border);
+  border-radius: 999px;
+  padding: 0.55rem 1.4rem;
+  background: var(--mt-surface);
+  color: var(--mt-ink2);
+  font-family: var(--mt-font-ui);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s var(--mt-ease), color 0.15s var(--mt-ease);
+}
+.loadMoreBtn:hover:not(:disabled) {
+  background: var(--mt-grad-soft);
+  color: var(--mt-ink);
+}
+.loadMoreBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .previewBox {
-    position: relative;
-    width: 90px;
-    height: 90px;
-    margin-left: 10px;
+  position: relative;
+  width: 96px;
+  height: 96px;
+  margin-left: 52px;
+  margin-top: 10px;
 }
 
 .previewImage {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 10px;
-    border: 1px solid #ddd;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid var(--mt-border);
 }
 
 .removeImageBtn {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    background: #ff4d4d;
-    border: none;
-    border-radius: 50%;
-    width: 22px;
-    height: 22px;
-    font-size: 14px;
-    color: white;
-    cursor: pointer;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--mt-danger);
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* --- Posts feed --- */
+.postContainer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
+.singleCard {
+  width: 90%;
+  max-width: 560px;
+  box-sizing: border-box;
+  background: var(--mt-surface);
+  border: 1px solid var(--mt-border);
+  border-radius: 22px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+  box-shadow: var(--mt-shadow);
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  transition: box-shadow 0.2s var(--mt-ease);
+}
+.singleCard:hover {
+  box-shadow: var(--mt-shadow-lg);
+}
 
-
-
-
-/* ---------------------------------- */
 .singleCard_top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.singleCard_profileContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.9rem 1.1rem 0.6rem 1.1rem;
+}
+
+.userName {
+  font-family: var(--mt-font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--mt-ink);
+  cursor: pointer;
+}
+.userName:hover {
+  text-decoration: underline;
+}
+
+.postTime {
+  font-size: 0.78rem;
+  color: var(--mt-ink3);
 }
 
 /* DELETE BUTTON */
 .deleteBtn {
-    background: transparent;
-    border: none;
-    padding: 0.4rem;
-    cursor: pointer;
-    transition: 0.2s;
-    margin-right: 1rem;
+  background: transparent;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: var(--mt-ink3);
+  border-radius: 999px;
+  margin-right: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s var(--mt-ease), color 0.15s var(--mt-ease);
 }
-
 .deleteBtn:hover {
-    background: #e74646;
-    border-radius: 6px;
+  background: rgba(212, 53, 28, 0.1);
+  color: var(--mt-danger);
 }
-/* Main card */
-.singleCard {
-    width: 100%;
-    background: #fff;
-    border-radius: 14px;
-    margin-bottom: 1.4rem;
-    border: 1px solid #eaeaea;
-    overflow: hidden;
-    box-shadow: 0 0 4px rgba(0,0,0,0.08);
+.deleteBtn svg {
+  width: 18px;
+  height: 18px;
 }
 
-/* Profile container */
-.singleCard_profileContainer {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-   padding: 0.8rem 1rem;
-}
-
-/* Profile image */
-.userProfile {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid #eee;
-}
-
-/* Name + Time */
-.userName {
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: #333;
-    cursor: pointer;
-}
-
-.postTime {
-    font-size: 0.79rem;
-    color: #777;
-}
-
-/* Post body text */
 .postBody {
-   padding: 0 1rem 0.8rem 1rem;
+  padding: 0 1.1rem 0.8rem 1.1rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-
-/* Post media image */
-.postImage {
-    width: 100%;
-    border-radius: 12px;
-    margin-top: 0.8rem;
-    object-fit: cover;
-    max-height: 420px;
-    background: #f1f1f1;
-}
-
-/* Actions section */
-.postActions {
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
-    padding: 0.8rem 0;
-    border-top: 1px solid #eaeaea;
-    background: #fafafa;
-}
-
-.actionBtn {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    cursor: pointer;
-    padding: 0.4rem 0.8rem; 
-    flex-direction: row;
-    transition: 0.2s;
-}
-.actionBtn >svg {
-    width: 1.3rem;
-    
-}
-
-.actionBtn:hover {
-    background: #efefef;
-    border-radius: 6px;
-}
 .postText {
-    font-size: 1rem;
-    color: #333;
-    line-height: 1.4rem;
-    max-height: 2.8rem;       /* = 2 lines x line-height */
-    overflow: hidden;
-    position: relative;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;  
-    -webkit-box-orient: vertical;
-}
-
-.showMore {
-    color: #007bff;
-    font-weight: 500;
-    cursor: pointer;
-    margin-left: 4px;
+  font-size: 0.95rem;
+  color: var(--mt-ink);
+  line-height: 1.55;
 }
 
 .fullText {
-    line-height: 1.4rem;
+  font-size: 0.95rem;
+  color: var(--mt-ink);
+  line-height: 1.55;
 }
 
-.icon {
-    width: 1.5rem;
-    cursor: pointer;
-    transition: 0.2s ease;
-}
-.icon:hover {
-    transform: scale(1.1);
-    opacity: 0.7;
+.showMore {
+  color: var(--mt-accent);
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 4px;
+  font-size: 0.9rem;
 }
 
-.commentsSection{
-    width: 100vw;
-    height: 100vh;
-    left: 0;
-    overflow: hidden;
-    justify-content: center;
-    display: flex;
-    align-items: center;
-
-    background: #00000053;
-    margin-top: 1rem;
-    padding: 1rem;
-    position: fixed;
-    top: 0  ;
-    z-index: 2;
-    
-}
-.allCommentsContainer{
-    width: 40vw;
-    height: 80vh;
-    background: #fff;
-    border-radius: 12px;
-    position: relative;
-    padding: 1rem;
-    overflow-y: auto;
-}
-
-/* OVERLAY BLUR */
-.commentsOverlay {
-    width: 100vw;
-    height: 100vh;
-    background: #00000060;
-    backdrop-filter: blur(4px);
-    position: fixed;
-    top: 0;
-    left: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 50;
-    animation: fadeIn 0.2s ease;
-}
-/* --- Professional Image Management --- */
 .mediaContainer {
-    width: 100%;
-    /* Limits height of portrait images to 450px to keep feed scrollable */
-    max-height: 450px; 
-    background: #f3f2f1; /* Professional light gray backdrop for contain mode */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-    margin-top: 0.8rem;
-    border-radius: 8px;
-    border: 1px solid #f0f2f5;
+  width: 100%;
+  max-height: 450px;
+  background: var(--mt-sunken);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  margin-top: 0.7rem;
+  border-radius: 16px;
+  border: 1px solid var(--mt-border);
 }
 
 .postImage {
-    width: 100%;
-    height: auto;
-    max-height: 450px;
-    /* 'contain' ensures the full image is visible without cropping.
-       Use 'cover' if you prefer uniform square-cropped LinkedIn style. */
-    object-fit: contain; 
-    display: block;
+  width: 100%;
+  height: auto;
+  max-height: 450px;
+  object-fit: contain;
+  display: block;
+  border-radius: 16px;
+  background: var(--mt-sunken);
 }
 
-/* --- X-Direction Scroll Fix (Horizontal Fix) --- */
-.singleCard {
-    width: 100%;
-    box-sizing: border-box;
-    /* Prevents long strings of text or URLs from pushing card width */
-    overflow-wrap: break-word;
-    word-wrap: break-word;
-    word-break: break-word;
+/* Actions */
+.postActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  border-top: 1px solid var(--mt-border);
+  background: var(--mt-sunken);
 }
 
-.postBody {
-    padding: 0 1.3rem 1rem 1.3rem;
-    width: 100%;
-    box-sizing: border-box;
+.reactionGroup,
+.actionGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
-/* --- Mobile UIUX Optimizations --- */
-@media (max-width: 600px) {
-    .mediaContainer {
-        max-height: 350px; /* Shorter containers on small mobile screens */
-        border-radius: 0; /* Full-bleed look for images on mobile */
-    }
-
-    .postImage {
-        max-height: 350px;
-    }
-
-    .singleCard {
-        margin-bottom: 0.8rem;
-        border-radius: 0; /* Modern social media feed style */
-        border-left: none;
-        border-right: none;
-    }
+.actionBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  height: 34px;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--mt-border);
+  background: var(--mt-surface);
+  color: var(--mt-ink2);
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background 0.15s var(--mt-ease), border-color 0.15s var(--mt-ease), color 0.15s var(--mt-ease), transform 0.1s var(--mt-ease);
+}
+.actionBtn:hover {
+  background: var(--mt-grad-soft);
+  border-color: var(--mt-border-2);
+  color: var(--mt-ink);
+}
+.actionBtn:active {
+  transform: scale(0.96);
+}
+.actionBtn svg {
+  width: 17px;
+  height: 17px;
+}
+.actionBtnActive {
+  color: var(--mt-live);
+  background: var(--mt-grad-soft);
+  border-color: var(--mt-border-2);
 }
 
-/* Ensure the comments popup input doesn't cause horizontal overflow */
-.commentInputBar {
-    width: 100%;
-    box-sizing: border-box;
+/* --- Comments overlay --- */
+.commentsOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  padding: 20px;
+  animation: mtFadeIn 0.2s ease;
 }
 
-.commentInputBar input {
-    min-width: 0; /* Flexbox fix for input width */
-}
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-}
-
-/* WHITE POPUP BOX */
 .commentsPopup {
-    width: 40vw;
-    height: 80vh;
-    background: #fff;
-    border-radius: 15px;
-    display: flex;
-    flex-direction: column;
-    animation: slideUp 0.25s ease;
+  width: 500px;
+  max-width: 100%;
+  height: 85vh;
+  max-height: 640px;
+  background: var(--mt-surface);
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--mt-shadow-lg);
+  overflow: hidden;
+  animation: mtSlideUp 0.25s ease;
 }
 
-@keyframes slideUp {
-    from { transform: translateY(40px); opacity: 0; }
-    to   { transform: translateY(0); opacity: 1; }
+@keyframes mtFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes mtSlideUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
-/* HEADER */
 .commentsHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.2rem;
-    border-bottom: 1px solid #ececec;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid var(--mt-border);
+}
+.commentsHeader h3 {
+  font-family: var(--mt-font-display);
+  font-size: 1.05rem;
+  margin: 0;
+  color: var(--mt-ink);
 }
 
 .closeBtn {
-    font-size: 1.3rem;
-    cursor: pointer;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--mt-ink2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+}
+.closeBtn:hover {
+  background: var(--mt-sunken);
+  color: var(--mt-ink);
+}
+.closeBtn svg {
+  width: 18px;
+  height: 18px;
 }
 
-/* COMMENTS LIST */
 .commentsList {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1rem;
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.2rem;
 }
 
 .noCommentsText {
-    text-align: center;
-    color: #777;
-    margin-top: 2rem;
+  text-align: center;
+  color: var(--mt-ink3);
+  margin-top: 2rem;
+  font-size: 0.9rem;
 }
 
-/* SINGLE COMMENT */
+.singleCommentContainer {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 0.8rem;
+}
+
+.commentUserProfile {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--mt-border);
+}
+
 .singleComment {
-    padding: 0.9rem;
-    background: #f7f7f7;
-    border-radius: 10px;
-    margin-bottom: 0.8rem;
+  flex-grow: 1;
+  max-width: calc(100% - 40px);
+  padding: 0.65rem 0.95rem;
+  background: var(--mt-sunken);
+  border-radius: 16px;
+  position: relative;
+  margin-bottom: 0;
 }
 
 .commentUser {
-    font-weight: 600;
-    font-size: 0.9rem;
+  font-weight: 600;
+  font-size: 0.83rem;
+  color: var(--mt-ink);
+  margin-bottom: 2px;
+  display: block;
 }
 
 .commentMsg {
-    margin-top: 4px;
-    font-size: 0.95rem;
+  margin-top: 0;
+  font-size: 0.88rem;
+  color: var(--mt-ink2);
+  word-wrap: break-word;
 }
 
-/* BOTTOM FIXED INPUT BAR */
 .commentInputBar {
-    display: flex;
-    gap: 0.8rem;
-    padding: 0.8rem 1rem;
-    border-top: 1px solid #e6e6e6;
-    background: #fff;
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.9rem 1.1rem;
+  padding-bottom: max(0.9rem, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--mt-border);
+  background: var(--mt-surface);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .commentInputBar input {
-    flex: 1;
-    padding: 0.6rem 1rem;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-    outline: none;
-    font-size: 0.95rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--mt-border);
+  outline: none;
+  font-size: 0.9rem;
+  background: var(--mt-sunken);
+  color: var(--mt-ink);
+  font-family: var(--mt-font-ui);
+}
+.commentInputBar input::placeholder {
+  color: var(--mt-ink3);
+}
+.commentInputBar input:focus {
+  border-color: var(--mt-border-2);
 }
 
 .commentInputBar button {
-    background: #2f80ed;
-    color: white;
-    border: none;
-    padding: 0.6rem 1rem;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: 0.2s;
+  background: var(--mt-grad);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.88rem;
+  transition: filter 0.15s var(--mt-ease);
 }
-
 .commentInputBar button:hover {
-    background: #1a65d6;
+  filter: brightness(1.08);
+}
+.commentInputBar button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-
-
-/* ========================================================================= */
-/* 4. Comments Popup - New/Modified Styles */
-/* ========================================================================= */
-
-/* NEW: Wrapper for the whole comment row (Image + Bubble) */
-.singleCommentContainer {
-    display: flex;
-    align-items: flex-start; /* Align image and bubble to the top */
-    gap: 8px; /* Space between profile image and comment bubble */
-    margin-bottom: 0.8rem;
-}
-
-/* NEW: Profile Picture Style for Comments */
-.commentUserProfile {
-    width: 32px; /* Smaller size for comment avatars */
-    height: 32px;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0; /* Ensures the image doesn't shrink */
-}
-
-/* MODIFIED: Comment Bubble Style */
-.singleComment {
-    /* Adjusted styles to make it purely the bubble */
-    flex-grow: 1; /* Allow the bubble to expand */
-    max-width: calc(100% - 40px); /* Adjust max width based on image size and gap */
-    
-    /* Bubble appearance */
-    padding: 0.7rem 1rem;
-    background: #f0f2f5; 
-    border-radius: 18px; 
-    position: relative;
-    
-    /* Removed margin-bottom here, now handled by .singleCommentContainer */
-    margin-bottom: 0; 
-}
-
-.commentUser {
-    font-weight: 600;
-    font-size: 0.85rem;
-    color: #1c1e21;
-    margin-bottom: 2px;
-    display: block; /* Ensure username is on its own line */
-}
-
-.commentMsg {
-    margin-top: 0;
-    font-size: 0.9rem;
-    color: #1c1e21;
-    word-wrap: break-word;
-}
-
-
-/* --- RESPONSIVE DASHBOARD (Tablet & Mobile) --- */
-
+/* --- Responsive --- */
 @media (max-width: 1024px) {
-    .createPostContainer {
-        width: 95%; /* Take more width on smaller screens */
-        height: auto; /* Allow container to grow with content */
-        padding: 1rem;
-    }
-
-    .commentsPopup {
-        width: 80vw; /* Wider modal for tablets */
-    }
+  .createPostContainer {
+    width: 95%;
+  }
+  .commentsPopup {
+    width: 85vw;
+  }
 }
 
 @media (max-width: 600px) {
-    .createPostContainer {
-        flex-direction: column; /* Stack items vertically */
-        height: auto;
-        width: 100%;
-        margin: 10px 0;
-        border-radius: 0; /* Full width look on mobile */
-    }
+  .createPostContainer {
+    width: 100%;
+    margin: 0 0 0.6rem 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
 
-    /* Fixed: Move preview box below text area to keep textarea large */
-    .previewBox {
-        margin-left: 0 !important;
-        margin-top: 15px !important;
-        width: 100%; /* Full width preview on mobile */
-        height: 200px; /* Larger preview height */
-    }
+  .previewBox {
+    margin-left: 0;
+    width: 100%;
+    height: 200px;
+  }
 
-    .previewImage {
-        width: 100%;
-        height: 100%;
-        object-fit: contain; /* Don't crop the image preview */
-        background: #eee;
-    }
+  .singleCard {
+    width: 100%;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    margin-bottom: 0.7rem;
+  }
 
-    .postTextarea {
-        font-size: 14px;
-        min-height: 60px; /* Give more space to type */
-    }
+  .mediaContainer,
+  .postImage {
+    max-height: 350px;
+  }
 
-    .singleCard {
-        border-radius: 0; /* Mobile feed standard */
-        margin-bottom: 1rem;
-    border-radius: 12px;
-        border-left: none;
-        border-right: none;
-    }
+  .commentsOverlay {
+    align-items: flex-end;
+    height: 100dvh;
+    padding: 0;
+  }
 
-    /* Comments Modal for Mobile */
-    .commentsPopup {
-        width: 100vw; /* Full width */
-        height: 100vh; /* Full height */
-        border-radius: 0;
-    }
+  .commentsPopup {
+    width: 100%;
+    height: 85dvh;
+    max-height: 85dvh;
+    border-radius: 20px 20px 0 0;
+  }
 
-    .commentsOverlay {
-        align-items: flex-end; /* Slide up from bottom */
-    }
+  .commentInputBar {
+    position: sticky;
+    bottom: 0;
+  }
 
-    @keyframes slideUp {
-        from { transform: translateY(100%); }
-        to { transform: translateY(0); }
-    }
-
-    .postActions span {
-        display: none; /* Hide labels like "Likes", "Comments" to save space, icons only */
-    }
-    
-    .actionBtn {
-        padding: 0.8rem;
-    }
-
-    .uploadButton {
-        bottom: 10px;
-        right: 10px;
-    }
-}
-
-/* Optimization for very small screens */
-@media (max-width: 400px) {
-    .singleCard_profileContainer {
-        padding: 0.8rem;
-    }
-    .userProfile {
-        width: 40px;
-        height: 40px;
-    }
-    .userName {
-        font-size: 0.9rem;
-    }
-}
-/* --- CRITICAL FIX FOR OVERLAY VISIBILITY --- */
-.commentsOverlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.75); /* Darker backdrop for focus */
-    backdrop-filter: blur(10px); /* Heavy blur to hide the background sidebar */
-    
-    /* Ensure this is higher than any Sidebar or Navbar */
-    z-index: 10000 !important; 
-    
-    display: flex;
+  .postActions span {
+    display: none;
+  }
+  .actionBtn {
+    flex: 1;
     justify-content: center;
-    align-items: center; /* Center for Tablet/Desktop */
-    padding: 20px;
+    padding: 0.6rem;
+  }
 }
 
-.commentsPopup {
-    width: 500px;
-    height: 85vh; /* Taller to show more comments */
-    background: #ffffff;
-    border-radius: 16px;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    overflow: hidden;
+@media (max-width: 400px) {
+  .singleCard_profileContainer {
+    padding: 0.8rem;
+  }
+  .userProfile {
+    width: 38px;
+    height: 38px;
+  }
+  .userName {
+    font-size: 0.88rem;
+  }
 }
-
-/* --- MOBILE & TABLET OVERRIDES --- */
-
-@media (max-width: 1024px) {
-    .commentsOverlay {
-        padding: 40px 20px; /* Add top padding to move it away from screen edges */
-    }
-    
-    .commentsPopup {
-        width: 85vw;
-        height: 80vh;
-    }
-}
-
-@media (max-width: 600px) {
-    .commentsOverlay {
-        align-items: flex-start; /* PUSH TO TOP on mobile */
-        padding: 0; /* Remove padding to use full width */
-    }
-
-    .commentsPopup {
-        width: 100%;
-        height: 100%; /* Full screen on mobile to avoid sidebar overlap */
-        border-radius: 0; /* Full screen look */
-    }
-
-    /* Fixed: Ensure the header is visible below the top notch */
-    .commentsHeader {
-        padding-top: 50px; /* Space for the phone's status bar/camera notch */
-        background: #f8f9fa;
-    }
-
-    /* Fixed: Ensure input bar is above the bottom navigation bar */
-    .commentInputBar {
-        padding: 15px;
-        padding-bottom: 40px; /* Extra space to clear the bottom nav bar */
-        border-top: 2px solid #eee;
-        background: white;
-    }
-}/* --- ENHANCED RESPONSIVE COMMENTS & ACTIONS --- */
-
-@media (max-width: 1024px) {
-    /* Tablet Mode for Comments Popup */
-    .commentsPopup {
-        width: 70vw; 
-        height: 70vh;
-    }
-}
-@media (max-width: 600px) {
-    .commentsOverlay {
-        /* Use flex-end so popup sticks to the bottom (where keyboard is) */
-        align-items: flex-end; 
-        padding: 0;
-        /* dynamic viewport height to handle mobile browser bars */
-        height: 100dvh; 
-    }
-
-    .commentsPopup {
-        width: 100%;
-        /* Change from 100vh to a percentage or dynamic calc */
-        height: 80dvh; 
-        max-height: 80dvh;
-        border-radius: 15px 15px 0 0;
-        /* This is crucial for keeping input above keyboard */
-        position: relative; 
-    }
-
-    .commentInputBar {
-        position: sticky;
-        bottom: 0;
-        background: white;
-        /* Accounts for both the virtual keyboard and physical home buttons */
-        padding-bottom: max(10px, env(safe-area-inset-bottom)); 
-        z-index: 10;
-    }
-}
-@media (max-width: 600px) {
-    /* 1. Fix for Likes not showing perfectly */
-    .postActions {
-        justify-content: space-between; /* Spread them out */
-        padding: 0.8rem 1rem;
-    }
-
-    .actionBtn {
-        gap: 4px; /* Tighten gap */
-        padding: 0.5rem;
-        flex: 1; /* Equal width for all 3 buttons */
-        justify-content: center;
-    }
-
-    .actionBtn span {
-        display: inline-block !important; /* Force labels to show */
-        font-size: 0.75rem; /* Make text smaller to fit */
-    }
-
-    /* 2. Mobile Comment Modal Adjustments */
-    .commentsOverlay {
-        align-items: flex-end; /* Mobile feel: slide from bottom */
-    }
-
-    .commentsPopup {
-        width: 100%;
-        height: 85vh; /* Don't cover 100% so user sees they can swipe/click down to close */
-        border-radius: 20px 20px 0 0; /* Rounded top corners like modern apps */
-    }
-
-    .commentsHeader {
-        padding: 0.8rem 1.2rem;
-    }
-
-    /* 3. Comment Input Bar on Mobile */
-    .commentInputBar {
-        padding: 10px;
-        position: sticky;
-        bottom: 0;
-        background: white;
-        padding-bottom: env(safe-area-inset-bottom); /* Fix for iPhone notches */
-    }
-
-    .commentInputBar input {
-        font-size: 14px; /* Prevent iOS auto-zoom on focus */
-        padding: 12px;
-    }
-
-    /* 4. Single Comment Bubble on Mobile */
-    .singleComment {
-        max-width: 85%; /* Give more room to the text */
-        padding: 8px 12px;
-    }
-}
-
-/* Fix for very narrow phones (e.g., iPhone SE) */
-@media (max-width: 360px) {
-    .actionBtn span {
-        font-size: 0.65rem;
-    }
-    
-    .actionBtn svg {
-        width: 1.1rem;
-    }
-}
-
-

@@ -1,4 +1,7 @@
+import mongoose from "mongoose";
 import Message from "../models/message.model.js";
+import Notification from "../models/notification.model.js";
+import { v2 as cloudinary } from "cloudinary";
 
 export const sendMessage = async (req, res) => {
     try {
@@ -66,6 +69,28 @@ export const sendMessage = async (req, res) => {
             // Emit to receiver's room
             io.to(receiverId.toString()).emit("newMessage", populatedMessage);
             console.log("Message emitted to receiver:", receiverId);
+        }
+
+        // Persist a notification too — the socket event above only reaches an
+        // open tab; without this, messages never show up in /notifications.
+        // ponytail: naive per-hour dedupe so a chat burst doesn't spam the
+        // list, move to a proper digest job if volume grows.
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const recentMsgNotif = await Notification.findOne({
+            userId: receiverId,
+            fromUser: senderId,
+            type: "message",
+            read: false,
+            createdAt: { $gte: oneHourAgo }
+        });
+        if (!recentMsgNotif) {
+            await Notification.create({
+                userId: receiverId,
+                type: "message",
+                fromUser: senderId,
+                message: `${populatedMessage.sender.name} sent you a message`,
+                metadata: { username: populatedMessage.sender.username }
+            });
         }
 
         res.status(201).json(populatedMessage);
@@ -277,7 +302,21 @@ export const deleteMessageForEveryone = async (req, res) => {
             return res.status(403).json({ message: "Messages older than 1 hour cannot be deleted for everyone" });
         }
 
-        // Permanently delete the message
+        // This is a hard delete (unlike deleteChat/deleteMessages, which just
+        // hide the message per-user via deletedBy) — the media's only
+        // reference disappears with it, so clean it up in Cloudinary too or
+        // it sits there consuming storage forever with nothing pointing to it.
+        for (const m of message.media || []) {
+            if (!m.publicId) continue;
+            try {
+                await cloudinary.uploader.destroy(m.publicId, {
+                    resource_type: m.mediaType === "video" ? "video" : "image"
+                });
+            } catch (cloudErr) {
+                console.error("Cloudinary message media delete error:", cloudErr);
+            }
+        }
+
         await Message.findByIdAndDelete(messageId);
 
         console.log("Message deleted for everyone:", messageId);
@@ -300,5 +339,98 @@ export const deleteMessageForEveryone = async (req, res) => {
             message: "Error deleting message",
             error: error.message
         });
+    }
+};
+
+// One row per conversation the user is part of: their most recent message
+// plus how many of the other person's messages are still unread. Backs the
+// messaging sidebar's preview/unread badge (previously a hardcoded
+// "Click to chat" string with no real data behind it).
+export const getConversations = async (req, res) => {
+    try {
+        const myId = new mongoose.Types.ObjectId(req.userId);
+
+        const conversations = await Message.aggregate([
+            {
+                $match: {
+                    $or: [{ sender: myId }, { receiver: myId }],
+                    deletedBy: { $ne: myId }
+                }
+            },
+            { $sort: { createdAt: -1 } },
+            {
+                $group: {
+                    _id: {
+                        $cond: [{ $eq: ["$sender", myId] }, "$receiver", "$sender"]
+                    },
+                    lastMessage: { $first: "$$ROOT" },
+                    unreadCount: {
+                        $sum: {
+                            $cond: [
+                                { $and: [{ $eq: ["$receiver", myId] }, { $eq: ["$isRead", false] }] },
+                                1,
+                                0
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "user"
+                }
+            },
+            { $unwind: "$user" },
+            {
+                $project: {
+                    userId: "$user._id",
+                    name: "$user.name",
+                    username: "$user.username",
+                    profilePicture: "$user.profilePicture",
+                    lastMessage: {
+                        content: "$lastMessage.content",
+                        hasMedia: { $gt: [{ $size: { $ifNull: ["$lastMessage.media", []] } }, 0] },
+                        createdAt: "$lastMessage.createdAt",
+                        isMine: { $eq: ["$lastMessage.sender", myId] }
+                    },
+                    unreadCount: 1
+                }
+            },
+            { $sort: { "lastMessage.createdAt": -1 } }
+        ]);
+
+        res.status(200).json({ conversations });
+    } catch (error) {
+        console.error("Error in getConversations:", error);
+        res.status(500).json({ message: "Error fetching conversations", error: error.message });
+    }
+};
+
+// Marks the other person's messages to me as read and tells them over the
+// socket — the DB write has to happen server-side anyway, so this is the
+// natural place for the "messagesRead" emit too (previously only a client
+// listener existed with nothing ever emitting it).
+export const markMessagesRead = async (req, res) => {
+    try {
+        const { senderId } = req.body;
+        const myId = req.userId;
+        if (!senderId) return res.status(400).json({ message: "senderId is required" });
+
+        const result = await Message.updateMany(
+            { sender: senderId, receiver: myId, isRead: false },
+            { $set: { isRead: true } }
+        );
+
+        if (result.modifiedCount > 0) {
+            const io = req.app.get("socketio");
+            if (io) io.to(senderId.toString()).emit("messagesRead", { readBy: myId });
+        }
+
+        res.status(200).json({ message: "Messages marked as read", modifiedCount: result.modifiedCount });
+    } catch (error) {
+        res.status(500).json({ message: "Error marking messages read", error: error.message });
     }
 };

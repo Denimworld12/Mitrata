@@ -1,20 +1,25 @@
 import { getMyConnectionRequests, acceptConnectionRequest, getConnectionRequest } from '@/config/redux/action/authAction';
 import { useToast } from '@/Components/Toast';
+import { useNotification } from '@/Components/NotificationProvider';
 import DashboardLayout from '@/layout/DashboardLayout'
-import UserLayout from '@/layout/userLayout'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import styles from './mynetwork.module.css'
 import { useRouter } from 'next/router';
+import { Phone, MessageCircle, Check, X, UsersRound, Inbox, SendHorizontal } from 'lucide-react';
+import EmptyState from '@/Components/ui/EmptyState';
+import { useCall } from '@/Components/CallProvider';
 
 export default function MyNetwork() {
     const dispatch = useDispatch();
     const authState = useSelector((state) => state.auth);
     const router = useRouter();
+    const { socketInstance } = useNotification();
 
     const [activeTab, setActiveTab] = useState('connections');
     const [isMounted, setIsMounted] = useState(false);
     const toast = useToast();
+    const { callUser } = useCall();
 
     const refreshData = useCallback(() => {
         const token = localStorage.getItem("token");
@@ -34,6 +39,20 @@ export default function MyNetwork() {
             router.replace('/login');
         }
     }, [refreshData, router]);
+
+    // Live-refresh both directions — a request landing in "Received" for the
+    // person it's sent to, and a sender's own "Sent"/"Connections" list
+    // moving someone over once THEY accept — instead of only ever loading
+    // once on mount and needing a manual page refresh to see either.
+    useEffect(() => {
+        if (!socketInstance) return;
+        socketInstance.on('connectionRequest', refreshData);
+        socketInstance.on('connectionAccepted', refreshData);
+        return () => {
+            socketInstance.off('connectionRequest', refreshData);
+            socketInstance.off('connectionAccepted', refreshData);
+        };
+    }, [socketInstance, refreshData]);
 
     // FIXED: Separate the data properly
     const { pendingReceived, pendingSent, myConnections } = useMemo(() => {
@@ -71,9 +90,16 @@ export default function MyNetwork() {
     if (!isMounted) return null;
 
     return (
-        <UserLayout>
-            <DashboardLayout>
+                    <DashboardLayout>
                 <div className={styles.container}>
+                    <div className={styles.pageHeader}>
+                        <h1 className={styles.pageTitle}>My Network</h1>
+                        <p className={styles.pageSub}>
+                            {myConnections.length} connections
+                            {pendingReceived.length > 0 && ` · ${pendingReceived.length} request${pendingReceived.length > 1 ? 's' : ''} waiting on you`}
+                        </p>
+                    </div>
+
                     <div className={styles.tabHeader}>
                         <button
                             className={activeTab === 'connections' ? styles.activeTab : styles.tabBtn}
@@ -98,19 +124,34 @@ export default function MyNetwork() {
                     <div className={styles.contentArea}>
                         {activeTab === 'connections' && (
                             <div className={styles.connectionsList}>
-                                <h3>Your Connections</h3>
                                 {myConnections.length === 0 ? (
-                                    <p>No connections yet.</p>
+                                    <EmptyState
+                                        icon={UsersRound}
+                                        title="No connections yet"
+                                        description="Accept requests or connect with people to grow your network."
+                                    />
                                 ) : (
-                                    myConnections.map((conn) => (
-                                        <div key={conn._id} className={styles.userCard}>
-                                            <img src={conn.userId.profilePicture || "/default-avatar.png"} alt="profile" />
+                                    myConnections.map((conn, idx) => (
+                                        <div key={conn._id} className={`${styles.userCard} mt-enter-sm`} style={{ animationDelay: `${idx * 60}ms` }}>
+                                            <div className={styles.avatarRing}>
+                                                <img src={conn.userId.profilePicture || "/default-avatar.svg"} alt="profile" />
+                                            </div>
                                             <div className={styles.userInfo} onClick={() => router.push(`/view_profile/${conn.userId.username}`)}>
                                                 <h4>{conn.userId.name}</h4>
                                                 <p>@{conn.userId.username}</p>
                                             </div>
-                                            <button className={styles.msgBtn} onClick={() => router.push(`/messaging/${conn.userId.username}`)}>
-                                                Message
+                                            <button
+                                                className={`${styles.iconBtn} mt-icon-btn`}
+                                                title="Call"
+                                                onClick={() => callUser(conn.userId._id, {
+                                                    name: conn.userId.name,
+                                                    avatar: conn.userId.profilePicture
+                                                })}
+                                            >
+                                                <Phone size={17} strokeWidth={1.8} />
+                                            </button>
+                                            <button className={`${styles.msgBtn} mt-btn-lift`} onClick={() => router.push(`/messaging/${conn.userId.username}`)}>
+                                                <MessageCircle size={15} strokeWidth={1.8} /> Message
                                             </button>
                                         </div>
                                     ))
@@ -120,31 +161,36 @@ export default function MyNetwork() {
 
                         {activeTab === 'received' && (
                             <div className={styles.requestsList}>
-                                <h3>Received Requests</h3>
                                 {pendingReceived.length === 0 ? (
-                                    <p>No pending requests.</p>
+                                    <EmptyState
+                                        icon={Inbox}
+                                        title="No pending requests"
+                                        description="Requests people send you will show up here."
+                                    />
                                 ) : (
-                                    pendingReceived.map((req) => (
-                                        <div key={req._id} className={styles.userCard}>
-                                            <img src={req.userId.profilePicture || "/default-avatar.png"} alt="profile" />
+                                    pendingReceived.map((req, idx) => (
+                                        <div key={req._id} className={`${styles.userCard} mt-enter-sm`} style={{ animationDelay: `${idx * 60}ms` }}>
+                                            <div className={styles.avatarRing}>
+                                                <img src={req.userId.profilePicture || "/default-avatar.svg"} alt="profile" />
+                                            </div>
                                             <div className={styles.userInfo} onClick={() => router.push(`/view_profile/${req.userId.username}`)}>
                                                 <h4>{req.userId.name}</h4>
                                                 <p>@{req.userId.username}</p>
                                             </div>
-                                            <div className={styles.circleButtons}>
+                                            <div className={styles.actionButtons}>
                                                 <button
-                                                    className={styles.acceptCircle}
+                                                    className={`${styles.acceptBtn} mt-btn-lift`}
                                                     onClick={() => handleAction(req._id, 'accept')}
                                                     title="Accept"
                                                 >
-                                                    ✓
+                                                    <Check size={15} strokeWidth={2} /> Accept
                                                 </button>
                                                 <button
-                                                    className={styles.rejectCircle}
+                                                    className={`${styles.ignoreBtn} mt-btn-lift`}
                                                     onClick={() => handleAction(req._id, 'reject')}
-                                                    title="Reject"
+                                                    title="Ignore"
                                                 >
-                                                    ✕
+                                                    <X size={15} strokeWidth={2} /> Ignore
                                                 </button>
                                             </div>
                                         </div>
@@ -155,13 +201,18 @@ export default function MyNetwork() {
 
                         {activeTab === 'sent' && (
                             <div className={styles.requestsList}>
-                                <h3>Sent Requests</h3>
                                 {pendingSent.length === 0 ? (
-                                    <p>No pending sent requests.</p>
+                                    <EmptyState
+                                        icon={SendHorizontal}
+                                        title="No sent requests"
+                                        description="Connection requests you send will show up here."
+                                    />
                                 ) : (
-                                    pendingSent.map((req) => (
-                                        <div key={req._id} className={styles.userCard}>
-                                            <img src={req.userId.profilePicture || "/default-avatar.png"} alt="profile" />
+                                    pendingSent.map((req, idx) => (
+                                        <div key={req._id} className={`${styles.userCard} ${styles.pendingCard} mt-enter-sm`} style={{ animationDelay: `${idx * 60}ms` }}>
+                                            <div className={styles.avatarRing}>
+                                                <img src={req.userId.profilePicture || "/default-avatar.svg"} alt="profile" />
+                                            </div>
                                             <div className={styles.userInfo} onClick={() => router.push(`/view_profile/${req.userId.username}`)}>
                                                 <h4>{req.userId.name}</h4>
                                                 <p>@{req.userId.username}</p>
@@ -175,6 +226,5 @@ export default function MyNetwork() {
                     </div>
                 </div>
             </DashboardLayout>
-        </UserLayout>
     )
 }

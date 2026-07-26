@@ -1,12 +1,22 @@
-import UserLayout from '@/layout/userLayout'
 import styles from "./index.module.css"
 import React, { useEffect, useState, useMemo } from 'react'
 import { Base_Url, clientServer } from '@/config'
 import { useDispatch, useSelector } from 'react-redux'
 import { getAboutUser, getConnectionRequest, updateUserProfile } from '@/config/redux/action/authAction'
 import { useRouter } from 'next/router'
-import { getAllPosts } from '@/config/redux/action/postAction'
+import { getAllPosts, getBookmarkedPosts, getLikedPosts } from '@/config/redux/action/postAction'
 import DashboardLayout from '@/layout/DashboardLayout' // Added for Tablet/Mobile logic
+import Skeleton from '@/Components/ui/Skeleton'
+import { Camera, Pencil, ArrowRight, Plus, X, Heart, Bookmark } from 'lucide-react'
+import EmptyState from '@/Components/ui/EmptyState'
+import { useToast } from '@/Components/Toast'
+import { compressImage, resizeToExactSize } from '@/utils/imageProcessing'
+
+// 4:1 banner — a clean, fixed ratio so every profile's cover looks
+// consistent regardless of what shape photo someone uploads (see
+// resizeToExactSize, which crops to this exactly before upload).
+const COVER_WIDTH = 1600;
+const COVER_HEIGHT = 400;
 
 export default function Profile() {
   const dispatch = useDispatch()
@@ -14,10 +24,53 @@ export default function Profile() {
   const postState = useSelector((state) => state.post);
   const router = useRouter()
 
+  const toast = useToast();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDirty, setIsDirty] = useState(false); // New: track changes
   const [mounted, setMounted] = useState(false); // New: for layout sync
-  const [isMobileOrTablet, setIsMobileOrTablet] = useState(false); // New: layout toggle
+  const [contentTab, setContentTab] = useState('posts'); // New: Posts/Media/Liked segmented control
+
+  const [isHighlightModalOpen, setIsHighlightModalOpen] = useState(false);
+  const [newHighlightTitle, setNewHighlightTitle] = useState('');
+  const [newHighlightFile, setNewHighlightFile] = useState(null);
+  const [savingHighlight, setSavingHighlight] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+
+  const handleAddHighlight = async (e) => {
+    e.preventDefault();
+    if (!newHighlightFile || savingHighlight) return;
+    setSavingHighlight(true);
+    try {
+      const compressed = await compressImage(newHighlightFile, { maxWidthOrHeight: 800, quality: 0.85 });
+      const fData = new FormData();
+      fData.append('image', compressed);
+      const { data } = await clientServer.post('/upload/image', fData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const nextHighlights = [
+        ...(userProfile?.highlights || []),
+        { title: newHighlightTitle.trim(), cover: data.url }
+      ];
+      const result = await dispatch(updateUserProfile({ highlights: nextHighlights }));
+      if (updateUserProfile.fulfilled.match(result)) {
+        dispatch(getAboutUser());
+        setIsHighlightModalOpen(false);
+        setNewHighlightTitle('');
+        setNewHighlightFile(null);
+      } else {
+        toast.error(result.payload?.message || 'Failed to save highlight');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to upload cover image');
+    } finally {
+      setSavingHighlight(false);
+    }
+  };
+
+  useEffect(() => {
+    if (contentTab === 'liked') dispatch(getLikedPosts());
+    if (contentTab === 'saved') dispatch(getBookmarkedPosts());
+  }, [contentTab, dispatch]);
 
   const userProfile = authState.user;
   const isOwner = true;
@@ -30,15 +83,8 @@ export default function Profile() {
     education: []
   });
 
-  // Handle Responsiveness and Mounting
   useEffect(() => {
     setMounted(true);
-    const handleResize = () => {
-      setIsMobileOrTablet(window.innerWidth <= 1024);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, []);
   useEffect(() => {
     if (isEditModalOpen) {
@@ -96,7 +142,11 @@ export default function Profile() {
   const recentPosts = userPosts.slice(0, 3);
   const hasMorePosts = userPosts.length > 3;
 
+  const connectionsCount = useMemo(() => {
+    return (authState.connection || []).filter(c => c.status_accepted === true).length;
+  }, [authState.connection]);
 
+  const mediaPosts = useMemo(() => userPosts.filter(post => !!post.media), [userPosts]);
 
   // Wrapper to track if user touched the form
   const updateForm = (newData) => {
@@ -144,23 +194,57 @@ export default function Profile() {
 
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
+    e.target.value = "";
     if (file) {
-      const fData = new FormData();
-      fData.append('profilePicture', file);
       try {
+        const compressed = await compressImage(file, { maxWidthOrHeight: 600, quality: 0.85 });
+        const fData = new FormData();
+        fData.append('profilePicture', compressed);
         await clientServer.post('/user/update_profile_picture', fData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         dispatch(getAboutUser());
       } catch (error) {
         console.error("Profile picture update failed", error);
+        toast.error("Failed to update profile picture");
       }
+    }
+  }
+
+  const handleCoverChange = async (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploadingCover(true);
+    try {
+      // Cropped (cover-fit) to an exact 1600x400 (4:1) before it ever
+      // leaves the browser — every banner ends up the same shape regardless
+      // of what the source photo's own aspect ratio was.
+      const banner = await resizeToExactSize(file, { width: COVER_WIDTH, height: COVER_HEIGHT, quality: 0.85 });
+      const fData = new FormData();
+      fData.append('coverPhoto', banner);
+      await clientServer.post('/user/update_cover_photo', fData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      dispatch(getAboutUser());
+      toast.success("Cover photo updated");
+    } catch (error) {
+      console.error("Cover photo update failed", error);
+      toast.error("Failed to update cover photo");
+    } finally {
+      setUploadingCover(false);
     }
   }
 
   // FIXED: Added "mounted" check to prevent hydration mismatch errors
   if (mounted && !userProfile && tokenExists) {
-    return <UserLayout><div className={styles.loader}>Loading Profile...</div></UserLayout>;
+    return (
+      <DashboardLayout>
+        <div className="max-w-2xl mx-auto mt-8 px-4">
+          <Skeleton rows={2} />
+        </div>
+      </DashboardLayout>
+    );
   }
 
 
@@ -168,18 +252,44 @@ export default function Profile() {
   const MainContent = (
     <div className={styles.container}>
       <div className={styles.coverWrapper}>
-        <div className={styles.backDropContainer}></div>
+        <div
+          className={styles.backDropContainer}
+          style={userProfile?.userId?.coverPhoto ? {
+            backgroundImage: `url(${userProfile.userId.coverPhoto})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          } : undefined}
+        >
+          {isOwner && (
+            <label
+              className={styles.changeCoverBtn}
+              htmlFor="coverPhotoUpdate"
+              title={`Recommended ${COVER_WIDTH}×${COVER_HEIGHT} (4:1) — any image is auto-cropped to fit`}
+            >
+              <Camera size={15} strokeWidth={1.8} />
+              <span>{uploadingCover ? 'Uploading…' : 'Change cover'}</span>
+              <input
+                type="file"
+                id="coverPhotoUpdate"
+                onChange={handleCoverChange}
+                accept="image/*"
+                style={{ display: 'none' }}
+                disabled={uploadingCover}
+              />
+            </label>
+          )}
+        </div>
         <div className={styles.profileImageContainer}>
           <div className={styles.imageWrapper}>
             <img
               className={styles.profileImage}
-              src={userProfile?.userId?.profilePicture || "/default-avatar.png"} // Added optional chaining
+              src={userProfile?.userId?.profilePicture || "/default-avatar.svg"} // Added optional chaining
               alt="profile"
             />
             {isOwner && (
               <div className={styles.imageOverlay}>
                 <label className={styles.labeledImageOverlay} htmlFor="profilePictureUpdate">
-                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm-9 4.5c0-2.485 2.015-4.5 4.5-4.5h.138l1.41-2.115A3 3 0 0 1 11.53 5.5h.94a3 3 0 0 1 2.481 1.385l1.41 2.115h.139c2.485 0 4.5 2.015 4.5 4.5v5c0 2.485-2.015 4.5-4.5 4.5h-11A4.5 4.5 0 0 1 3 18v-5Z" /></svg>
+                  <Camera size={18} strokeWidth={1.8} />
                   <span>Edit Image</span>
                   <input type="file" id="profilePictureUpdate" onChange={handleImageChange} accept="image/*" style={{ display: "none" }} />
                 </label>
@@ -196,7 +306,7 @@ export default function Profile() {
               <div className={styles.nameRow}>
                 <h2>{userProfile?.userId?.name || "User"}</h2> {/* Added optional chaining */}
                 {isOwner && (
-                  <button className={styles.editIconBtn} onClick={() => setIsEditModalOpen(true)}>✎ Edit Profile</button>
+                  <button className={`${styles.editIconBtn} mt-btn-lift`} onClick={() => setIsEditModalOpen(true)}><Pencil size={14} strokeWidth={2} /> Edit Profile</button>
                 )}
               </div>
               <p className={styles.headline}>{userProfile?.currentPost || "Member"}</p> {/* Added optional chaining */}
@@ -204,12 +314,43 @@ export default function Profile() {
             </div>
           </div>
 
-          <div className={styles.profileBio}>
+          <div className={styles.statsRow}>
+            <div className={`${styles.statCard} mt-enter`}>
+              <span className={styles.statNumber}>{connectionsCount}</span>
+              <span className={styles.statLabel}>Connections</span>
+            </div>
+            <div className={`${styles.statCard} mt-enter`} style={{ animationDelay: '60ms' }}>
+              <span className={styles.statNumber}>{userPosts.length}</span>
+              <span className={styles.statLabel}>Posts</span>
+            </div>
+          </div>
+
+          <div className={`${styles.highlightsStrip} mt-enter`} style={{ animationDelay: '90ms' }}>
+            {(userProfile?.highlights || []).map((h, idx) => (
+              <div key={idx} className={styles.highlightItem}>
+                <div className={styles.highlightRing} style={{ background: 'var(--mt-grad)' }}>
+                  <span
+                    className={styles.highlightRingInner}
+                    style={h.cover ? { backgroundImage: `url(${h.cover})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                  />
+                </div>
+                <span className={styles.highlightLabel}>{h.title || 'Highlight'}</span>
+              </div>
+            ))}
+            <div className={styles.highlightItem} onClick={() => setIsHighlightModalOpen(true)} style={{ cursor: 'pointer' }}>
+              <div className={styles.highlightRingDashed}>
+                <Plus size={16} strokeWidth={2} />
+              </div>
+              <span className={styles.highlightLabel}>New</span>
+            </div>
+          </div>
+
+          <div className={`${styles.profileBio} mt-enter`} style={{ animationDelay: '120ms' }}>
             <h3>About</h3>
             <p>{userProfile?.bio || 'This user has not yet added a bio.'}</p> {/* Added optional chaining */}
           </div>
 
-          <div className={styles.infoSection}>
+          <div className={`${styles.infoSection} mt-enter`} style={{ animationDelay: '180ms' }}>
             <h3>Experience</h3>
             {userProfile?.pastWork?.length > 0 ? ( // Added optional chaining
               userProfile.pastWork.map((work, idx) => (
@@ -221,7 +362,7 @@ export default function Profile() {
             ) : <p className={styles.noDataText}>No experience listed.</p>}
           </div>
 
-          <div className={styles.infoSection}>
+          <div className={`${styles.infoSection} mt-enter`} style={{ animationDelay: '240ms' }}>
             <h3>Education</h3>
             {userProfile?.education?.length > 0 ? ( // Added optional chaining
               userProfile.education.map((edu, idx) => (
@@ -231,6 +372,109 @@ export default function Profile() {
                 </div>
               ))
             ) : <p className={styles.noDataText}>No education listed.</p>}
+          </div>
+
+          <div className={`${styles.contentTabsSection} mt-enter`} style={{ animationDelay: '300ms' }}>
+            <div className={styles.tabHeader}>
+              <button
+                className={contentTab === 'posts' ? styles.activeTab : styles.tabBtn}
+                onClick={() => setContentTab('posts')}
+              >
+                Posts
+              </button>
+              <button
+                className={contentTab === 'media' ? styles.activeTab : styles.tabBtn}
+                onClick={() => setContentTab('media')}
+              >
+                Media
+              </button>
+              <button
+                className={contentTab === 'liked' ? styles.activeTab : styles.tabBtn}
+                onClick={() => setContentTab('liked')}
+              >
+                Liked
+              </button>
+              <button
+                className={contentTab === 'saved' ? styles.activeTab : styles.tabBtn}
+                onClick={() => setContentTab('saved')}
+              >
+                Saved
+              </button>
+            </div>
+
+            {contentTab === 'posts' && (
+              userPosts.length > 0 ? (
+                <div className={styles.textPostList}>
+                  {userPosts.map((post) => (
+                    <div key={post._id} className={styles.textPostCard}>
+                      <p className={styles.textPostBody}>{post.body}</p>
+                      <div className={styles.textPostMeta}>
+                        <span className={styles.textPostLikes}><Heart size={13} strokeWidth={2} /> {post.likeCount || 0}</span>
+                        {post.createdAt && (
+                          <span className={styles.textPostTime}>{new Date(post.createdAt).toLocaleDateString()}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className={styles.noDataText}>No posts yet.</p>
+            )}
+
+            {contentTab === 'media' && (
+              mediaPosts.length > 0 ? (
+                <div className={styles.mediaGrid}>
+                  {mediaPosts.map((post) => (
+                    <div key={post._id} className={styles.mediaGridItem}>
+                      <img
+                        src={post.media?.startsWith('http') ? post.media : `${Base_Url}/${post.media}`}
+                        alt="post media"
+                        className={styles.mediaGridImage}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : <p className={styles.noDataText}>No media posts yet.</p>
+            )}
+
+            {contentTab === 'liked' && (
+              postState.likedPosts?.length > 0 ? (
+                <div className={styles.textPostList}>
+                  {postState.likedPosts.map((post) => (
+                    <div key={post._id} className={styles.textPostCard}>
+                      <p className={styles.textPostBody}>{post.body}</p>
+                      <div className={styles.textPostMeta}>
+                        <span className={styles.textPostLikes}><Heart size={13} strokeWidth={2} /> {post.likeCount || 0}</span>
+                        {post.createdAt && (
+                          <span className={styles.textPostTime}>{new Date(post.createdAt).toLocaleDateString()}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState icon={Heart} title="Nothing liked yet" description="Posts you like will show up here." />
+              )
+            )}
+
+            {contentTab === 'saved' && (
+              postState.bookmarkedPosts?.length > 0 ? (
+                <div className={styles.textPostList}>
+                  {postState.bookmarkedPosts.map((post) => (
+                    <div key={post._id} className={styles.textPostCard}>
+                      <p className={styles.textPostBody}>{post.body}</p>
+                      <div className={styles.textPostMeta}>
+                        <span className={styles.textPostLikes}><Heart size={13} strokeWidth={2} /> {post.likeCount || 0}</span>
+                        {post.createdAt && (
+                          <span className={styles.textPostTime}>{new Date(post.createdAt).toLocaleDateString()}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState icon={Bookmark} title="Nothing saved yet" description="Posts you bookmark will show up here." />
+              )
+            )}
           </div>
         </div>
 
@@ -251,13 +495,11 @@ export default function Profile() {
               {/* --- NEW: SHOW ALL ACTIVITY BUTTON --- */}
 
               <button
-                className={styles.showAllActivityBtn}
+                className={`${styles.showAllActivityBtn} mt-btn-lift`}
                 onClick={() => router.push(`/activity/${userProfile?.userId?.username}`)} // Added optional chaining
               >
                 Show all activity ({userPosts.length})
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="16">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                </svg>
+                <ArrowRight size={16} strokeWidth={2} />
               </button>
 
             </>
@@ -274,13 +516,13 @@ export default function Profile() {
           onClick={handleSafeClose}
           style={{ zIndex: 10001 }} /* Increased to clear Dashboard nav exactly */
         >
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+          <div className={`${styles.modalContent} mt-dropdown-enter`} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <div className={styles.headerTitle}>
                 <h3>Edit Profile Details</h3>
                 <p>Updates will be visible to your network</p>
               </div>
-              <button className={styles.closeBtn} onClick={handleSafeClose}>&times;</button>
+              <button className={styles.closeBtn} onClick={handleSafeClose}><X size={18} strokeWidth={1.8} /></button>
             </div>
 
             <form onSubmit={handleUpdateProfile} className={styles.editForm}>
@@ -302,13 +544,13 @@ export default function Profile() {
 
                 <div className={styles.sectionHeader}>
                   <h4>Experience</h4>
-                  <button type="button" className={styles.addBtn} onClick={() => addArrayItem('pastWork')}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 5v14M5 12h14" /></svg> Add
+                  <button type="button" className={`${styles.addBtn} mt-btn-lift`} onClick={() => addArrayItem('pastWork')}>
+                    <Plus size={14} strokeWidth={2.5} /> Add
                   </button>
                 </div>
                 {formData.pastWork?.map((work, index) => (
                   <div key={index} className={styles.cardInputGroup}>
-                    <button type="button" onClick={() => removeArrayItem(index, 'pastWork')} className={styles.trashBtn}>&times;</button>
+                    <button type="button" onClick={() => removeArrayItem(index, 'pastWork')} className={`${styles.trashBtn} mt-icon-btn`}><X size={14} strokeWidth={2} /></button>
                     <input placeholder="Company Name" value={work.company} onChange={(e) => handleArrayChange(index, 'company', e.target.value, 'pastWork')} />
                     <div className={styles.rowInputs}>
                       <input placeholder="Position" value={work.position} onChange={(e) => handleArrayChange(index, 'position', e.target.value, 'pastWork')} />
@@ -319,13 +561,13 @@ export default function Profile() {
 
                 <div className={styles.sectionHeader}>
                   <h4>Education</h4>
-                  <button type="button" className={styles.addBtn} onClick={() => addArrayItem('education')}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 5v14M5 12h14" /></svg> Add
+                  <button type="button" className={`${styles.addBtn} mt-btn-lift`} onClick={() => addArrayItem('education')}>
+                    <Plus size={14} strokeWidth={2.5} /> Add
                   </button>
                 </div>
                 {formData.education?.map((edu, index) => (
                   <div key={index} className={styles.cardInputGroup}>
-                    <button type="button" onClick={() => removeArrayItem(index, 'education')} className={styles.trashBtn}>&times;</button>
+                    <button type="button" onClick={() => removeArrayItem(index, 'education')} className={`${styles.trashBtn} mt-icon-btn`}><X size={14} strokeWidth={2} /></button>
                     <input placeholder="School / University" value={edu.school} onChange={(e) => handleArrayChange(index, 'school', e.target.value, 'education')} />
                     <div className={styles.rowInputs}>
                       <input placeholder="Degree" value={edu.degree} onChange={(e) => handleArrayChange(index, 'degree', e.target.value, 'education')} />
@@ -336,8 +578,56 @@ export default function Profile() {
               </div>
 
               <div className={styles.modalFooter}>
-                <button type="button" className={styles.cancelBtn} onClick={handleSafeClose}>Cancel</button>
-                <button type="submit" className={styles.saveBtn} disabled={!isDirty}>Save Changes</button>
+                <button type="button" className={`${styles.cancelBtn} mt-btn-lift`} onClick={handleSafeClose}>Cancel</button>
+                <button type="submit" className={`${styles.saveBtn} mt-btn-lift`} disabled={!isDirty}>Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isHighlightModalOpen && (
+        <div
+          className={styles.modalOverlay}
+          onClick={() => setIsHighlightModalOpen(false)}
+          style={{ zIndex: 10001 }}
+        >
+          <div className={`${styles.modalContent} mt-dropdown-enter`} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div className={styles.headerTitle}>
+                <h3>New Highlight</h3>
+                <p>A cover image and a short title</p>
+              </div>
+              <button className={styles.closeBtn} onClick={() => setIsHighlightModalOpen(false)}><X size={18} strokeWidth={1.8} /></button>
+            </div>
+
+            <form onSubmit={handleAddHighlight} className={styles.editForm}>
+              <div className={styles.scrollableForm}>
+                <div className={styles.formGroup}>
+                  <label>Title</label>
+                  <input
+                    type="text"
+                    maxLength={40}
+                    value={newHighlightTitle}
+                    onChange={(e) => setNewHighlightTitle(e.target.value)}
+                    placeholder="e.g. Runs"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Cover image</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setNewHighlightFile(e.target.files?.[0] || null)}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.modalFooter}>
+                <button type="button" className={`${styles.cancelBtn} mt-btn-lift`} onClick={() => setIsHighlightModalOpen(false)}>Cancel</button>
+                <button type="submit" className={`${styles.saveBtn} mt-btn-lift`} disabled={!newHighlightFile || savingHighlight}>
+                  {savingHighlight ? 'Saving...' : 'Save'}
+                </button>
               </div>
             </form>
           </div>
@@ -349,13 +639,5 @@ export default function Profile() {
   // FIXED: Replaced standard return with null if not mounted to solve SSR hydration errors
   if (!mounted) return null;
 
-  return (
-    <UserLayout>
-      {isMobileOrTablet ? (
-        <DashboardLayout>{MainContent}</DashboardLayout>
-      ) : (
-        MainContent
-      )}
-    </UserLayout>
-  )
+  return <DashboardLayout>{MainContent}</DashboardLayout>;
 }

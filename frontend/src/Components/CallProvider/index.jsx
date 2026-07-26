@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { useNotification } from '../NotificationProvider';
 import { useSelector } from 'react-redux';
+import { useToast } from '../Toast';
 import CallOverlay from './CallOverlay';
 
 const CallContext = createContext(null);
@@ -11,15 +12,45 @@ export function useCall() {
     return ctx;
 }
 
+// getUserMedia failures (denied permission, no device, insecure origin) used to
+// just console.error and reset to idle — clicking the call button would silently
+// do nothing. Surface a real reason instead.
+function describeMediaError(err) {
+    if (!navigator.mediaDevices?.getUserMedia) {
+        return "Calling needs a secure connection (HTTPS) — camera/mic access isn't available on this page.";
+    }
+    switch (err?.name) {
+        case 'NotAllowedError':
+            return "Camera/microphone access was blocked. Allow it in your browser's site settings and try again.";
+        case 'NotFoundError':
+            return "No camera or microphone was found on this device.";
+        case 'NotReadableError':
+            return "Your camera or microphone is already in use by another app.";
+        default:
+            return "Couldn't start the call. Check your camera/microphone and try again.";
+    }
+}
+
+// STUN alone can't connect two peers when either is behind a symmetric/
+// restrictive NAT (common on mobile data, corporate wifi, some home
+// routers) — the offer/answer exchange succeeds but no media ever flows.
+// A TURN relay is the fallback for exactly that case. Using Open Relay's
+// free public TURN service; swap in dedicated TURN credentials if call
+// volume grows past what its rate limits allow.
 const ICE_SERVERS = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun.relay.metered.ca:80' },
+        { urls: 'turn:global.relay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:global.relay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:global.relay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
     ]
 };
 
 export function CallProvider({ children }) {
     const { socketInstance } = useNotification();
+    const toast = useToast();
     const authState = useSelector(state => state.auth);
 
     // Call state: 'idle' | 'calling' | 'ringing' | 'active'
@@ -28,16 +59,21 @@ export function CallProvider({ children }) {
     const [isMuted, setIsMuted] = useState(false);
     const [callDuration, setCallDuration] = useState(0);
     const [remoteRinging, setRemoteRinging] = useState(false);
+    const [isVideoCall, setIsVideoCall] = useState(false);
+    const [isVideoOff, setIsVideoOff] = useState(false);
 
     // ... (refs same as before)
     const peerConnection = useRef(null);
     const localStream = useRef(null);
     const remoteAudio = useRef(null);
+    const localVideoRef = useRef(null);
+    const remoteVideoRef = useRef(null);
     const ringtoneAudio = useRef(null);
     const ringbackAudio = useRef(null);
     const durationInterval = useRef(null);
     const callTimeout = useRef(null);
     const iceCandidateQueue = useRef([]);
+    const pendingIncomingIsVideo = useRef(false);
     // Use a ref for socket logic inside callbacks where we don't want re-creation
     // but rely on socketInstance for effects
 
@@ -69,12 +105,16 @@ export function CallProvider({ children }) {
             ringbackAudio.current.currentTime = 0;
             ringbackAudio.current = null;
         }
+        if (localVideoRef.current) localVideoRef.current.srcObject = null;
+        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
         iceCandidateQueue.current = [];
         setCallState('idle');
         setRemoteUser(null);
         setIsMuted(false);
         setCallDuration(0);
         setRemoteRinging(false);
+        setIsVideoCall(false);
+        setIsVideoOff(false);
     }, []);
 
     const createPeerConnection = useCallback((targetUserId) => {
@@ -90,8 +130,14 @@ export function CallProvider({ children }) {
         };
 
         pc.ontrack = (event) => {
+            // Same stream drives both elements — the audio element ignores
+            // any video track, the video element plays both, so one incoming
+            // stream correctly serves voice-only and video calls alike.
             if (remoteAudio.current) {
                 remoteAudio.current.srcObject = event.streams[0];
+            }
+            if (remoteVideoRef.current) {
+                remoteVideoRef.current.srcObject = event.streams[0];
             }
         };
 
@@ -105,13 +151,21 @@ export function CallProvider({ children }) {
         return pc;
     }, [socketInstance, cleanupCall]);
 
-    const callUser = useCallback(async (userId, userInfo = {}) => {
-        if (callState !== 'idle' || !socketInstance) return;
+    const callUser = useCallback(async (userId, userInfo = {}, isVideo = false) => {
+        if (callState !== 'idle') return;
+        if (!socketInstance) {
+            toast.error("Not connected to the server yet — try again in a moment.");
+            return;
+        }
 
         try {
             // ... (setup stream) ...
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo });
             localStream.current = stream;
+            setIsVideoCall(isVideo);
+            if (isVideo && localVideoRef.current) {
+                localVideoRef.current.srcObject = stream;
+            }
 
             // Play Ringback Tone
             try {
@@ -126,7 +180,7 @@ export function CallProvider({ children }) {
             setRemoteUser({
                 _id: userId,
                 name: userInfo.name || 'User',
-                avatar: userInfo.avatar || '/default-avatar.png'
+                avatar: userInfo.avatar || '/default-avatar.svg'
             });
             setCallState('calling');
 
@@ -142,8 +196,9 @@ export function CallProvider({ children }) {
                 offer: offer,
                 callerInfo: {
                     name: myUser?.name || 'User',
-                    avatar: myUser?.profilePicture || '/default-avatar.png'
-                }
+                    avatar: myUser?.profilePicture || '/default-avatar.svg'
+                },
+                isVideo
             });
 
             // 30s Timeout
@@ -156,15 +211,21 @@ export function CallProvider({ children }) {
 
         } catch (err) {
             console.error('Failed to start call:', err);
+            toast.error(describeMediaError(err));
             cleanupCall();
         }
-    }, [callState, socketInstance, createPeerConnection, cleanupCall, authState.user]);
+    }, [callState, socketInstance, createPeerConnection, cleanupCall, authState.user, toast]);
 
     // ... (answerCall similar update for socketInstance) ...
     const answerCall = useCallback(async (callerId, offer) => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            const isVideo = pendingIncomingIsVideo.current;
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo });
             localStream.current = stream;
+            setIsVideoCall(isVideo);
+            if (isVideo && localVideoRef.current) {
+                localVideoRef.current.srcObject = stream;
+            }
 
             const pc = createPeerConnection(callerId);
             stream.getTracks().forEach(track => pc.addTrack(track, stream));
@@ -197,9 +258,10 @@ export function CallProvider({ children }) {
             }, 1000);
         } catch (err) {
             console.error('Failed to answer call:', err);
+            toast.error(describeMediaError(err));
             cleanupCall();
         }
-    }, [socketInstance, createPeerConnection, cleanupCall]);
+    }, [socketInstance, createPeerConnection, cleanupCall, toast]);
 
     // End call
     const endCall = useCallback(() => {
@@ -224,6 +286,16 @@ export function CallProvider({ children }) {
             if (audioTrack) {
                 audioTrack.enabled = !audioTrack.enabled;
                 setIsMuted(!audioTrack.enabled);
+            }
+        }
+    }, []);
+
+    const toggleVideo = useCallback(() => {
+        if (localStream.current) {
+            const videoTrack = localStream.current.getVideoTracks()[0];
+            if (videoTrack) {
+                videoTrack.enabled = !videoTrack.enabled;
+                setIsVideoOff(!videoTrack.enabled);
             }
         }
     }, []);
@@ -256,9 +328,11 @@ export function CallProvider({ children }) {
             setRemoteUser({
                 _id: data.callerId,
                 name: data.callerInfo?.name || 'User',
-                avatar: data.callerInfo?.avatar || '/default-avatar.png'
+                avatar: data.callerInfo?.avatar || '/default-avatar.svg'
             });
             setCallState('ringing');
+            pendingIncomingIsVideo.current = !!data.isVideo;
+            setIsVideoCall(!!data.isVideo);
             iceCandidateQueue.current = [];
             peerConnection.current = null;
             window.__incomingOffer = data.offer;
@@ -308,7 +382,7 @@ export function CallProvider({ children }) {
         const handleCallRejected = (data) => {
             // Optional: Handle 'busy' reason
             if (data?.reason === 'busy') {
-                alert("User is currently on another call.");
+                toast.warning("User is currently on another call.");
             }
             cleanupCall();
         };
@@ -350,9 +424,15 @@ export function CallProvider({ children }) {
     }, [remoteUser, rejectCall]);
 
     return (
-        <CallContext.Provider value={{ callUser, endCall, callState, remoteUser, isMuted, toggleMute, callDuration, remoteRinging }}>
+        <CallContext.Provider value={{
+            callUser, endCall, callState, remoteUser, isMuted, toggleMute, callDuration, remoteRinging,
+            isVideoCall, isVideoOff, toggleVideo,
+        }}>
             {children}
-            {/* Hidden audio element for remote stream */}
+            {/* Remote audio track always plays here — for video calls the same
+                stream is ALSO attached to the video element inside CallOverlay
+                (see pc.ontrack), so audio keeps working even before that
+                element mounts. */}
             <audio ref={remoteAudio} autoPlay playsInline />
             {/* Call overlay UI */}
             {callState !== 'idle' && (
@@ -362,10 +442,15 @@ export function CallProvider({ children }) {
                     remoteRinging={remoteRinging}
                     isMuted={isMuted}
                     callDuration={callDuration}
+                    isVideoCall={isVideoCall}
+                    isVideoOff={isVideoOff}
+                    localVideoRef={localVideoRef}
+                    remoteVideoRef={remoteVideoRef}
                     onAccept={handleAcceptCall}
                     onReject={handleRejectCall}
                     onEnd={endCall}
                     onToggleMute={toggleMute}
+                    onToggleVideo={toggleVideo}
                 />
             )}
         </CallContext.Provider>

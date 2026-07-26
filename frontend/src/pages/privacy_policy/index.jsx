@@ -62,7 +62,7 @@ export default function PrivacyPolicy() {
 
                 <section className={styles.section}>
                     <h2>6. Contact Us</h2>
-                    <p>If you have questions about this policy, please contact us at <a href="mailto:privacy@socialmedia.com">privacy@socialmedia.com</a>.</p>
+                    <p>If you have questions about this policy, please contact us at <a href="mailto:support@mitrata.app">support@mitrata.app</a>.</p>
                 </section>
             </div>
         </div>

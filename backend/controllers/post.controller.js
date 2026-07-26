@@ -5,6 +5,55 @@ import Post from "../models/posts.model.js";
 import Comment from "../models/comments.model.js";
 import { v2 as cloudinary } from "cloudinary";
 import ConnectionRequest from "../models/connection.model.js";
+import Notification from "../models/notification.model.js";
+
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
+// ponytail: naive per-hour dedupe per (userId, fromUser, type, target) so a
+// like/comment burst doesn't spam the notification list — move to a proper
+// digest job if volume grows.
+const notifyOnce = async ({ userId, fromUser, type, message, metadata }) => {
+  if (userId.toString() === fromUser.toString()) return; // never notify yourself
+  const recent = await Notification.findOne({
+    userId,
+    fromUser,
+    type,
+    read: false,
+    createdAt: { $gte: new Date(Date.now() - ONE_HOUR_MS) },
+    ...(metadata?.postId ? { "metadata.postId": metadata.postId } : {}),
+  });
+  if (recent) return;
+  await Notification.create({ userId, fromUser, type, message, metadata });
+};
+
+export const REACTION_TYPES = ["like", "dislike", "flame", "handHeart", "lightbulb"];
+
+// Pulled out of post bodies at create-time — backs real trending tags
+// instead of the landing page's previously hardcoded list.
+export const extractTags = (body) =>
+  [...new Set((body.match(/#(\w+)/g) || []).map((t) => t.slice(1).toLowerCase()))].slice(0, 10);
+
+// Shared by every endpoint that returns a post's reactions, so "the same
+// post shows the same counts everywhere" doesn't depend on each call site
+// re-deriving it correctly.
+const summarise = (reactions, userId) => {
+  const counts = {};
+  let mine = null;
+  // .lean() reads (used for scale on the hot list endpoints) skip Mongoose's
+  // schema-default hydration, so an old post saved before this field existed
+  // comes back with reactions === undefined instead of [] — every caller
+  // routes through here, so this is the one place that needs the fallback.
+  (reactions || []).forEach((r) => {
+    counts[r.type] = (counts[r.type] || 0) + 1;
+    if (userId && r.userId.toString() === userId.toString()) mine = r;
+  });
+  return {
+    counts,
+    likeCount: counts.like || 0,
+    dislikeCount: counts.dislike || 0,
+    reactions: mine,
+  };
+};
 
 export const activecheck = async (req, res) => {
   return res.status(200).json({ message: "Running route post" });
@@ -26,6 +75,7 @@ export const createPost = async (req, res) => {
       body: body.trim(),
       media: req.file ? req.file.path : "",
       fileType: req.file ? req.file.mimetype.split("/")[1] : "",
+      tags: extractTags(body),
     });
 
     await post.save();
@@ -35,6 +85,38 @@ export const createPost = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
+// Public — the target of a shared post link, no auth required
+export const getPostById = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id)
+      .populate("userId", "name username profilePicture");
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    // Public route (shared post links) — req.userId only exists when the
+    // viewer is also logged in, in which case they still see their own reaction.
+    const summary = summarise(post.reactions, req.userId);
+    const comments = await Comment.find({ post_Id: post._id })
+      .populate("userId", "name username profilePicture")
+      .sort({ _id: -1 });
+
+    return res.json({ post: { ...post._doc, ...summary }, comments });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// ponytail: the engagement score below needs each candidate post's full
+// reactions array in memory (they're embedded, not aggregatable cheaply),
+// so it can't be pure DB-level sort+limit — but scanning literally every
+// post ever made, on every feed load, doesn't scale past a few thousand
+// rows. Bounding the candidate pool to the most recent N (indexed, DB-level
+// sort+limit) keeps the recency+engagement blend intact for anything that
+// could plausibly rank anyway — a post buried under 1000 more recent ones
+// wasn't going to surface in "for you" either way — while capping worst-case
+// work per request. Upgrade path if this pool ever isn't enough: a
+// precomputed/cached score field updated on reaction instead of scored here.
+const RANKING_POOL_SIZE = 1000;
 
 export const getAllPosts = async (req, res) => {
   try {
@@ -49,7 +131,10 @@ export const getAllPosts = async (req, res) => {
         { userId: userId, status_accepted: true },
         { connectionId: userId, status_accepted: true }
       ]
-    });
+    }).lean();
+
+    const me = await User.findById(userId).select("bookmarks").lean();
+    const bookmarkedIds = new Set((me?.bookmarks || []).map((id) => id.toString()));
 
     const connectedUserIds = myConnections.map(conn => {
       return conn.userId.toString() === userId.toString()
@@ -57,23 +142,22 @@ export const getAllPosts = async (req, res) => {
         : conn.userId.toString();
     });
 
-    const posts = await Post.find()
-      .populate("userId", "name username email profilePicture createdAt");
+    const feed = req.query.feed;
+    const query = feed === "following" ? { userId: { $in: connectedUserIds } } : {};
+
+    const [posts, totalMatching] = await Promise.all([
+      Post.find(query)
+        .sort({ createId: -1 })
+        .limit(RANKING_POOL_SIZE)
+        .populate("userId", "name username email profilePicture createdAt")
+        .lean(),
+      Post.countDocuments(query)
+    ]);
 
     // Engagement-weighted chronological sort algorithm
     const now = new Date();
     const scoredPosts = posts.map(post => {
-      let likeCount = 0;
-      let dislikeCount = 0;
-      let userReaction = null;
-
-      post.reactions.forEach(r => {
-        if (r.type === "like") likeCount++;
-        if (r.type === "dislike") dislikeCount++;
-        if (r.userId.toString() === userId.toString()) {
-          userReaction = r;
-        }
-      });
+      const { counts, likeCount, dislikeCount, reactions } = summarise(post.reactions, userId);
 
       // Calculate engagement score
       const hoursSincePosted = (now - new Date(post.createId || post.createdAt)) / (1000 * 60 * 60);
@@ -86,10 +170,12 @@ export const getAllPosts = async (req, res) => {
       const score = (engagementScore + recencyBoost * 10) * hasMedia * isConnected;
 
       return {
-        ...post._doc,
+        ...post,
+        counts,
         likeCount,
         dislikeCount,
-        reactions: userReaction,
+        reactions,
+        bookmarked: bookmarkedIds.has(post._id.toString()),
         _score: score
       };
     });
@@ -103,10 +189,12 @@ export const getAllPosts = async (req, res) => {
     // Remove internal score from response
     const formattedPosts = paginatedPosts.map(({ _score, ...post }) => post);
 
+    const effectiveTotal = Math.min(totalMatching, RANKING_POOL_SIZE);
+
     return res.status(200).json({
       posts: formattedPosts,
-      hasMore: skip + limit < scoredPosts.length,
-      totalPosts: scoredPosts.length,
+      hasMore: skip + limit < effectiveTotal,
+      totalPosts: effectiveTotal,
       page,
       limit
     });
@@ -168,6 +256,15 @@ export const commentPost = async (req, res) => {
     });
     await comments.save();
 
+    const commenter = await User.findById(req.userId);
+    await notifyOnce({
+      userId: post.userId,
+      fromUser: req.userId,
+      type: "comment",
+      message: `${commenter.name} commented on your post`,
+      metadata: { postId: post._id },
+    });
+
     return res.status(200).json({ message: "comment added" });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -182,7 +279,9 @@ export const getComment_by_Post = async (req, res) => {
 
     const comments = await Comment.find({ post_Id: post_id })
       .populate("userId", "username name profilePicture")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .lean();
 
     return res.status(200).json({ comments });
   } catch (error) {
@@ -209,65 +308,65 @@ export const delete_Comments = async (req, res) => {
   }
 };
 
-export const increament_likes = async (req, res) => {
-  const { post_id } = req.body;
-  try {
-    // req.userId from verifyToken middleware
-    const posts = await Post.findOne({ _id: post_id });
-    if (!posts) return res.status(400).json({ message: "post not found" });
-    posts.likes = posts.likes + 1;
-    await posts.save();
-    return res.status(200).json({ message: "like added" });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
-
 export const reactToComplaint = async (req, res) => {
   try {
     const { id } = req.params;
-    const { type } = req.body; // "like" | "dislike"
+    const { type } = req.body;
     const userId = req.userId;
 
-    if (!["like", "dislike"].includes(type)) {
+    if (!REACTION_TYPES.includes(type)) {
       return res.status(400).json({ message: "Invalid reaction type" });
     }
 
-    const complaint = await Post.findById(id);
+    // Atomic remove-then-conditionally-add instead of fetch + mutate +
+    // save — on a popular post, two reactions arriving milliseconds apart
+    // both loading the same array would have one overwrite the other on
+    // save (a classic lost-update race). $pull/$push are single-document
+    // atomic ops, so this can't lose a concurrent reaction no matter how
+    // many land on the same post at once.
+    const before = await Post.findOneAndUpdate(
+      { _id: id },
+      { $pull: { reactions: { userId } } },
+      { new: false }
+    );
+    if (!before) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const prior = before.reactions.find((r) => r.userId.toString() === userId.toString());
+    const isNewReaction = !prior;
+    const isToggleOff = prior?.type === type;
+
+    const complaint = isToggleOff
+      ? await Post.findById(id)
+      : await Post.findOneAndUpdate(
+          { _id: id },
+          { $push: { reactions: { userId, type } } },
+          { new: true }
+        );
     if (!complaint) {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    const index = complaint.reactions.findIndex(
-      (r) => r.userId.toString() === userId.toString()
-    );
-
-    if (index === -1) {
-      complaint.reactions.push({ userId, type });
-    } else if (complaint.reactions[index].type === type) {
-      complaint.reactions.splice(index, 1);
-    } else {
-      complaint.reactions[index].type = type;
+    // Only notify on a genuinely new reaction (not un-reacting or switching
+    // type), and not for "dislike" — a negative signal isn't worth pinging
+    // someone about.
+    if (isNewReaction && type !== "dislike") {
+      const reactor = await User.findById(userId);
+      await notifyOnce({
+        userId: complaint.userId,
+        fromUser: userId,
+        type: "like",
+        message: `${reactor.name} reacted to your post`,
+        metadata: { postId: complaint._id, reactionType: type },
+      });
     }
 
-    await complaint.save();
-
-    const likeCount = complaint.reactions.filter(
-      (r) => r.type === "like"
-    ).length;
-
-    const dislikeCount = complaint.reactions.filter(
-      (r) => r.type === "dislike"
-    ).length;
+    const summary = summarise(complaint.reactions, userId);
 
     res.status(200).json({
       message: "Reaction updated",
-      likeCount,
-      dislikeCount,
-      reactions:
-        complaint.reactions.find(
-          (r) => r.userId.toString() === userId.toString()
-        ) || null,
+      ...summary,
     });
   } catch (error) {
     res.status(500).json({
@@ -282,10 +381,14 @@ export const getPostAnalytics = async (req, res) => {
   try {
     const userId = req.userId;
 
-    // Get all posts by this user
+    // Get all posts by this user — Post has no `createdAt` field (see
+    // createId/updatedAt below), so sorting by createdAt was silently a
+    // no-op; doesn't corrupt the analytics below (they don't depend on
+    // find-order) but was dead weight on every call.
     const myPosts = await Post.find({ userId: userId })
       .populate("userId", "name username profilePicture")
-      .sort({ createdAt: -1 });
+      .sort({ createId: -1 })
+      .lean();
 
     if (myPosts.length === 0) {
       return res.json({
@@ -309,8 +412,7 @@ export const getPostAnalytics = async (req, res) => {
     const engagementTrend = [];
 
     myPosts.forEach(post => {
-      const likes = post.reactions.filter(r => r.type === "like").length;
-      const dislikes = post.reactions.filter(r => r.type === "dislike").length;
+      const { likeCount: likes, dislikeCount: dislikes } = summarise(post.reactions);
       totalLikes += likes;
       totalDislikes += dislikes;
 
@@ -358,6 +460,119 @@ export const getPostAnalytics = async (req, res) => {
 
   } catch (error) {
     console.error("Analytics error:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// Toggles a post in/out of the caller's saved list — replaces the old
+// localStorage-only bookmarking, which was per-device and invisible to any
+// "Saved" view.
+export const toggleBookmark = async (req, res) => {
+  try {
+    const { postId } = req.body;
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const isBookmarked = user.bookmarks.some((id) => id.toString() === postId);
+    if (isBookmarked) {
+      user.bookmarks.pull(postId);
+    } else {
+      user.bookmarks.addToSet(postId);
+    }
+    await user.save();
+
+    return res.status(200).json({ bookmarked: !isBookmarked });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getBookmarkedPosts = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const posts = await Post.find({ _id: { $in: user.bookmarks } })
+      .populate("userId", "name username email profilePicture createdAt")
+      .sort({ createId: -1 })
+      .limit(300)
+      .lean();
+
+    const formatted = posts.map((post) => ({
+      ...post,
+      ...summarise(post.reactions, req.userId),
+      bookmarked: true,
+    }));
+
+    return res.status(200).json({ posts: formatted });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// Public — top hashtags used in the last `hours`. Backs the landing page's
+// marquee and the dashboard's "Trending now" rail, both previously fabricated.
+export const getTrendingTags = async (req, res) => {
+  try {
+    const hours = Math.min(parseInt(req.query.hours) || 48, 24 * 30);
+    const limit = Math.min(parseInt(req.query.limit) || 8, 20);
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+
+    const trending = await Post.aggregate([
+      { $match: { createId: { $gte: since }, tags: { $exists: true, $ne: [] } } },
+      { $unwind: "$tags" },
+      { $group: { _id: "$tags", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: limit },
+      { $project: { _id: 0, tag: "$_id", count: 1 } },
+    ]);
+
+    return res.status(200).json({ tags: trending });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// Public — real counts for the landing page's proof row (previously a
+// hardcoded "18,402 people used Mitrata today"-style string).
+export const getPublicStats = async (req, res) => {
+  try {
+    const [totalUsers, totalPosts] = await Promise.all([
+      User.countDocuments(),
+      Post.countDocuments(),
+    ]);
+    const onlineUsers = req.app.get("onlineUsers");
+
+    return res.status(200).json({
+      totalUsers,
+      totalPosts,
+      onlineNow: onlineUsers?.size || 0,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// Posts the caller has reacted to with anything other than "dislike" —
+// backs the Profile page's "Liked" tab, same response shape as getAllPosts.
+export const getLikedPosts = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const posts = await Post.find({
+      reactions: { $elemMatch: { userId, type: { $ne: "dislike" } } },
+    })
+      .populate("userId", "name username email profilePicture createdAt")
+      .sort({ createId: -1 })
+      .limit(300)
+      .lean();
+
+    const formatted = posts.map((post) => ({
+      ...post,
+      ...summarise(post.reactions, userId),
+    }));
+
+    return res.status(200).json({ posts: formatted });
+  } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };

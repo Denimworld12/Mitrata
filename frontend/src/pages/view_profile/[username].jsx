@@ -1,13 +1,14 @@
 import { Base_Url, clientServer } from '@/config'
 import React, { useEffect, useState } from 'react'
 import styles from './styles.module.css'
-import UserLayout from '@/layout/userLayout'
 import DashboardLayout from '@/layout/DashboardLayout'
 import { useRouter } from 'next/router'
 import { useDispatch, useSelector } from 'react-redux'
 import { getAllPosts } from '@/config/redux/action/postAction'
 import { downloadResume, getConnectionRequest, sendConnectionRequest } from '@/config/redux/action/authAction'
 import serverAxios from '@/config/serverAxios'
+import { UserPlus, Check, Download, ArrowRight } from 'lucide-react'
+import ReportMenu from '@/Components/ReportMenu'
 
 export default function viewProfilePage({ userProfile }) {
     const router = useRouter()
@@ -19,31 +20,32 @@ export default function viewProfilePage({ userProfile }) {
     const [userPost, setUserPost] = useState([])
     const [isCurrentUserInConnection, setIsCurrentUserInConnection] = useState(false)
     const [isConnectionNull, setConnectionNull] = useState(true)
-    const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState(undefined); // NEW STATE
 
     if (!userProfile) {
         return (
-            <UserLayout>
-                <div style={{ textAlign: "center", padding: "50px", color: "white" }}>
-                    <h2>User not found</h2>
-                    <p>The profile you are looking for does not exist or may have been removed.</p>
+            <DashboardLayout>
+                <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--mt-ink)" }}>
+                    <h2 style={{ fontFamily: "var(--mt-font-display)", fontWeight: 500 }}>User not found</h2>
+                    <p style={{ color: "var(--mt-ink2)" }}>The profile you are looking for does not exist or may have been removed.</p>
                     <button
                         onClick={() => router.push('/dashboard')}
                         style={{
                             marginTop: "20px",
-                            padding: "10px 20px",
-                            background: "#2563eb",
-                            color: "white",
+                            padding: "10px 22px",
+                            background: "var(--mt-grad)",
+                            color: "#fff",
                             border: "none",
-                            borderRadius: "8px",
+                            borderRadius: "999px",
+                            fontWeight: 600,
+                            fontSize: "13.5px",
                             cursor: "pointer"
                         }}
                     >
                         Go to Dashboard
                     </button>
                 </div>
-            </UserLayout>
+            </DashboardLayout>
         );
     }
 
@@ -70,14 +72,7 @@ export default function viewProfilePage({ userProfile }) {
     }, [userState.connection, userProfile?.userId?._id]);
 
     useEffect(() => {
-        setMounted(true); // CRITICAL: Mark as mounted to allow layout toggle
-        const handleResize = () => {
-            // 1024px captures both Mobile and Tablet (iPad/Surface)
-            setIsMobileOrTablet(window.innerWidth <= 1024);
-        };
-        handleResize();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
+        setMounted(true);
     }, []);
 
     useEffect(() => {
@@ -135,7 +130,7 @@ export default function viewProfilePage({ userProfile }) {
                 <div className={styles.backDropContainer}></div>
                 <img
                     className={styles.profileImage}
-                    src={userProfile.userId?.profilePicture || "/default-avatar.png"}
+                    src={userProfile.userId?.profilePicture || "/default-avatar.svg"}
                     alt="profile"
                 />
             </div>
@@ -154,7 +149,7 @@ export default function viewProfilePage({ userProfile }) {
 
                             <div className={styles.actionButtons}>
                                 {isCurrentUserInConnection && connectionStatus === true ? (
-                                    <button className={styles.connectedButton}>Connected</button>
+                                    <button className={styles.connectedButton}><Check size={15} strokeWidth={2} /> Connected</button>
                                 ) :
 
                                     /* CASE 2: Pending (Sent but not yet accepted) */
@@ -164,26 +159,27 @@ export default function viewProfilePage({ userProfile }) {
 
                                         /* CASE 3: Not connected OR Rejected (Show Connect button) */
                                         (
-                                            <button className={styles.connectButton} onClick={() => {
+                                            <button className={`${styles.connectButton} mt-btn-lift`} onClick={() => {
                                                 dispatch(sendConnectionRequest({
                                                     connectionId: userProfile.userId._id
                                                 }));
-                                            }}>Connect</button>
+                                            }}><UserPlus size={15} strokeWidth={2} /> Connect</button>
                                         )}
-                                <button className={styles.resumeButton} onClick={handleDownloadResume}>
-                                    <svg viewBox="0 0 24 24" fill="currentColor" width="20"><path d="M12 1.5a.75.75 0 0 1 .75.75V7.5h-1.5V2.25A.75.75 0 0 1 12 1.5ZM11.25 7.5v5.69l-1.72-1.72a.75.75 0 0 0-1.06 1.06l3 3a.75.75 0 0 0 1.06 0l3-3a.75.75 0 1 0-1.06-1.06l-1.72 1.72V7.5h3.75a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-9a3 3 0 0 1-3-3v-9a3 3 0 0 1 3-3h3.75Z" /></svg>
+                                <button className={`${styles.resumeButton} mt-btn-lift`} onClick={handleDownloadResume}>
+                                    <Download size={16} strokeWidth={1.8} />
                                     <p>Resume</p>
                                 </button>
+                                <ReportMenu targetType="user" targetId={userProfile.userId._id} />
                             </div>
                         </div>
                     </div>
 
-                    <div className={styles.profileBio}>
+                    <div className={`${styles.profileBio} mt-enter`}>
                         <h3>About</h3>
                         <p>{userProfile.bio || 'This user has not yet added a bio.'}</p>
                     </div>
 
-                    <div className={styles.infoSection}>
+                    <div className={`${styles.infoSection} mt-enter`} style={{ animationDelay: '60ms' }}>
                         <h3>Experience</h3>
                         {userProfile.pastWork?.length > 0 ? (
                             userProfile.pastWork.map((work, idx) => (
@@ -195,7 +191,7 @@ export default function viewProfilePage({ userProfile }) {
                         ) : <p className={styles.noDataText}>No experience listed.</p>}
                     </div>
 
-                    <div className={styles.infoSection}>
+                    <div className={`${styles.infoSection} mt-enter`} style={{ animationDelay: '120ms' }}>
                         <h3>Education</h3>
                         {userProfile.education?.length > 0 ? (
                             userProfile.education.map((edu, idx) => (
@@ -227,13 +223,11 @@ export default function viewProfilePage({ userProfile }) {
                             {/* NEW: Button to see all activity */}
                             {userPost.length > 0 && (
                                 <button
-                                    className={styles.showAllActivityBtn}
+                                    className={`${styles.showAllActivityBtn} mt-btn-lift`}
                                     onClick={() => router.push(`/activity/${userProfile.userId.username}`)}
                                 >
                                     Show all activity ({userPost.length})
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="16">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                                    </svg>
+                                    <ArrowRight size={16} strokeWidth={2} />
                                 </button>
                             )}
                         </>
@@ -249,18 +243,9 @@ export default function viewProfilePage({ userProfile }) {
 
 
     // CRITICAL: Ensure this logic runs AFTER ProfileContent is defined
-    if (!mounted) return <UserLayout>{ProfileContent}</UserLayout>;
+    if (!mounted) return ProfileContent;
 
-    return (
-        <UserLayout>
-            {isMobileOrTablet ? (
-                /* Applying DashboardLayout for Tablet (912px) to fix navbar overlap */
-                <DashboardLayout>{ProfileContent}</DashboardLayout>
-            ) : (
-                ProfileContent
-            )}
-        </UserLayout>
-    );
+    return <DashboardLayout>{ProfileContent}</DashboardLayout>;
 }
 
 export async function getServerSideProps(context) {

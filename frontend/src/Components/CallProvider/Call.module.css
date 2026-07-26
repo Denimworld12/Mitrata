@@ -5,10 +5,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.85);
-    /* Darker backdrop */
-    backdrop-filter: blur(16px);
-    animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    background: rgba(11, 10, 9, 0.7);
+    /* no backdrop-filter here per design handoff — too expensive over animated content */
+    animation: fadeIn 0.3s var(--mt-ease);
 }
 
 @keyframes fadeIn {
@@ -27,232 +26,345 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 24px;
-    padding: 60px 80px;
-    border-radius: 40px;
-    background: linear-gradient(160deg, #1e293b, #0f172a);
-    box-shadow:
-        0 20px 60px -10px rgba(0, 0, 0, 0.6),
-        0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+    gap: 16px;
+    padding: 48px 40px;
+    border-radius: 30px;
+    background: var(--mt-surface);
+    border: 1px solid var(--mt-border);
+    box-shadow: var(--mt-shadow-lg);
     width: 100%;
-    max-width: 420px;
-    position: relative;
-    overflow: hidden;
+    max-width: 340px;
 }
 
-/* Optional background glow */
-.callCard::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle at center, rgba(37, 99, 235, 0.08), transparent 60%);
-    pointer-events: none;
-    z-index: 0;
+.overline {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: var(--mt-grad-soft);
+    color: var(--mt-accent);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
 }
 
 /* Avatar */
 .avatarRing {
     position: relative;
-    width: 140px;
-    height: 140px;
+    width: 104px;
+    height: 104px;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1;
-    margin-bottom: 12px;
+    margin-top: 8px;
 }
 
 .avatar {
-    width: 120px;
-    height: 120px;
+    width: 104px;
+    height: 104px;
     border-radius: 50%;
     object-fit: cover;
-    border: 4px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 0 3px var(--mt-surface), 0 0 0 5px transparent;
+    background: var(--mt-grad);
+    padding: 3px;
     z-index: 2;
 }
 
 .pulseRing {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100%;
-    height: 100%;
+    inset: 0;
     border-radius: 50%;
-    border: 2px solid rgba(59, 130, 246, 0.4);
-    animation: ripple 2s infinite;
+    border: 2px solid var(--mt-accent);
+    animation: mtPulse 1.6s var(--mt-ease) infinite;
 }
 
-.pulseRing::before,
-.pulseRing::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    border: 2px solid rgba(59, 130, 246, 0.4);
-    animation: ripple 2s infinite 0.6s;
-}
-
-.pulseRing::after {
-    animation-delay: 1.2s;
-}
-
-
-@keyframes ripple {
-    0% {
-        width: 100%;
-        height: 100%;
-        opacity: 1;
-        border-width: 2px;
-    }
-
-    100% {
-        width: 220%;
-        height: 220%;
-        opacity: 0;
-        border-width: 0px;
-    }
+.pulseRingDelay {
+    animation-delay: 0.5s;
 }
 
 .userName {
-    color: white;
-    font-size: 1.75rem;
-    font-weight: 700;
+    font-family: var(--mt-font-display);
+    color: var(--mt-ink);
+    font-size: 1.5rem;
+    font-weight: 600;
     margin: 0;
-    letter-spacing: -0.02em;
-    z-index: 1;
+    letter-spacing: -0.01em;
     text-align: center;
 }
 
 .status {
-    color: #94a3b8;
-    font-size: 1.1rem;
+    color: var(--mt-ink2);
+    font-size: 1rem;
     margin: 0;
     font-weight: 500;
-    animation: breathe 3s ease-in-out infinite;
-    z-index: 1;
-}
-
-@keyframes breathe {
-
-    0%,
-    100% {
-        opacity: 0.7;
-    }
-
-    50% {
-        opacity: 1;
-    }
 }
 
 .duration {
-    color: #4ade80;
-    font-size: 1.8rem;
+    color: var(--mt-online);
+    font-size: 1.4rem;
     font-weight: 600;
     font-feature-settings: 'tnum';
     margin: 0;
-    text-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
-    z-index: 1;
 }
 
 /* Action buttons */
 .actions {
     display: flex;
-    gap: 32px;
-    margin-top: 32px;
-    z-index: 1;
+    gap: 28px;
+    margin-top: 20px;
+}
+
+.actionCol {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.actionLabel {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--mt-ink3);
 }
 
 .callBtn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 72px;
-    height: 72px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
     border: none;
     cursor: pointer;
-    color: white;
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    color: #fff;
+    transition: transform 0.2s var(--mt-ease), box-shadow 0.2s var(--mt-ease);
 }
 
 .callBtn:hover {
-    transform: translateY(-4px) scale(1.05);
-    box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.5);
+    transform: translateY(-2px) scale(1.04);
 }
 
 .callBtn:active {
-    transform: translateY(0) scale(0.95);
+    transform: translateY(0) scale(0.96);
 }
 
 .acceptBtn {
-    background: linear-gradient(135deg, #22c55e, #15803d);
+    background: var(--mt-online);
+    box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--mt-online) 65%, transparent);
+    animation: mtPop 0.4s var(--mt-ease);
 }
 
-.rejectBtn {
-    background: linear-gradient(135deg, #ef4444, #b91c1c);
-}
-
+.rejectBtn,
 .endBtn {
-    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    background: var(--mt-danger);
+    box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--mt-danger) 65%, transparent);
 }
 
-.muteBtn {
-    background: rgba(255, 255, 255, 0.1);
+.ghostBtn {
+    width: 48px;
+    height: 48px;
+    background: var(--mt-sunken);
+    color: var(--mt-ink2);
+    box-shadow: none;
+}
+
+.ghostBtn:hover {
+    background: var(--mt-border);
+}
+
+.ghostBtnActive {
+    background: var(--mt-ink);
+    color: var(--mt-canvas);
+}
+
+/* ============ Video stage ============ */
+.videoStage {
+    position: relative;
+    width: min(860px, 94%);
+    aspect-ratio: 16 / 10;
+    border-radius: 28px;
+    overflow: hidden;
+    background: linear-gradient(160deg, #0b1030, #1e1030 55%, #301208);
+    box-shadow: var(--mt-shadow-lg);
+}
+
+.remoteVideo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #000;
+}
+
+.videoConnectingScrim {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.userNameLight {
+    font-family: var(--mt-font-display);
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.statusLight {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem;
+    margin: 0;
+    font-weight: 500;
+}
+
+.videoNameChip {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 14px 7px 8px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.45);
     backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 
-.muteBtn:hover {
-    background: rgba(255, 255, 255, 0.2);
+.videoNameChip img {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    object-fit: cover;
 }
 
-.mutedBtn {
-    background: rgba(255, 255, 255, 0.9);
-    color: #ef4444;
+.videoNameChip span {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #fff;
 }
 
-.mutedBtn:hover {
-    background: white;
+.videoNameChipDuration {
+    color: rgba(255, 255, 255, 0.65) !important;
+    font-weight: 500 !important;
+}
+
+.localVideoPip {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 138px;
+    aspect-ratio: 3 / 4;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 12px 30px -12px rgba(0, 0, 0, 0.6);
+    background: #1e1030;
+}
+
+.localVideoPip video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    /* mirror, like a real front-camera preview */
+}
+
+.localVideoPipHidden {
+    visibility: hidden;
+}
+
+.videoControlBar {
+    position: absolute;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.glassBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    border: none;
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.18s var(--mt-ease), transform 0.18s var(--mt-ease);
+}
+
+.glassBtn:hover {
+    background: rgba(255, 255, 255, 0.28);
+}
+
+.glassBtnActive {
+    background: #fff;
+    color: #000;
+}
+
+.glassBtnEnd {
+    width: 52px;
+    background: var(--mt-danger);
+}
+
+.glassBtnEnd:hover {
+    background: var(--mt-danger);
+    transform: scale(1.06);
+}
+
+.glassBtnDanger {
+    width: 56px;
+    height: 56px;
+    background: var(--mt-danger);
+    box-shadow: 0 10px 22px -10px rgba(212, 53, 28, 0.9);
+}
+
+.glassBtnAccept {
+    width: 56px;
+    height: 56px;
+    background: var(--mt-online);
+    box-shadow: 0 10px 22px -10px rgba(31, 138, 76, 0.9);
+    animation: mtPop 1.4s var(--mt-ease) infinite;
+}
+
+@media (max-width: 640px) {
+    .localVideoPip {
+        width: 96px;
+    }
 }
 
 /* Mobile */
 @media (max-width: 640px) {
     .callCard {
-        padding: 48px 32px;
+        padding: 40px 24px;
         width: 90%;
-        gap: 20px;
-        border-radius: 32px;
+        gap: 12px;
+        border-radius: 24px;
     }
 
     .userName {
-        font-size: 1.5rem;
-    }
-
-    .callBtn {
-        width: 64px;
-        height: 64px;
+        font-size: 1.3rem;
     }
 
     .actions {
-        gap: 24px;
-    }
-
-    .avatarRing {
-        width: 120px;
-        height: 120px;
-    }
-
-    .avatar {
-        width: 100px;
-        height: 100px;
+        gap: 20px;
     }
 }

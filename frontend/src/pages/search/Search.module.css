@@ -6,6 +6,29 @@
     min-height: 100vh;
 }
 
+/* Page Header */
+.pageHeader {
+    margin-bottom: 24px;
+}
+
+.pageTitle {
+    font-family: var(--mt-font-display);
+    font-size: 38px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: var(--mt-grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+}
+
+.pageSub {
+    color: var(--mt-ink2);
+    font-size: 14px;
+    margin-top: 4px;
+}
+
 /* Search Header & Form */
 .searchHeader {
     margin-bottom: 40px;
@@ -14,49 +37,58 @@
 .searchForm {
     display: flex;
     align-items: center;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 8px 16px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    transition: all 0.2s;
+    background: var(--mt-surface);
+    border: 1px solid var(--mt-border);
+    border-radius: 999px;
+    height: 52px;
+    padding: 0 8px 0 20px;
+    box-shadow: var(--mt-shadow);
+    transition: border-color .2s, box-shadow .2s;
 }
 
 .searchForm:focus-within {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: var(--mt-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--mt-accent) 15%, transparent);
 }
 
 .searchIcon {
     width: 20px;
     height: 20px;
-    color: #94a3b8;
+    color: var(--mt-ink3);
     margin-right: 12px;
+    flex-shrink: 0;
 }
 
 .searchInput {
     flex: 1;
+    /* Flex items default to min-width:auto, which stops them shrinking
+       below their placeholder's intrinsic width — on narrow screens that
+       pushed the search button out over the tail end of the text instead
+       of letting the input actually shrink and truncate it. */
+    min-width: 0;
     border: none;
     outline: none;
+    background: transparent;
     font-size: 16px;
-    color: #334155;
+    color: var(--mt-ink);
     padding: 8px 0;
+    text-overflow: ellipsis;
 }
 
 .searchBtn {
-    background: #3b82f6;
+    background: var(--mt-grad);
     color: white;
     border: none;
-    padding: 8px 16px;
-    border-radius: 8px;
+    padding: 10px 20px;
+    border-radius: 999px;
     font-weight: 600;
     cursor: pointer;
     font-size: 14px;
-    transition: background 0.2s;
+    transition: filter 0.2s;
 }
 
 .searchBtn:hover {
-    background: #2563eb;
+    filter: brightness(1.08);
 }
 
 /* Section Styling */
@@ -65,9 +97,10 @@
 }
 
 .sectionTitle {
+    font-family: var(--mt-font-display);
     font-size: 20px;
     font-weight: 700;
-    color: #1e293b;
+    color: var(--mt-ink);
     margin-bottom: 20px;
     display: flex;
     align-items: center;
@@ -77,34 +110,50 @@
 .titleIcon {
     width: 20px;
     height: 20px;
-    color: #f59e0b;
-    /* Amber/Gold for spark/suggestions */
+    color: var(--mt-live);
+}
+
+/* Recent search chips */
+.recentChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--mt-sunken);
+    color: var(--mt-ink2);
+    border: 1px solid var(--mt-border);
+    font-size: 13.5px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.recentChip:hover {
+    background: var(--mt-border);
+    color: var(--mt-ink);
+}
+
+.recentChipClose {
+    width: 14px;
+    height: 14px;
+    color: var(--mt-ink3);
+}
+
+.recentChipClose:hover {
+    color: var(--mt-ink);
 }
 
 /* Horizontal Scroll for Suggestions */
 .horizontalScroll {
     display: flex;
-    gap: 16px;
+    gap: 14px;
     overflow-x: auto;
-    padding-bottom: 16px;
-    scroll-snap-type: x mandatory;
+    padding-bottom: 4px;
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
-}
-
-.horizontalScroll::-webkit-scrollbar {
-    height: 6px;
-}
-
-.horizontalScroll::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
-    border-radius: 4px;
 }
 
 .scrollItem {
-    flex: 0 0 280px;
-    /* Fixed width for horizontal items */
-    scroll-snap-align: start;
+    flex: 0 0 230px;
 }
 
 /* Grid for Results */
@@ -116,13 +165,13 @@
 
 /* Card Styling */
 .card {
-    background: white;
+    background: var(--mt-surface);
     border-radius: 16px;
-    border: 1px solid #f1f5f9;
+    border: 1px solid var(--mt-border);
     overflow: hidden;
-    transition: all 0.2s;
+    transition: transform .2s var(--mt-ease), box-shadow .2s var(--mt-ease), border-color .2s;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    box-shadow: var(--mt-shadow);
     height: 100%;
     /* Ensure consistent height */
     display: flex;
@@ -131,8 +180,8 @@
 
 .card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    border-color: #e2e8f0;
+    box-shadow: var(--mt-shadow-lg);
+    border-color: var(--mt-border-2);
 }
 
 .cardHeader {
@@ -140,8 +189,8 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    background: #fdfdfd;
-    border-bottom: 1px solid #f8fafc;
+    background: var(--mt-sunken);
+    border-bottom: 1px solid var(--mt-border);
 }
 
 .avatar {
@@ -149,8 +198,8 @@
     height: 48px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid white;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 2px solid var(--mt-surface);
+    box-shadow: var(--mt-shadow);
 }
 
 .userInfo {
@@ -160,7 +209,7 @@
 .name {
     font-size: 15px;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--mt-ink);
     margin: 0;
     white-space: nowrap;
     overflow: hidden;
@@ -169,7 +218,7 @@
 
 .username {
     font-size: 13px;
-    color: #64748b;
+    color: var(--mt-ink2);
     margin: 2px 0 0;
 }
 
@@ -181,7 +230,7 @@
 }
 
 .bio {
-    color: #475569;
+    color: var(--mt-ink2);
     font-size: 13px;
     line-height: 1.5;
     margin-bottom: 12px;
@@ -193,20 +242,6 @@
     flex: 1;
 }
 
-.matchReason {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: #eff6ff;
-    color: #2563eb;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    margin-bottom: 12px;
-    align-self: flex-start;
-}
-
 .skills {
     display: flex;
     flex-wrap: wrap;
@@ -216,60 +251,48 @@
 }
 
 .skillTag {
-    background: #f1f5f9;
-    color: #475569;
+    background: var(--mt-sunken);
+    color: var(--mt-ink2);
     padding: 4px 8px;
     border-radius: 6px;
     font-size: 11px;
     font-weight: 500;
 }
 
-/* Empty & Loading States */
-.loading,
-.empty {
-    text-align: center;
-    padding: 40px;
-    color: #94a3b8;
-}
-
-.emptyIcon {
-    font-size: 40px;
-    margin-bottom: 16px;
-    display: block;
-}
-
-/* Connect Button */
+/* Connect Button (gradient pill) */
 .connectBtn {
     margin-left: auto;
     /* Push to right */
-    background: #eff6ff;
-    color: #3b82f6;
+    background: var(--mt-grad);
+    color: #fff;
     border: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s var(--mt-ease);
     flex-shrink: 0;
+    box-shadow: var(--mt-shadow);
 }
 
 .connectBtn:hover {
-    background: #dbeafe;
+    filter: brightness(1.08);
     transform: scale(1.05);
 }
 
 .connectBtn.sent {
-    background: #dcfce7;
-    color: #16a34a;
+    background: color-mix(in srgb, var(--mt-online) 16%, transparent);
+    color: var(--mt-online);
+    box-shadow: none;
     cursor: default;
 }
 
 .btnIcon {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
 }
 
 .loadingDot {
@@ -297,9 +320,13 @@
         padding: 16px;
     }
 
-    .scrollItem {
-        flex: 0 0 240px;
-        /* Slightly smaller on mobile */
+    .searchForm {
+        padding: 0 4px 0 16px;
+    }
+
+    .searchBtn {
+        padding: 10px 16px;
+        font-size: 13px;
     }
 
     .grid {

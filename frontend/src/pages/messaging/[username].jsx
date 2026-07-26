@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import styles from './styles.module.css';
-import UserLayout from '@/layout/userLayout';
 import DashboardLayout from '@/layout/DashboardLayout';
 import { useRouter } from 'next/router';
 import { useSelector, useDispatch } from 'react-redux';
 import { Base_Url } from '@/config';
-import { pushMessage, resetMessages, removeDeletedMessages } from '@/config/redux/reducer/messageReducer';
-import { getMessages, sendMessage, deleteMessages, deleteChat, deleteMessageForEveryone } from '@/config/redux/action/messageAction';
+import { pushMessage, resetMessages, removeDeletedMessages, markMyMessagesRead } from '@/config/redux/reducer/messageReducer';
+import { getMessages, sendMessage, deleteMessages, deleteChat, deleteMessageForEveryone, getConversations, markMessagesRead } from '@/config/redux/action/messageAction';
 import { getAboutUser, getMyConnectionRequests } from '@/config/redux/action/authAction';
 import { useToast } from '@/Components/Toast';
 import { useNotification } from "@/Components/NotificationProvider";
 import { useCall } from "@/Components/CallProvider";
+import { compressImage } from "@/utils/imageProcessing";
+import EmptyState from "@/Components/ui/EmptyState";
+import { ArrowLeft, Search, Phone, Video, MoreVertical, Trash2, Plus, Send, Download, X, MessageCircle, UsersRound, Check, CheckCheck } from "lucide-react";
 
 export default function Messaging() {
     const router = useRouter();
@@ -19,7 +21,7 @@ export default function Messaging() {
 
     /* -------------------- REDUX -------------------- */
     const authState = useSelector(state => state.auth);
-    const { messages } = useSelector(state => state.message);
+    const { messages, conversations } = useSelector(state => state.message);
 
     /* -------------------- LOCAL STATE -------------------- */
     const [mounted, setMounted] = useState(false);
@@ -99,6 +101,31 @@ export default function Messaging() {
         c => c.userId?.username === username
     );
 
+    // Real conversation previews/unread counts (replaces the old hardcoded
+    // "Click to chat" placeholder) — connections with an actual conversation
+    // sort to the top by recency; message-less connections stay after, in
+    // their existing order.
+    useEffect(() => {
+        dispatch(getConversations());
+    }, [dispatch]);
+
+    const conversationByUserId = useMemo(() => {
+        const map = {};
+        conversations.forEach((c) => { map[c.userId] = c; });
+        return map;
+    }, [conversations]);
+
+    const sortedConnections = useMemo(() => {
+        return [...connections].sort((a, b) => {
+            const timeA = conversationByUserId[a.userId?._id]?.lastMessage?.createdAt;
+            const timeB = conversationByUserId[b.userId?._id]?.lastMessage?.createdAt;
+            if (!timeA && !timeB) return 0;
+            if (!timeA) return 1;
+            if (!timeB) return -1;
+            return new Date(timeB) - new Date(timeA);
+        });
+    }, [connections, conversationByUserId]);
+
     /* -------------------- SOCKET EVENTS -------------------- */
     useEffect(() => {
         const myId = authState.user?.userId?._id;
@@ -149,14 +176,39 @@ export default function Messaging() {
         };
     }, [authState.user, activeChatUser, socket, dispatch, isSidebarOnly]);
 
+    // Don't leave a stray "stopTyping" timer firing after the component (or
+    // the active chat) is gone.
+    useEffect(() => {
+        return () => clearTimeout(typingTimeoutRef.current);
+    }, [activeChatUser]);
+
     /* -------------------- FETCH CHAT -------------------- */
     useEffect(() => {
         if (activeChatUser?.userId?._id) {
             dispatch(getMessages({ receiverId: activeChatUser.userId._id }));
+            dispatch(markMessagesRead({ senderId: activeChatUser.userId._id }));
         } else {
             dispatch(resetMessages());
         }
     }, [activeChatUser, dispatch]);
+
+    // The other person read our messages while this thread is open — flip
+    // our sent bubbles to the read state and refresh their unread badge.
+    useEffect(() => {
+        if (!socket.current) return;
+        const handleRead = () => dispatch(markMyMessagesRead());
+        socket.current.on("messagesRead", handleRead);
+        return () => socket.current?.off("messagesRead", handleRead);
+    }, [socket, activeChatUser, dispatch]);
+
+    // Mark newly-arrived messages in the OPEN thread as read too — otherwise
+    // they'd sit unread until the next thread switch/reload.
+    useEffect(() => {
+        if (activeChatUser?.userId?._id && messages.some(m => m.receiver?._id === authState.user?.userId?._id && !m.isRead)) {
+            dispatch(markMessagesRead({ senderId: activeChatUser.userId._id }));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [messages]);
 
     /* -------------------- AUTO SCROLL -------------------- */
     useEffect(() => {
@@ -183,8 +235,9 @@ export default function Messaging() {
 
 
     /* -------------------- FILE HANDLING -------------------- */
-    const handleFileChange = (e) => {
+    const handleFileChange = async (e) => {
         const files = Array.from(e.target.files);
+        e.target.value = "";
 
         const validFiles = files.filter(f =>
             f.type.startsWith("image") || f.type.startsWith("video")
@@ -195,11 +248,30 @@ export default function Messaging() {
             return;
         }
 
-        setSelectedFiles(prev => [...prev, ...validFiles]);
+        // no-ops for videos — only compresses actual images
+        const processed = await Promise.all(
+            validFiles.map((f) => compressImage(f, { maxWidthOrHeight: 1280, quality: 0.8 }))
+        );
+        setSelectedFiles(prev => [...prev, ...processed]);
     };
 
     const removeFile = (index) => {
         setSelectedFiles(prev => prev.filter((_, idx) => idx !== index));
+    };
+
+    /* -------------------- TYPING INDICATOR -------------------- */
+    const handleMessageChange = (e) => {
+        setMessage(e.target.value);
+
+        const receiverId = activeChatUser?.userId?._id;
+        if (!socket.current || !receiverId) return;
+
+        socket.current.emit("typing", { receiverId });
+
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => {
+            socket.current?.emit("stopTyping", { receiverId });
+        }, 1500);
     };
 
     /* -------------------- SEND MESSAGE -------------------- */
@@ -378,7 +450,7 @@ export default function Messaging() {
 
     /* -------------------- UI -------------------- */
     return (
-        // <UserLayout>
+        <DashboardLayout fullWidth>
         <div className={styles.messagingWrapper}>
             <div className={styles.messagingMainCard}>
 
@@ -387,41 +459,52 @@ export default function Messaging() {
                 <div className={`${styles.sidebar} ${!isSidebarOnly ? styles.mobileHidden : ''}`}>
 
                     <div className={styles.sidebarHeader}>
-                        <div className={styles.sidebarHeaderLeft} onClick={() => router.push('/my_network')}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="20" height="20">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-                            </svg>
-                        </div>
                         <h3>Messages</h3>
-                        <div className={styles.sidebarHeaderRight} onClick={() => router.push('/my_network')}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="20" height="20">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                            </svg>
+                        <div className={styles.sidebarHeaderRight} onClick={() => router.push('/my_network')} title="Connections">
+                            <UsersRound size={19} strokeWidth={1.8} />
                         </div>
                     </div>
 
                     <div className={styles.connectionsList}>
                         {connections.length === 0 ? (
-                            <p className={styles.noData}>No connections found.</p>
-                        ) : connections.map(conn => (
-                            <div
-                                key={conn._id}
-                                className={`${styles.userCard} ${username === conn.userId?.username ? styles.activeUser : ''}`}
-                                onClick={() => handleUserSelect(conn.userId?.username)}
-                            >
-                                <div className={styles.avatarWrapper}>
-                                    <img
-                                        src={conn.userId?.profilePicture || "/default-avatar.png"}
-                                        alt={conn.userId?.name}
-                                    />
-                                    <div className={`${styles.onlineStatus} ${onlineUsers.has(conn.userId?._id) ? styles.online : styles.offline}`}></div>
+                            <EmptyState
+                                icon={UsersRound}
+                                title="No connections yet"
+                                description="Connect with people to start messaging them."
+                            />
+                        ) : sortedConnections.map((conn, idx) => {
+                            const convo = conversationByUserId[conn.userId?._id];
+                            const preview = !convo
+                                ? "Click to chat"
+                                : convo.lastMessage.content
+                                    ? `${convo.lastMessage.isMine ? "You: " : ""}${convo.lastMessage.content}`
+                                    : convo.lastMessage.hasMedia
+                                        ? `${convo.lastMessage.isMine ? "You: " : ""}Media`
+                                        : "Click to chat";
+                            return (
+                                <div
+                                    key={conn._id}
+                                    className={`${styles.userCard} ${username === conn.userId?.username ? styles.activeUser : ''} mt-enter-sm`}
+                                    style={{ animationDelay: `${idx * 60}ms` }}
+                                    onClick={() => handleUserSelect(conn.userId?.username)}
+                                >
+                                    <div className={styles.avatarWrapper}>
+                                        <img
+                                            src={conn.userId?.profilePicture || "/default-avatar.svg"}
+                                            alt={conn.userId?.name}
+                                        />
+                                        <div className={`${styles.onlineStatus} ${onlineUsers.has(conn.userId?._id) ? styles.online : styles.offline}`}></div>
+                                    </div>
+                                    <div className={styles.userMeta}>
+                                        <p className={styles.name}>{conn.userId?.name}</p>
+                                        <p className={styles.lastMsg}>{preview}</p>
+                                    </div>
+                                    {convo?.unreadCount > 0 && (
+                                        <span className={styles.unreadBadge}>{convo.unreadCount > 9 ? '9+' : convo.unreadCount}</span>
+                                    )}
                                 </div>
-                                <div className={styles.userMeta}>
-                                    <p className={styles.name}>{conn.userId?.name}</p>
-                                    <p className={styles.lastMsg}>Click to chat</p>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                 </div>
@@ -435,9 +518,7 @@ export default function Messaging() {
                                 {selectionMode ? (
                                     <>
                                         <button className={styles.backBtn} onClick={handleCancelSelection}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="black" className="size-6">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-                                            </svg>
+                                            <ArrowLeft size={20} strokeWidth={1.8} />
                                         </button>
 
                                         <div className={styles.selectionInfo}>
@@ -449,13 +530,11 @@ export default function Messaging() {
                                                 className={styles.deleteBtn}
                                                 onClick={() => setShowDeleteMenu(prev => !prev)}
                                             >
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6">
-                                                    <path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clipRule="evenodd" />
-                                                </svg>
+                                                <Trash2 size={19} strokeWidth={1.8} />
                                             </button>
 
                                             {showDeleteMenu && (
-                                                <div className={styles.dropdownMenu}>
+                                                <div className={`${styles.dropdownMenu} mt-dropdown-enter`}>
                                                     <button
                                                         className={styles.menuItem}
                                                         onClick={async () => {
@@ -490,22 +569,32 @@ export default function Messaging() {
                                 ) : (
                                     <>
                                         <button className={styles.backBtn} onClick={handleBackClick}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="black" className="size-6">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-                                            </svg>
+                                            <ArrowLeft size={20} strokeWidth={1.8} />
                                         </button>
 
                                         <div className={styles.headerUserInfo}>
-                                            <img
-                                                src={activeChatUser.userId.profilePicture || "/default-avatar.png"}
-                                                alt={activeChatUser.userId.name}
-                                                className={styles.headerAvatar}
-                                            />
+                                            <div className={styles.headerAvatarWrapper}>
+                                                <img
+                                                    src={activeChatUser.userId.profilePicture || "/default-avatar.svg"}
+                                                    alt={activeChatUser.userId.name}
+                                                    className={styles.headerAvatar}
+                                                />
+                                                <div className={`${styles.onlineStatus} ${onlineUsers.has(activeChatUser.userId._id) ? styles.online : styles.offline}`}></div>
+                                            </div>
                                             <div className={styles.headerInfo}>
                                                 <h4 onClick={() => { router.push(`/view_profile/${activeChatUser.userId.username}`) }}>{activeChatUser.userId.name}</h4>
-                                                <span className={isTyping ? styles.typingStatus : (onlineUsers.has(activeChatUser.userId._id) ? styles.onlineText : styles.offlineText)}>
-                                                    {isTyping ? 'typing...' : (onlineUsers.has(activeChatUser.userId._id) ? 'Online' : 'Offline')}
-                                                </span>
+                                                {isTyping ? (
+                                                    <span className={styles.typingStatus}>
+                                                        <span className={styles.typingDots}>
+                                                            <i></i><i></i><i></i>
+                                                        </span>
+                                                        typing
+                                                    </span>
+                                                ) : (
+                                                    <span className={onlineUsers.has(activeChatUser.userId._id) ? styles.onlineText : styles.offlineText}>
+                                                        {onlineUsers.has(activeChatUser.userId._id) ? 'Online' : 'Offline'}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
 
@@ -518,20 +607,29 @@ export default function Messaging() {
                                                 })}
                                                 title="Voice Call"
                                             >
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" width="24" height="24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
-                                                </svg>
+                                                <Phone size={19} strokeWidth={1.8} />
+                                            </button>
+
+                                            <button
+                                                className={styles.menuBtn}
+                                                onClick={() => callUser(activeChatUser.userId._id, {
+                                                    name: activeChatUser.userId.name,
+                                                    avatar: activeChatUser.userId.profilePicture
+                                                }, true)}
+                                                title="Video Call"
+                                            >
+                                                <Video size={19} strokeWidth={1.8} />
                                             </button>
 
                                             <button
                                                 className={styles.menuBtn}
                                                 onClick={() => setShowMenu(!showMenu)}
                                             >
-                                                ⋮
+                                                <MoreVertical size={19} strokeWidth={1.8} />
                                             </button>
 
                                             {showMenu && (
-                                                <div className={styles.dropdownMenu}>
+                                                <div className={`${styles.dropdownMenu} mt-dropdown-enter`}>
                                                     <button
                                                         className={styles.menuItem}
                                                         onClick={() => {
@@ -556,6 +654,13 @@ export default function Messaging() {
 
                             {/* MESSAGES AREA */}
                             <div className={styles.messagesArea}>
+                                {!showSearchModal && messages.length === 0 && (
+                                    <EmptyState
+                                        icon={MessageCircle}
+                                        title="No messages yet"
+                                        description={`Say hello to ${activeChatUser.userId?.name || 'your connection'} to start the conversation.`}
+                                    />
+                                )}
                                 {(showSearchModal ? filteredMessages : messages).map((msg, idx) => {
                                     const senderId = msg.sender?.userId?._id || msg.sender?._id || msg.sender;
                                     const isMe = senderId === authState.user?.userId?._id;
@@ -621,11 +726,7 @@ export default function Messaging() {
                                                                     }}
                                                                     title="Download"
                                                                 >
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-5">
-                                                                        <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
-                                                                        <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
-                                                                    </svg>
-
+                                                                    <Download size={17} strokeWidth={1.8} />
                                                                 </button>
                                                             )}
                                                         </div>
@@ -638,6 +739,11 @@ export default function Messaging() {
                                                     hour: "2-digit",
                                                     minute: "2-digit"
                                                 })}
+                                                {isMe && (
+                                                    msg.isRead
+                                                        ? <CheckCheck size={13} strokeWidth={2} className={styles.readTick} />
+                                                        : <Check size={13} strokeWidth={2} />
+                                                )}
                                             </span>
                                         </div>
                                     );
@@ -668,7 +774,7 @@ export default function Messaging() {
                                         onClick={() => fileInputRef.current?.click()}
                                         className={styles.attachBtn}
                                     >
-                                        +
+                                        <Plus size={20} strokeWidth={1.8} />
                                     </button>
 
                                     <input
@@ -682,7 +788,7 @@ export default function Messaging() {
 
                                     <textarea
                                         value={message}
-                                        onChange={e => setMessage(e.target.value)}
+                                        onChange={handleMessageChange}
                                         placeholder="Write a message..."
                                         onKeyDown={e => {
                                             if (e.key === "Enter" && !e.shiftKey) {
@@ -697,7 +803,7 @@ export default function Messaging() {
                                         className={styles.sendBtn}
                                         disabled={sending || (!message.trim() && selectedFiles.length === 0)}
                                     >
-                                        {sending ? "Sending..." : "Send"}
+                                        {sending ? <span className={styles.sendSpinner}></span> : <Send size={17} strokeWidth={2} />}
                                     </button>
                                 </form>
                             </div>
@@ -705,7 +811,7 @@ export default function Messaging() {
                     ) : (
                         <div className={styles.noChatPlaceholder}>
                             <div className={styles.placeholderContent}>
-                                <div className={styles.placeholderIcon}>💬</div>
+                                <div className={styles.placeholderIcon}><MessageCircle size={30} strokeWidth={1.6} /></div>
                                 <h3>Select a connection to start chatting</h3>
                                 <p>Choose someone from your connections to begin a conversation</p>
                             </div>
@@ -717,7 +823,7 @@ export default function Messaging() {
             {/* SEARCH MODAL */}
             {showSearchModal && (
                 <div className={styles.searchModal} onClick={() => setShowSearchModal(false)}>
-                    <div className={styles.searchModalContent} onClick={e => e.stopPropagation()}>
+                    <div className={`${styles.searchModalContent} mt-dropdown-enter`} onClick={e => e.stopPropagation()}>
                         <div className={styles.searchModalHeader}>
                             <h3>Search Messages</h3>
                             <button
@@ -727,7 +833,7 @@ export default function Messaging() {
                                     setSearchQuery("");
                                 }}
                             >
-                                ×
+                                <X size={20} strokeWidth={1.8} />
                             </button>
                         </div>
                         <div className={styles.searchModalBody}>
@@ -770,22 +876,18 @@ export default function Messaging() {
             {/* MEDIA PREVIEW MODAL */}
             {previewMedia && (
                 <div className={styles.previewModal} onClick={() => setPreviewMedia(null)}>
-                    <div className={styles.previewModalContent} onClick={e => e.stopPropagation()}>
+                    <div className={`${styles.previewModalContent} mt-dropdown-enter`} onClick={e => e.stopPropagation()}>
                         <button
                             className={styles.previewCloseBtn}
                             onClick={() => setPreviewMedia(null)}
                         >
-                            ×
+                            <X size={22} strokeWidth={1.8} />
                         </button>
                         <button
                             className={styles.previewDownloadBtn}
                             onClick={() => handleDownloadMedia(previewMedia.url, previewMedia.mediaType)}
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                            </svg>
-
-
+                            <Download size={20} strokeWidth={1.8} />
                         </button>
                         {previewMedia.mediaType === 'video' ? (
                             <video
@@ -804,7 +906,6 @@ export default function Messaging() {
                 </div>
             )}
         </div>
-
-        // {/* </UserLayout > */}
+        </DashboardLayout>
     );
 }
