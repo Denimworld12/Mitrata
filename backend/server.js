@@ -5,12 +5,15 @@ dotenv.config();           // Load variables IMMEDIATELY
 // NOW import everything else
 import cors from "cors";
 import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import postRoutes from "./routes/post.routes.js";
 import userRoute from "./routes/user.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
+import storyRoutes from "./routes/story.routes.js";
 import { Server } from "socket.io";
 import http from "http";
 
@@ -45,13 +48,29 @@ const io = new Server(httpServer, {
 
 // ============ SECURITY MIDDLEWARE ============
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  // Google Identity Services signs the user in via a popup that posts a message
+  // back to this origin — the default "same-origin" COOP silently blocks that.
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
 }));
 app.use(cors(corsOptions));
+app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Rate limiting on auth endpoints
+// Rate limiting on auth endpoints — every route in this app is mounted
+// under /api (see app.use('/api', ...) below), so limiters registered on
+// bare "/login"/"/register" never actually matched a real request and did
+// nothing. Matching the real mount path is what makes this functional.
+//
+// This strict budget exists to slow down password guessing — it only makes
+// sense on endpoints that accept a guessable credential (login/register/
+// google). refresh and switch-account both require an already-valid
+// httpOnly cookie to do anything at all, so there's nothing to brute-force
+// there; they used to share this same budget, which meant a background
+// token refresh (fires automatically every ~15min per open tab) or
+// switching accounts a couple of times in one session could burn through
+// the same 20 requests meant to stop credential stuffing.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -59,8 +78,47 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false
 });
-app.use("/login", authLimiter);
-app.use("/register", authLimiter);
+app.use("/api/login", authLimiter);
+app.use("/api/register", authLimiter);
+app.use("/api/auth/google", authLimiter);
+
+// Session upkeep, not credential guessing — generous ceiling just to blunt
+// outright abuse, not to throttle normal use.
+const sessionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: { message: "Too many attempts, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use("/api/auth/refresh", sessionLimiter);
+app.use("/api/auth/switch-account", sessionLimiter);
+
+// OTP endpoints send an email per request — the real abuse vector here is
+// email-bombing a victim's inbox, not just credential stuffing, so these
+// get their own (slightly tighter) limiter independent of the general one.
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: "Too many attempts, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use("/api/auth/send-otp", otpLimiter);
+app.use("/api/auth/resend-otp", otpLimiter);
+app.use("/api/auth/verify-otp", otpLimiter);
+app.use("/api/auth/reset-password", otpLimiter);
+
+// A generous general-purpose limiter for everything else — mainly to blunt
+// scraping/abuse of the public, unauthenticated endpoints (search, public
+// profile lookup, trending/stats) at real traffic volume.
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 600,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use("/api", apiLimiter);
 
 // ============ ROUTES ============
 // Simple health check to verify API prefix is working
@@ -70,9 +128,16 @@ app.get('/api/health', (req, res) => {
 app.use('/api', postRoutes);
 app.use('/api', userRoute);
 app.use('/api', notificationRoutes);
+// storyRoutes must be mounted before adminRoutes — adminRoutes' internal
+// `router.use(verifyToken, isAdmin)` has no path restriction, so it silently
+// swallows any request that fell through unmatched from the routers above it
+// with "Admin access required", never letting it reach a later router.
+app.use('/api', storyRoutes);
+app.use('/api', adminRoutes);
 
 // ============ ONLINE PRESENCE TRACKING ============
 const onlineUsers = new Map(); // userId -> Set of socketIds
+app.set("onlineUsers", onlineUsers); // shared reference so routes can read live presence count
 
 // REST endpoint to get online users list
 app.get("/api/online-users", (req, res) => {
@@ -149,14 +214,6 @@ io.on("connection", (socket) => {
     });
   });
 
-  // Read receipts
-  socket.on("messagesRead", (data) => {
-    const { senderId, receiverId } = data;
-    io.to(senderId).emit("messagesRead", {
-      readBy: receiverId
-    });
-  });
-
   socket.on("disconnect", () => {
     console.log("User Disconnected:", userId);
 
@@ -173,11 +230,12 @@ io.on("connection", (socket) => {
 
   // ============ WEBRTC VOICE CALLING SIGNALING ============
   socket.on("callUser", (data) => {
-    // data: { receiverId, offer, callerInfo: { name, avatar } }
+    // data: { receiverId, offer, callerInfo: { name, avatar }, isVideo }
     io.to(data.receiverId).emit("incomingCall", {
       callerId: userId,
       callerInfo: data.callerInfo,
-      offer: data.offer
+      offer: data.offer,
+      isVideo: !!data.isVideo
     });
   });
 

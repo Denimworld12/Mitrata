@@ -4,14 +4,11 @@ const postSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "user",
+    index: true,
   },
   body: {
     type: String,
     required: true,
-  },
-  likes: {
-    type: Number,
-    default: 0,
   },
   reactions: [
     {
@@ -23,7 +20,7 @@ const postSchema = new mongoose.Schema({
       },
       type: {
         type: String,
-        enum: ["like", "dislike"],
+        enum: ["like", "dislike", "flame", "handHeart", "lightbulb"],
         required: true,
       },
     },
@@ -32,6 +29,7 @@ const postSchema = new mongoose.Schema({
   createId: {
     type: Date,
     default: Date.now,
+    index: true,
   },
   updatedAt: {
     type: Date,
@@ -49,6 +47,14 @@ const postSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  tags: {
+    type: [String],
+    default: [],
+    index: true,
+  },
 });
+
+postSchema.index({ "reactions.userId": 1 }); // GET /user/liked_posts
+
 const Post = mongoose.model("posts", postSchema);
 export default Post;

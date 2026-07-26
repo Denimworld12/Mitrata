@@ -1,6 +1,18 @@
 import mongoose from "mongoose";
 
 
+const highlightSchema = new mongoose.Schema({
+    title: {
+        type: String,
+        default: '',
+        maxlength: 40
+    },
+    cover: {
+        type: String,
+        default: ''
+    }
+}, { _id: false })
+
 const educationSchema = new mongoose.Schema({
     school: {
         type: String,
@@ -37,7 +49,10 @@ const workSchema = new mongoose.Schema({
 const profileSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'user'
+        ref: 'user',
+        // Every profile fetch is Profile.findOne({ userId }) — this is the
+        // single most-queried field in the whole app.
+        index: true
     },
     bio: {
         type: String,
@@ -57,6 +72,10 @@ const profileSchema = new mongoose.Schema({
     },
     skills: {
         type: [String],
+        default: []
+    },
+    highlights: {
+        type: [highlightSchema],
         default: []
     }
 })

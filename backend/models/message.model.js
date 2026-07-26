@@ -51,5 +51,12 @@ const messageSchema = new mongoose.Schema({
 // Indexing for faster retrieval of conversations between two people
 messageSchema.index({ sender: 1, receiver: 1, createdAt: -1 });
 
+// getConversations matches on sender OR receiver alone (not both at once) —
+// the compound index above doesn't serve that; without these, it's a full
+// collection scan across every message ever sent, every time the messaging
+// sidebar loads.
+messageSchema.index({ sender: 1, createdAt: -1 });
+messageSchema.index({ receiver: 1, createdAt: -1 });
+
 const Message = mongoose.model("Message", messageSchema);
 export default Message;
