@@ -38,7 +38,7 @@ export default function GoogleLoginButton() {
     script.async = true;
     script.onload = renderButton;
     document.body.appendChild(script);
-  }, [onCredential]);
+  }, []);
 
   if (!CLIENT_ID) {
     return (
