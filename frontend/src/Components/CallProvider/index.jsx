@@ -61,6 +61,7 @@ export function CallProvider({ children }) {
     const [remoteRinging, setRemoteRinging] = useState(false);
     const [isVideoCall, setIsVideoCall] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
+    const [isMinimized, setIsMinimized] = useState(false);
 
     // ... (refs same as before)
     const peerConnection = useRef(null);
@@ -115,7 +116,18 @@ export function CallProvider({ children }) {
         setRemoteRinging(false);
         setIsVideoCall(false);
         setIsVideoOff(false);
+        setIsMinimized(false);
     }, []);
+
+    // The full overlay is a real modal (you shouldn't be able to scroll the
+    // page underneath while it's up); minimizing it is the escape hatch —
+    // same idea as a browser's native PiP window for an ongoing call — so
+    // the page becomes scrollable again as soon as it's not full-screen.
+    useEffect(() => {
+        const shouldLock = callState !== 'idle' && !isMinimized;
+        document.body.style.overflow = shouldLock ? 'hidden' : '';
+        return () => { document.body.style.overflow = ''; };
+    }, [callState, isMinimized]);
 
     const createPeerConnection = useCallback((targetUserId) => {
         const pc = new RTCPeerConnection(ICE_SERVERS);
@@ -426,7 +438,7 @@ export function CallProvider({ children }) {
     return (
         <CallContext.Provider value={{
             callUser, endCall, callState, remoteUser, isMuted, toggleMute, callDuration, remoteRinging,
-            isVideoCall, isVideoOff, toggleVideo,
+            isVideoCall, isVideoOff, toggleVideo, isMinimized,
         }}>
             {children}
             {/* Remote audio track always plays here — for video calls the same
@@ -451,6 +463,9 @@ export function CallProvider({ children }) {
                     onEnd={endCall}
                     onToggleMute={toggleMute}
                     onToggleVideo={toggleVideo}
+                    isMinimized={isMinimized}
+                    onMinimize={() => setIsMinimized(true)}
+                    onExpand={() => setIsMinimized(false)}
                 />
             )}
         </CallContext.Provider>

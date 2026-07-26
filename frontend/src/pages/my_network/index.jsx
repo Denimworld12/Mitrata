@@ -14,7 +14,7 @@ export default function MyNetwork() {
     const dispatch = useDispatch();
     const authState = useSelector((state) => state.auth);
     const router = useRouter();
-    const { socketInstance } = useNotification();
+    const { socketInstance, onlineUsers } = useNotification();
 
     const [activeTab, setActiveTab] = useState('connections');
     const [isMounted, setIsMounted] = useState(false);
@@ -135,6 +135,7 @@ export default function MyNetwork() {
                                         <div key={conn._id} className={`${styles.userCard} mt-enter-sm`} style={{ animationDelay: `${idx * 60}ms` }}>
                                             <div className={styles.avatarRing}>
                                                 <img src={conn.userId.profilePicture || "/default-avatar.svg"} alt="profile" />
+                                                <span className={`${styles.onlineStatus} ${onlineUsers.has(conn.userId._id) ? styles.online : styles.offline}`} />
                                             </div>
                                             <div className={styles.userInfo} onClick={() => router.push(`/view_profile/${conn.userId.username}`)}>
                                                 <h4>{conn.userId.name}</h4>

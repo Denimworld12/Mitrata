@@ -1,5 +1,5 @@
 import React from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, Minimize2 } from 'lucide-react';
 import styles from './Call.module.css';
 
 function formatDuration(seconds) {
@@ -23,15 +23,48 @@ export default function CallOverlay({
     onEnd,
     onToggleMute,
     onToggleVideo,
+    isMinimized,
+    onMinimize,
+    onExpand,
 }) {
     const isPulsing = callState === 'calling' || callState === 'ringing';
     const isConnecting = callState !== 'active';
+
+    // Minimized: a small floating bubble (same idea as a browser's native
+    // PiP window) — lets you keep using the app underneath instead of the
+    // call pinning you to a full-screen modal until it ends.
+    if (isMinimized) {
+        return (
+            <div className={styles.miniBubble} onClick={onExpand} role="button" tabIndex={0} aria-label="Expand call">
+                <img src={remoteUser?.avatar || '/default-avatar.svg'} alt="" className={styles.miniAvatar} />
+                <div className={styles.miniInfo}>
+                    <span className={styles.miniName}>{remoteUser?.name || 'Unknown'}</span>
+                    <span className={styles.miniStatus}>
+                        {callState === 'active' ? formatDuration(callDuration) : callState === 'ringing' ? 'Incoming…' : 'Calling…'}
+                    </span>
+                </div>
+                <button
+                    className={styles.miniEndBtn}
+                    onClick={(e) => { e.stopPropagation(); onEnd(); }}
+                    aria-label="End call"
+                >
+                    <PhoneOff size={16} strokeWidth={2} />
+                </button>
+            </div>
+        );
+    }
 
     if (isVideoCall) {
         return (
             <div className={styles.overlay}>
                 <div className={styles.videoStage}>
                     <video ref={remoteVideoRef} className={styles.remoteVideo} autoPlay playsInline />
+
+                    {callState !== 'ringing' && (
+                        <button className={styles.minimizeBtn} onClick={onMinimize} aria-label="Minimize call">
+                            <Minimize2 size={18} strokeWidth={2} />
+                        </button>
+                    )}
 
                     {isConnecting && (
                         <div className={styles.videoConnectingScrim}>
@@ -100,6 +133,11 @@ export default function CallOverlay({
         <div className={styles.overlay}>
             <div className={styles.callCard}>
                 <span className={styles.overline}>Voice call</span>
+                {callState !== 'ringing' && (
+                    <button className={styles.minimizeBtn} onClick={onMinimize} aria-label="Minimize call">
+                        <Minimize2 size={18} strokeWidth={2} />
+                    </button>
+                )}
 
                 {/* Avatar */}
                 <div className={styles.avatarRing}>
