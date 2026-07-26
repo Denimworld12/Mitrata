@@ -126,53 +126,92 @@ export const login = async (req, res) => {
     }
 }
 
+// Shared by both the popup flow (googleLogin) and the redirect-fallback
+// flow (googleLoginCallback) — Safari's Intelligent Tracking Prevention and
+// Edge's Tracking Prevention both block the popup+iframe handshake GSI's
+// classic ux_mode:"popup" button relies on, so browsers that can't complete
+// that handshake fall back to a full-page redirect instead.
+const verifyAndUpsertGoogleUser = async (idToken) => {
+    if (!googleClient) {
+        const err = new Error("Google login is not configured on this server");
+        err.status = 501;
+        throw err;
+    }
+    if (!idToken) {
+        const err = new Error("idToken is required");
+        err.status = 400;
+        throw err;
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID
+    });
+    const payload = ticket.getPayload();
+
+    let user = await User.findOne({ email: payload.email });
+    if (!user) {
+        const usernameBase = payload.email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "");
+        let username = usernameBase;
+        let suffix = 0;
+        while (await User.findOne({ username })) {
+            suffix += 1;
+            username = `${usernameBase}${suffix}`;
+        }
+        user = new User({
+            name: payload.name || usernameBase,
+            email: payload.email,
+            username,
+            googleId: payload.sub,
+            profilePicture: payload.picture || undefined,
+            // Google already verified this address — no OTP step needed.
+            emailVerified: true
+        });
+        await user.save();
+        await new Profile({ userId: user._id }).save();
+    } else if (!user.active) {
+        const err = new Error("This account has been suspended");
+        err.status = 403;
+        throw err;
+    } else if (!user.googleId || !user.emailVerified) {
+        user.googleId = user.googleId || payload.sub;
+        user.emailVerified = true;
+        await user.save();
+    }
+
+    return user;
+};
+
 export const googleLogin = async (req, res) => {
     try {
-        if (!googleClient) {
-            return res.status(501).json({ message: "Google login is not configured on this server" });
-        }
-        const { idToken } = req.body;
-        if (!idToken) return res.status(400).json({ message: "idToken is required" });
-
-        const ticket = await googleClient.verifyIdToken({
-            idToken,
-            audience: process.env.GOOGLE_CLIENT_ID
-        });
-        const payload = ticket.getPayload();
-
-        let user = await User.findOne({ email: payload.email });
-        if (!user) {
-            const usernameBase = payload.email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "");
-            let username = usernameBase;
-            let suffix = 0;
-            while (await User.findOne({ username })) {
-                suffix += 1;
-                username = `${usernameBase}${suffix}`;
-            }
-            user = new User({
-                name: payload.name || usernameBase,
-                email: payload.email,
-                username,
-                googleId: payload.sub,
-                profilePicture: payload.picture || undefined,
-                // Google already verified this address — no OTP step needed.
-                emailVerified: true
-            });
-            await user.save();
-            await new Profile({ userId: user._id }).save();
-        } else if (!user.active) {
-            return res.status(403).json({ message: "This account has been suspended" });
-        } else if (!user.googleId || !user.emailVerified) {
-            user.googleId = user.googleId || payload.sub;
-            user.emailVerified = true;
-            await user.save();
-        }
-
+        const user = await verifyAndUpsertGoogleUser(req.body.idToken);
         const accessToken = await issueSession(res, user);
         return res.json({ token: accessToken });
     } catch (error) {
         console.error("Google login error:", error.message);
-        return res.status(401).json({ message: "Invalid Google token" });
+        return res.status(error.status || 401).json({ message: error.status ? error.message : "Invalid Google token" });
+    }
+};
+
+// GSI's redirect ux_mode POSTs here as a real top-level navigation (form
+// submit), so it works even when the browser blocks the popup/iframe
+// handshake. Google also sets a g_csrf_token cookie alongside the POST body
+// field of the same name — matching them is how this endpoint tells a
+// genuine Google-initiated submission apart from a forged one, since a
+// third-party page can't read/set cookies on accounts.google.com's domain.
+export const googleLoginCallback = async (req, res) => {
+    const failUrl = `${process.env.FRONTEND_URL}/login?googleError=1`;
+    try {
+        const { credential, g_csrf_token } = req.body;
+        if (!g_csrf_token || g_csrf_token !== req.cookies?.g_csrf_token) {
+            return res.redirect(failUrl);
+        }
+        const user = await verifyAndUpsertGoogleUser(credential);
+        const accessToken = await issueSession(res, user);
+        return res.redirect(`${process.env.FRONTEND_URL}/login?googleToken=${accessToken}`);
+    } catch (error) {
+        console.error("Google login callback error:", error.message);
+        return res.redirect(failUrl);
     }
 };
 

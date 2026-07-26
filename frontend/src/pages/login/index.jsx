@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import React, { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import styles from './styles.module.css'
-import { loginUser, registerUser, googleLoginUser, verifyOtp, resendOtp, switchAccountAction } from '@/config/redux/action/authAction'
+import { loginUser, registerUser, verifyOtp, resendOtp, switchAccountAction, getAboutUser } from '@/config/redux/action/authAction'
 import { emptyMessage } from '@/config/redux/reducer/authReducer'
 import { getSavedAccounts } from '@/config/savedAccounts'
 import Button from '@/Components/ui/Button'
@@ -45,6 +45,23 @@ function LoginComponent() {
     resendTimerRef.current = setTimeout(() => setResendIn((s) => s - 1), 1000);
     return () => clearTimeout(resendTimerRef.current);
   }, [resendIn]);
+
+  // Google sign-in now completes via a full-page redirect (see
+  // GoogleLoginButton) rather than a popup, so the result lands here as
+  // query params instead of a JS callback.
+  const [googleAuthError, setGoogleAuthError] = useState(false);
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (router.query.googleToken) {
+      localStorage.setItem("token", String(router.query.googleToken));
+      localStorage.removeItem("recentSearches");
+      dispatch(getAboutUser());
+      router.replace('/dashboard');
+    } else if (router.query.googleError) {
+      setGoogleAuthError(true);
+      router.replace('/login', undefined, { shallow: true });
+    }
+  }, [router.isReady, router.query.googleToken, router.query.googleError]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -173,6 +190,11 @@ function LoginComponent() {
             {authState.message && (
               <div className={`text-sm mb-2.5 font-medium ${authState.isError ? 'text-danger' : 'text-success'}`}>
                 {authState.message}
+              </div>
+            )}
+            {googleAuthError && (
+              <div className="text-sm mb-2.5 font-medium text-danger">
+                Google sign-in failed. Please try again.
               </div>
             )}
 
@@ -305,14 +327,7 @@ function LoginComponent() {
                 <span className="flex-1 h-px bg-gray-200" />
               </div>
 
-              <GoogleLoginButton
-                onCredential={async (idToken) => {
-                  const result = await dispatch(googleLoginUser(idToken));
-                  if (googleLoginUser.fulfilled.match(result)) {
-                    router.push('/dashboard');
-                  }
-                }}
-              />
+              <GoogleLoginButton />
             </div>
             )}
           </div>

@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-export default function GoogleLoginButton({ onCredential }) {
+export default function GoogleLoginButton() {
   const buttonRef = useRef(null);
 
   useEffect(() => {
@@ -11,7 +12,13 @@ export default function GoogleLoginButton({ onCredential }) {
     const renderButton = () => {
       window.google.accounts.id.initialize({
         client_id: CLIENT_ID,
-        callback: (response) => onCredential(response.credential),
+        // The classic popup+iframe handshake this library used to rely on
+        // gets silently blocked by Safari's Intelligent Tracking Prevention
+        // and Edge's Tracking Prevention ("Failed to open popup window").
+        // ux_mode:"redirect" is a real top-level navigation instead, so it
+        // isn't affected by popup blockers or third-party-cookie policies.
+        ux_mode: 'redirect',
+        login_uri: `${BACKEND_URL}/api/auth/google/callback`,
       });
       window.google.accounts.id.renderButton(buttonRef.current, {
         theme: 'outline',
