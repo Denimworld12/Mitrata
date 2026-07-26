@@ -1,6 +1,10 @@
 # macOS
 .DS_Store
 
+# Vercel CLI local project link (no secrets, just a project ID) — regenerate
+# with `vercel link` rather than committing.
+.vercel
+
 # Design handoff/reference material — not app source, not needed in the repo
 design_handoff_mitrata_redesign/
 design_handoff_mitrata_redesign 2/
