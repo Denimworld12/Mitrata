@@ -4,6 +4,7 @@ import { Base_Url } from '@/config';
 import { useRouter } from 'next/router';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
+import { useToast } from '@/Components/Toast';
 import styles from './Notification.module.css';
 
 const NotificationContext = createContext(null);
@@ -18,6 +19,15 @@ let nId = 0;
 
 export function NotificationProvider({ children }) {
     const router = useRouter();
+    // useRouter()'s return value is a new object on every navigation — using
+    // it directly in the socket effect's deps meant the whole socket was
+    // torn down and reconnected on every single page change (confirmed via
+    // the backend's connect/disconnect log churning on every navigation).
+    // A ref sidesteps that while still giving the onClick callbacks below a
+    // router that's actually current.
+    const routerRef = useRef(router);
+    routerRef.current = router;
+    const toast = useToast();
     const authState = useSelector(state => state.auth);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -28,12 +38,17 @@ export function NotificationProvider({ children }) {
     const hasShownWelcome = useRef(false);
 
     // Show a floating notification popup
-    const showNotification = useCallback(({ title, message, avatar, onClick, type = 'message' }) => {
+    const showNotification = useCallback(({ title, message, avatar, onClick, type = 'message', metadata = {} }) => {
         const id = ++nId;
         setNotifications(prev => [...prev, { id, title, message, avatar, onClick, type, exiting: false }]);
 
-        // Add to recent history
-        setRecentNotifs(prev => [{ id, title, message, avatar, type, time: new Date() }, ...prev].slice(0, 20));
+        // Add to recent history — metadata (e.g. requestId) has to travel
+        // with it, not just the popup: the /notifications page's Accept/
+        // Ignore buttons only render when it's present (see requestId
+        // there), so a connection request notification that arrived live
+        // instead of via the initial REST fetch was otherwise stuck
+        // non-interactive until the page was refreshed.
+        setRecentNotifs(prev => [{ id, title, message, avatar, type, time: new Date(), metadata }, ...prev].slice(0, 20));
         setUnreadCount(prev => prev + 1);
 
         setTimeout(() => {
@@ -48,10 +63,11 @@ export function NotificationProvider({ children }) {
 
     const clearUnread = useCallback(() => {
         setUnreadCount(0);
+        setRecentNotifs(prev => prev.map(n => ({ ...n, read: true })));
         // Also mark as read on backend
         const token = localStorage.getItem('token');
         if (token) {
-            axios.patch(`${Base_Url}/notification/read`, {}, {
+            axios.patch(`${Base_Url}/api/notification/read`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             }).catch(() => { });
         }
@@ -63,20 +79,26 @@ export function NotificationProvider({ children }) {
             const token = localStorage.getItem('token');
             if (!token) return;
             try {
-                const res = await axios.get(`${Base_Url}/notification/all`, {
+                const res = await axios.get(`${Base_Url}/api/notification/all`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 const { notifications: notifs, unreadCount: count } = res.data;
+                const TITLES = {
+                    connection_request: 'Connection Request',
+                    connection_accepted: 'Connection Accepted',
+                    message: 'New Message',
+                    like: 'New Reaction',
+                    comment: 'New Comment',
+                };
                 setRecentNotifs(notifs.map(n => ({
                     id: n._id,
-                    title: n.type === 'connection_request' ? 'Connection Request'
-                        : n.type === 'connection_accepted' ? 'Connection Accepted'
-                            : n.type === 'message' ? 'New Message' : 'Notification',
+                    title: TITLES[n.type] || 'Notification',
                     message: n.message,
-                    avatar: n.fromUser?.profilePicture || '/default-avatar.png',
+                    avatar: n.fromUser?.profilePicture || '/default-avatar.svg',
                     type: n.type === 'connection_request' || n.type === 'connection_accepted' ? 'connection' : n.type,
                     time: new Date(n.createdAt),
-                    read: n.read
+                    read: n.read,
+                    metadata: n.metadata || {}
                 })));
                 setUnreadCount(count);
             } catch { }
@@ -108,10 +130,10 @@ export function NotificationProvider({ children }) {
             if (currentPath.includes(`/messaging/${senderUsername}`)) return;
 
             const senderName = msg.sender?.name || msg.senderName || 'Someone';
-            const senderAvatar = msg.sender?.profilePicture || '/default-avatar.png';
+            const senderAvatar = msg.sender?.profilePicture || '/default-avatar.svg';
             const preview = msg.content
                 ? (msg.content.length > 60 ? msg.content.substring(0, 60) + '...' : msg.content)
-                : '📎 Sent media';
+                : 'Sent media';
 
             showNotification({
                 title: senderName,
@@ -119,7 +141,7 @@ export function NotificationProvider({ children }) {
                 avatar: senderAvatar,
                 type: 'message',
                 onClick: () => {
-                    if (senderUsername) router.push(`/messaging/${senderUsername}`);
+                    if (senderUsername) routerRef.current.push(`/messaging/${senderUsername}`);
                 }
             });
         });
@@ -130,9 +152,10 @@ export function NotificationProvider({ children }) {
             showNotification({
                 title: 'Connection Request',
                 message: data.message || `${fromUser.name || 'Someone'} wants to connect`,
-                avatar: fromUser.profilePicture || '/default-avatar.png',
+                avatar: fromUser.profilePicture || '/default-avatar.svg',
                 type: 'connection',
-                onClick: () => router.push('/my_network')
+                metadata: { requestId: data.requestId },
+                onClick: () => routerRef.current.push('/my_network')
             });
         });
 
@@ -140,11 +163,11 @@ export function NotificationProvider({ children }) {
         socket.on('connectionAccepted', (data) => {
             const fromUser = data.fromUser || {};
             showNotification({
-                title: 'Connection Accepted! 🎉',
+                title: 'Connection Accepted!',
                 message: data.message || `${fromUser.name || 'Someone'} accepted your request`,
-                avatar: fromUser.profilePicture || '/default-avatar.png',
+                avatar: fromUser.profilePicture || '/default-avatar.svg',
                 type: 'connection',
-                onClick: () => router.push(`/view_profile/${fromUser.username}`)
+                onClick: () => routerRef.current.push(`/view_profile/${fromUser.username}`)
             });
         });
 
@@ -170,21 +193,32 @@ export function NotificationProvider({ children }) {
             socketRef.current = null;
             setSocketInstance(null);
         };
-    }, [showNotification, router]);
+    // Deliberately NOT depending on `router` (see routerRef above) or
+    // `showNotification` (stable via useCallback) — this should connect
+    // once per login session, not reconnect on every navigation.
+    }, [authState.loggedIn]);
 
-    // Welcome notification on login
+    // Welcome notification — once per browser session, not once per component
+    // mount. hasShownWelcome (a ref) only survives re-renders, not a full page
+    // refresh, which remounts this provider and re-fires the effect; that's
+    // why the toast reappeared on every reload. sessionStorage survives the
+    // refresh but still clears when the tab actually closes.
     useEffect(() => {
-        if (authState.loggedIn && authState.user?.userId?.name && !hasShownWelcome.current) {
+        if (
+            authState.loggedIn &&
+            authState.user?.userId?.name &&
+            !hasShownWelcome.current &&
+            !sessionStorage.getItem('mt-welcome-shown')
+        ) {
             hasShownWelcome.current = true;
+            sessionStorage.setItem('mt-welcome-shown', '1');
             const firstName = authState.user.userId.name.split(' ')[0];
-            showNotification({
-                title: 'Welcome back! 👋',
-                message: `Good to see you, ${firstName}`,
-                avatar: authState.user.userId.profilePicture || '/default-avatar.png',
-                type: 'welcome'
-            });
+            // A plain toast, not showNotification — this is a client-side
+            // greeting, not a real event, so it shouldn't leave a permanent
+            // row in the actual notifications list/badge count.
+            toast.info(`Good to see you, ${firstName}`);
         }
-    }, [authState.loggedIn, authState.user, showNotification]);
+    }, [authState.loggedIn, authState.user, toast]);
 
     const handleNotifClick = (notif) => {
         if (notif.onClick) notif.onClick();
