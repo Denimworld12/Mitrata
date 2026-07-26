@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { getAboutUser, loginUser, googleLoginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, acceptConnectionRequest, downloadResume, updateUserProfile, logout, verifyOtp, resendOtp, sendOtp, resetPasswordAction, deleteAccount, switchAccountAction } from "../../action/authAction/index";
+import { getAboutUser, loginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, acceptConnectionRequest, downloadResume, updateUserProfile, logout, verifyOtp, resendOtp, sendOtp, resetPasswordAction, deleteAccount, switchAccountAction } from "../../action/authAction/index";
 import { rememberAccount } from "../../../savedAccounts";
 
 
@@ -59,23 +59,6 @@ const authSlice = createSlice({
                 state.isLoading = false
                 state.isError = true
                 state.message = action.payload.message || 'Login failed';
-            })
-            .addCase(googleLoginUser.pending, (state) => {
-                state.isLoading = true
-                state.message = "signing in with Google"
-            })
-            .addCase(googleLoginUser.fulfilled, (state) => {
-                state.isLoading = false
-                state.isSuccess = true
-                state.isError = false
-                state.loggedIn = true
-                state.isTokenThere = true
-                state.message = "Login successful"
-            })
-            .addCase(googleLoginUser.rejected, (state, action) => {
-                state.isLoading = false
-                state.isError = true
-                state.message = action.payload?.message || 'Google login failed';
             })
             .addCase(registerUser.pending, (state) => {
                 state.isLoading = true

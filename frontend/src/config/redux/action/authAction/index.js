@@ -39,22 +39,6 @@ export const loginUser = createAsyncThunk(
         }
     }
 )
-export const googleLoginUser = createAsyncThunk(
-    "user/googleLogin",
-    async (idToken, thunkApi) => {
-        try {
-            const response = await clientServer.post('/auth/google', { idToken })
-            if (response.data.token)
-                startNewSession(response.data.token);
-            else
-                return thunkApi.rejectWithValue({ message: "token not provided" })
-            return thunkApi.fulfillWithValue(response.data.token)
-        } catch (error) {
-            return thunkApi.rejectWithValue(error.response?.data || { message: "Google login failed" })
-        }
-    }
-)
-
 export const registerUser = createAsyncThunk(
     "user/register",
     async (user, thunkApi) => {

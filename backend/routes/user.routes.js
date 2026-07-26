@@ -1,6 +1,6 @@
 
 import multer from "multer";
-import { acceptConnectionRequest, downloadProfile, findSearchUser, getAllUserBasedOnUsername, getMyConnectionRequest, getUserAndProfile, login, logout, register, sendconnectionrequest, updateProfileData, updateUserProfile, uploadCoverPhoto, uploadImage, uploadProfilePicture, whatAreMyConnection, searchUsers, getSuggestions, googleLogin, refreshAccessToken, deleteMyAccount, switchAccount } from "../controllers/user.controller.js";
+import { acceptConnectionRequest, downloadProfile, findSearchUser, getAllUserBasedOnUsername, getMyConnectionRequest, getUserAndProfile, login, logout, register, sendconnectionrequest, updateProfileData, updateUserProfile, uploadCoverPhoto, uploadImage, uploadProfilePicture, whatAreMyConnection, searchUsers, getSuggestions, googleLogin, googleLoginCallback, refreshAccessToken, deleteMyAccount, switchAccount } from "../controllers/user.controller.js";
 import { sendOtp, verifyOtp, resendOtp, resetPassword } from "../controllers/otp.controller.js";
 import { createReport } from "../controllers/admin.controller.js";
 import { Router } from "express"
@@ -16,6 +16,7 @@ router.route("/register").post(register);
 router.route('/login').post(login);
 router.route('/logout').post(logout);
 router.route('/auth/google').post(googleLogin);
+router.route('/auth/google/callback').post(googleLoginCallback);
 router.route('/auth/refresh').post(refreshAccessToken);
 router.route('/auth/send-otp').post(sendOtp);
 router.route('/auth/verify-otp').post(verifyOtp);
