@@ -1,9 +1,143 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap'); 
-*{
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Redesign (see /design_handoff_mitrata_redesign): the mt- custom properties in
+   tokens.css are the source of truth going forward. These @theme aliases just
+   point Tailwind's existing bg-brand and text-brand utilities (already used by
+   Components/ui) at the new gradient so those components pick up the new
+   brand look immediately, without a per-component rewrite. Restyle phases will
+   move screens onto mt- variables directly and these aliases can shrink over time. */
+@theme {
+  /* Brand — mapped to the new gradient's start/mid color (see --mt-grad in tokens.css) */
+  --color-brand-50: #eef1ff;
+  --color-brand-100: #dde3ff;
+  --color-brand-400: #3f6bff;
+  --color-brand-500: #0447ff;
+  --color-brand-600: #0335c7;
+  --color-brand-700: #032693;
+  --color-gradient-from: #0447ff;
+  --color-gradient-to: #ff4704;
+
+  /* Neutrals */
+  --color-neutral-50: #f8fafc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-700: #334155;
+  --color-neutral-900: #0f172a;
+
+  /* Status — matched to tokens.css --mt-online/--mt-danger/--mt-warning */
+  --color-success: #1f8a4c;
+  --color-danger: #d4351c;
+  --color-warning: #b25e09;
+
+  /* Type scale */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.375rem;
+  --font-size-2xl: 1.75rem;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  --font-display: 'Hanken Grotesk', 'Helvetica Neue', Arial, sans-serif;
 }
-body{
-  font-family: "poppins";
+
+/* @layer base (not a bare unlayered rule): Tailwind's cascade layers put
+   unlayered CSS ABOVE every layer regardless of specificity or source order,
+   so a plain `*{margin:0;padding:0}` here was silently overriding every
+   Tailwind margin/padding utility (p-*, m-*, px-[Npx], etc.) project-wide —
+   only non-margin/padding utilities (width, gap, flex...) were ever taking
+   effect. Layering this with Tailwind's own base fixes utilities everywhere. */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+}
+/* body background/color/font-family now come from tokens.css (--mt-canvas/--mt-ink/--mt-font-ui) */
+
+/* ============================================================
+   Shared motion utilities — extracted directly from the design
+   handoff's prototype (design_handoff_mitrata_redesign/MitrataApp.dc.html),
+   not approximated. Reuse these classnames everywhere instead of writing
+   one-off transitions per component, so the "smoothness" stays consistent.
+   ============================================================ */
+
+/* Entrance: cards/sections fade up on mount. Use with an inline
+   `style={{ animationDelay: `${i * 60}ms` }}` for staggered lists (the
+   prototype staggers siblings by ~60ms — .1s, .16s, .22s, .28s...). */
+.mt-enter {
+  animation: mtRise .6s var(--mt-ease) both;
+}
+.mt-enter-sm {
+  animation: mtIn .5s var(--mt-ease) both;
+}
+
+/* Card hover: resting shadow → shadow-lg, matches every post/card/tile
+   in the prototype (`transition:box-shadow .3s` + hover shadow-lg). */
+.mt-card-hover {
+  transition: box-shadow .3s, transform .28s var(--mt-ease);
+}
+.mt-card-hover:hover {
+  box-shadow: var(--mt-shadow-lg);
+}
+/* Variant that also lifts (used by tiles/rows, not post cards) */
+.mt-card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--mt-shadow-lg);
+}
+
+/* Pill/icon buttons: translateY(-1px..-2px) on hover, scale(.97) on press —
+   the exact pattern used by every gradient/outline button in the prototype. */
+.mt-btn-lift {
+  transition: transform .18s var(--mt-ease), color .16s, border-color .16s;
+}
+.mt-btn-lift:hover {
+  transform: translateY(-2px);
+}
+.mt-btn-lift:active {
+  transform: scale(.97);
+}
+
+/* Icon-only circular buttons: background fade to --mt-sunken on hover. */
+.mt-icon-btn {
+  transition: background .18s, color .18s, transform .18s;
+}
+.mt-icon-btn:hover {
+  background: var(--mt-sunken);
+  color: var(--mt-ink);
+}
+
+/* Media inside a card: slow zoom on hover (post/reel cover images). */
+.mt-media-zoom {
+  transition: transform .8s var(--mt-ease);
+}
+.mt-card-hover:hover .mt-media-zoom {
+  transform: scale(1.04);
+}
+
+/* Reaction "pop" — apply this class only while the reaction is active;
+   React re-adding the class on click replays the animation. */
+.mt-pop {
+  animation: mtPop .34s var(--mt-ease);
+}
+
+/* Dropdown/menu/modal entrance (notifications, portal switcher, comments). */
+.mt-dropdown-enter {
+  animation: mtIn .25s var(--mt-ease) both;
+}
+
+/* Landing page trending-tags marquee (from Mitrata.dc.html) */
+@keyframes mtMarq {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }

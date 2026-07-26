@@ -1,0 +1,64 @@
+/* Mitrata design tokens — import once in globals.css.
+   Theme: set data-mt-theme="dark" on <html> to switch. */
+:root {
+  --mt-canvas: #fbfaf9;
+  --mt-surface: #ffffff;
+  --mt-sunken: #f4f2f0;
+  --mt-veil: rgba(251, 250, 249, .72);
+  --mt-border: #e7e4e0;
+  --mt-border-2: #d8d4cf;
+  --mt-ink: #000000;
+  --mt-ink2: #6c665e;
+  --mt-ink3: #8b857d;
+  --mt-grad: linear-gradient(96deg, #0447ff 0%, #7b5cf0 46%, #ff4704 100%);
+  --mt-grad-soft: linear-gradient(96deg, rgba(4, 71, 255, .10), rgba(255, 71, 4, .10));
+  --mt-grad-msg: linear-gradient(96deg, #0447ff, #7b5cf0);
+  --mt-shadow: 0 1px 2px rgba(20, 18, 15, .04), 0 8px 24px -14px rgba(20, 18, 15, .14);
+  --mt-shadow-lg: 0 30px 70px -28px rgba(20, 18, 15, .30);
+  --mt-online: #1f8a4c;
+  --mt-live: #ff4704;
+  --mt-danger: #d4351c;
+  --mt-warning: #b25e09;
+  --mt-accent: #0447ff;
+  --mt-ease: cubic-bezier(.2, 0, 0, 1);
+  --mt-font-display: 'Hanken Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  --mt-font-ui: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --mt-orb-opacity: .5;
+}
+
+[data-mt-theme="dark"] {
+  --mt-canvas: #0b0a09;
+  --mt-surface: #151312;
+  --mt-sunken: #1e1b19;
+  --mt-veil: rgba(11, 10, 9, .72);
+  --mt-border: rgba(255, 255, 255, .10);
+  --mt-border-2: rgba(255, 255, 255, .18);
+  --mt-ink: #fbfaf9;
+  --mt-ink2: rgba(255, 255, 255, .64);
+  --mt-ink3: rgba(255, 255, 255, .42);
+  --mt-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 8px 24px -14px rgba(0, 0, 0, .7);
+  --mt-shadow-lg: 0 30px 70px -28px rgba(0, 0, 0, .85);
+  --mt-orb-opacity: .34;
+}
+
+body {
+  background: var(--mt-canvas);
+  color: var(--mt-ink);
+  font-family: var(--mt-font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--mt-accent); text-decoration: none; }
+a:hover { color: #ff4704; }
+
+@keyframes mtIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes mtRise { from { opacity: 0; transform: translateY(26px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes mtPop { 0% { transform: scale(.72); } 60% { transform: scale(1.1); } 100% { transform: scale(1); } }
+@keyframes mtDrift { 0% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(4%, -5%, 0) scale(1.1); } 100% { transform: translate3d(0, 0, 0) scale(1); } }
+@keyframes mtShimmer { 0% { background-position: -180% 0; } 100% { background-position: 180% 0; } }
+@keyframes mtPulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+@keyframes mtBars { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
