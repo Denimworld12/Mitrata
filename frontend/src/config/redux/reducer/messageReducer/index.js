@@ -39,6 +39,26 @@ const messageSlice = createSlice({
             state.messages.forEach((msg) => {
                 msg.isRead = true;
             });
+        },
+
+        /* A "newMessage" socket event only ever pushed into the currently
+           open thread — the sidebar's conversation list (preview text,
+           unread badge, recency sort) never updated for it, so a message
+           from anyone you weren't actively chatting with sat there stale
+           until a full reload. */
+        bumpConversation: (state, action) => {
+            const { senderId, lastMessage, isActiveChat } = action.payload;
+            const convo = state.conversations.find((c) => c.userId === senderId);
+            if (convo) {
+                convo.lastMessage = lastMessage;
+                if (!isActiveChat) convo.unreadCount = (convo.unreadCount || 0) + 1;
+            } else {
+                state.conversations.push({
+                    userId: senderId,
+                    lastMessage,
+                    unreadCount: isActiveChat ? 0 : 1
+                });
+            }
         }
     },
 
@@ -154,5 +174,5 @@ const messageSlice = createSlice({
     }
 });
 
-export const { pushMessage, resetMessages, removeDeletedMessages, markMyMessagesRead } = messageSlice.actions;
+export const { pushMessage, resetMessages, removeDeletedMessages, markMyMessagesRead, bumpConversation } = messageSlice.actions;
 export default messageSlice.reducer;

@@ -4,7 +4,7 @@ import DashboardLayout from '@/layout/DashboardLayout';
 import { useRouter } from 'next/router';
 import { useSelector, useDispatch } from 'react-redux';
 import { Base_Url } from '@/config';
-import { pushMessage, resetMessages, removeDeletedMessages, markMyMessagesRead } from '@/config/redux/reducer/messageReducer';
+import { pushMessage, resetMessages, removeDeletedMessages, markMyMessagesRead, bumpConversation } from '@/config/redux/reducer/messageReducer';
 import { getMessages, sendMessage, deleteMessages, deleteChat, deleteMessageForEveryone, getConversations, markMessagesRead } from '@/config/redux/action/messageAction';
 import { getAboutUser, getMyConnectionRequests } from '@/config/redux/action/authAction';
 import { useToast } from '@/Components/Toast';
@@ -34,7 +34,6 @@ export default function Messaging() {
     const [previewMedia, setPreviewMedia] = useState(null);
     const [selectionMode, setSelectionMode] = useState(false);
     const [selectedMessages, setSelectedMessages] = useState([]);
-    const [deleting, setDeleting] = useState(false);
     const [showDeleteMenu, setShowDeleteMenu] = useState(false);
     const [isTyping, setIsTyping] = useState(false);
     const deleteMenuRef = useRef(null);
@@ -137,16 +136,24 @@ export default function Messaging() {
 
         const handleNewMessage = (data) => {
             const senderId = data.sender?.userId?._id || data.sender?._id || data.sender;
-            if (senderId === activeChatUser?.userId?._id) {
+            const isActiveChat = senderId === activeChatUser?.userId?._id;
+            if (isActiveChat) {
                 dispatch(pushMessage(data));
             }
+            // Previously only the active thread's messages array updated —
+            // the sidebar's preview/unread badge for this sender never did,
+            // so a message from anyone else stayed stale until reload.
+            dispatch(bumpConversation({ senderId, lastMessage: data, isActiveChat }));
         };
 
+        // Backend now emits this only to the deleter's own room (see
+        // deleteMessages) — it's for syncing this same account's OTHER open
+        // tabs, not the other participant. The tab that triggered the
+        // delete already removed these via deleteMessages.fulfilled, so
+        // reprocessing here is a harmless no-op there and the real effect
+        // for any other tab of this account.
         const handleMessagesDeleted = (data) => {
-            const { messageIds, deletedBy } = data;
-            if (deletedBy !== myId) {
-                dispatch(removeDeletedMessages({ messageIds }));
-            }
+            dispatch(removeDeletedMessages({ messageIds: data.messageIds }));
         };
 
         const handleMessageDeletedForEveryone = (data) => {
@@ -193,10 +200,17 @@ export default function Messaging() {
     }, [activeChatUser, dispatch]);
 
     // The other person read our messages while this thread is open — flip
-    // our sent bubbles to the read state and refresh their unread badge.
+    // our sent bubbles to the read state. This ignored WHO the read receipt
+    // was actually from and marked the entire open thread read regardless —
+    // opening a chat with C would flip A's tick marks in a completely
+    // different, already-open thread with B.
     useEffect(() => {
         if (!socket.current) return;
-        const handleRead = () => dispatch(markMyMessagesRead());
+        const handleRead = ({ readBy }) => {
+            if (readBy === activeChatUser?.userId?._id) {
+                dispatch(markMyMessagesRead());
+            }
+        };
         socket.current.on("messagesRead", handleRead);
         return () => socket.current?.off("messagesRead", handleRead);
     }, [socket, activeChatUser, dispatch]);
@@ -327,10 +341,18 @@ export default function Messaging() {
     };
 
     /* -------------------- MESSAGE SELECTION -------------------- */
+    // The 600ms timer fires while the finger/mouse is still down, entering
+    // selection mode — releasing then fires the ordinary `click` on the same
+    // element, which immediately toggled that same message back off (every
+    // long-press looked like it selected and instantly deselected). This
+    // flag swallows exactly that one synthetic click.
+    const justLongPressedRef = useRef(false);
+
     const handleLongPressStart = (id) => {
         longPressTimer.current = setTimeout(() => {
             setSelectionMode(true);
             setSelectedMessages([id]);
+            justLongPressedRef.current = true;
         }, 600);
     };
 
@@ -339,6 +361,10 @@ export default function Messaging() {
     };
 
     const handleMessageClick = (id) => {
+        if (justLongPressedRef.current) {
+            justLongPressedRef.current = false;
+            return;
+        }
         if (selectionMode) {
             setSelectedMessages(prev =>
                 prev.includes(id) ? prev.filter(mId => mId !== id) : [...prev, id]
@@ -352,47 +378,20 @@ export default function Messaging() {
     };
 
 
-    const handleDeleteSelected = async () => {
-        if (selectedMessages.length === 0) return;
-
-        const confirmMsg = `Delete ${selectedMessages.length} message(s)? This will remove them from your view.`;
-        if (!window.confirm(confirmMsg)) return;
-
-        setDeleting(true);
-
+    // Both selected-messages actions ("Delete for me" / "Delete for
+    // everyone") are wired directly in the dropdown menu JSX below — these
+    // wrap them with error handling so a rejected delete (e.g. the 1-hour
+    // rule tripping mid-batch) surfaces a toast instead of an uncaught
+    // promise rejection that leaves the menu stuck open.
+    const runDelete = async (thunkPromise) => {
         try {
-            await dispatch(deleteMessages({ messageIds: selectedMessages })).unwrap();
-
-            setSelectionMode(false);
-            setSelectedMessages([]);
-            toast.success("Messages deleted successfully");
+            await thunkPromise;
+            setShowDeleteMenu(false);
+            handleCancelSelection();
         } catch (error) {
-            console.error("Error deleting messages:", error);
-            toast.error("Failed to delete messages. Please try again.");
-        } finally {
-            setDeleting(false);
+            toast.error(error?.message || "Failed to delete message(s)");
+            setShowDeleteMenu(false);
         }
-    };
-    const handleDeleteClick = async () => {
-        if (selectedMessages.length === 0) return;
-
-        // Check if only one message is selected to enable "Delete for Everyone"
-        const canDeleteForEveryone = selectedMessages.length === 1;
-
-        let choice;
-        if (canDeleteForEveryone) {
-            const result = window.confirm("Delete for Everyone? (Cancel for 'Delete for Me')");
-            if (result) {
-                await dispatch(deleteMessageForEveryone({ messageId: selectedMessages[0] })).unwrap();
-            } else {
-                await dispatch(deleteMessages({ messageIds: selectedMessages })).unwrap();
-            }
-        } else {
-            if (window.confirm(`Delete ${selectedMessages.length} messages for me?`)) {
-                await dispatch(deleteMessages({ messageIds: selectedMessages })).unwrap();
-            }
-        }
-        handleCancelSelection();
     };
 
     /* -------------------- SEARCH IN CHAT -------------------- */
@@ -405,9 +404,17 @@ export default function Messaging() {
     }, [messages, searchQuery]);
 
     /* -------------------- CREATE PREVIEW URL -------------------- */
-    const createPreviewUrl = (file) => {
-        return URL.createObjectURL(file);
-    };
+    // Was calling URL.createObjectURL(f) directly in the JSX map below —
+    // that ran on every render (every keystroke while composing a message),
+    // creating a fresh blob URL each time with nothing ever revoking the
+    // old ones. Computing these once per selectedFiles change (and
+    // revoking on the next change/unmount) is what actually releases them.
+    const [previewUrls, setPreviewUrls] = useState([]);
+    useEffect(() => {
+        const urls = selectedFiles.map((f) => URL.createObjectURL(f));
+        setPreviewUrls(urls);
+        return () => urls.forEach((u) => URL.revokeObjectURL(u));
+    }, [selectedFiles]);
 
     /* -------------------- HANDLE BACK BUTTON (MOBILE) -------------------- */
     const handleBackClick = () => {
@@ -436,12 +443,18 @@ export default function Messaging() {
     const canDeleteEveryone = useMemo(() => {
         if (selectedMessages.length === 0) return false;
 
-        // Check if EVERY selected message was sent by ME
+        // Check if EVERY selected message was sent by ME, and is still
+        // within the server's 1-hour window (matches the WhatsApp-style
+        // rule enforced in deleteMessageForEveryone) — this only checked
+        // authorship before, so picking an old message here would 403 on
+        // the server mid-batch with nothing but an uncaught rejection.
+        const oneHourAgo = Date.now() - 60 * 60 * 1000;
         return selectedMessages.every(id => {
             const msg = messages.find(m => m._id === id);
             if (!msg) return false;
             const senderId = msg.sender?.userId?._id || msg.sender?._id || msg.sender;
-            return senderId === authState.user?.userId?._id;
+            if (senderId !== authState.user?.userId?._id) return false;
+            return new Date(msg.createdAt).getTime() >= oneHourAgo;
         });
     }, [selectedMessages, messages, authState.user]);
 
@@ -537,27 +550,22 @@ export default function Messaging() {
                                                 <div className={`${styles.dropdownMenu} mt-dropdown-enter`}>
                                                     <button
                                                         className={styles.menuItem}
-                                                        onClick={async () => {
-                                                            await dispatch(deleteMessages({ messageIds: selectedMessages })).unwrap();
-                                                            setShowDeleteMenu(false);
-                                                            handleCancelSelection();
-                                                        }}
+                                                        onClick={() => runDelete(
+                                                            dispatch(deleteMessages({ messageIds: selectedMessages })).unwrap()
+                                                        )}
                                                     >
                                                         Delete for me
                                                     </button>
 
-                                                    {/* SMART CONDITION: Only show if all selected messages are mine */}
+                                                    {/* SMART CONDITION: Only show if all selected messages are mine and still within the 1-hour window */}
                                                     {canDeleteEveryone && (
                                                         <button
                                                             className={`${styles.menuItem} ${styles.danger}`}
-                                                            onClick={async () => {
-                                                                // Loop through all selected messages and delete each for everyone
+                                                            onClick={() => runDelete((async () => {
                                                                 for (const id of selectedMessages) {
                                                                     await dispatch(deleteMessageForEveryone({ messageId: id })).unwrap();
                                                                 }
-                                                                setShowDeleteMenu(false);
-                                                                handleCancelSelection();
-                                                            }}
+                                                            })())}
                                                         >
                                                             Delete for everyone
                                                         </button>
@@ -758,9 +766,9 @@ export default function Messaging() {
                                         {selectedFiles.map((f, i) => (
                                             <div key={i} className={styles.previewThumb}>
                                                 {f.type.startsWith("image") ? (
-                                                    <img src={createPreviewUrl(f)} alt="preview" />
+                                                    <img src={previewUrls[i]} alt="preview" />
                                                 ) : (
-                                                    <video src={createPreviewUrl(f)} />
+                                                    <video src={previewUrls[i]} />
                                                 )}
                                                 <button onClick={() => removeFile(i)}>×</button>
                                             </div>
