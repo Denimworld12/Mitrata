@@ -25,6 +25,11 @@ export default function MyNetwork() {
     // tab showed its "No connections/requests yet" empty state for a beat
     // before the real data replaced it. This tracks the actual fetch.
     const [dataLoaded, setDataLoaded] = useState(false);
+    // Guards against a double-click firing acceptConnectionRequest twice for
+    // the same request before the first response comes back — paired with
+    // the backend's own idempotency check, but disabling the buttons is what
+    // stops a second request from ever being sent in the first place.
+    const [processingRequestId, setProcessingRequestId] = useState(null);
     const toast = useToast();
     const { callUser } = useCall();
 
@@ -83,6 +88,8 @@ export default function MyNetwork() {
     }, [authState.connection, authState.connectionRequest]);
 
     const handleAction = async (requestId, action) => {
+        if (processingRequestId) return;
+        setProcessingRequestId(requestId);
         try {
             await dispatch(acceptConnectionRequest({
                 connectionId: requestId,
@@ -93,6 +100,8 @@ export default function MyNetwork() {
         } catch (error) {
             console.error("Failed to update connection:", error);
             toast.error(error.message || "Failed to update connection");
+        } finally {
+            setProcessingRequestId(null);
         }
     };
 
@@ -196,6 +205,7 @@ export default function MyNetwork() {
                                                 <button
                                                     className={`${styles.acceptBtn} mt-btn-lift`}
                                                     onClick={() => handleAction(req._id, 'accept')}
+                                                    disabled={processingRequestId === req._id}
                                                     title="Accept"
                                                 >
                                                     <Check size={15} strokeWidth={2} /> Accept
@@ -203,6 +213,7 @@ export default function MyNetwork() {
                                                 <button
                                                     className={`${styles.ignoreBtn} mt-btn-lift`}
                                                     onClick={() => handleAction(req._id, 'reject')}
+                                                    disabled={processingRequestId === req._id}
                                                     title="Ignore"
                                                 >
                                                     <X size={15} strokeWidth={2} /> Ignore

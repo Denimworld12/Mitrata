@@ -664,12 +664,20 @@ export const acceptConnectionRequest = async (req, res) => {
             });
         }
 
+        // Was unconditional — a double-click, a client retry after a slow
+        // response, or the request simply being actioned twice re-created a
+        // fresh Notification and re-emitted 'connectionAccepted' every
+        // single time, regardless of whether anything actually changed.
+        // That's the literal cause of "notification accepted, showing
+        // multiple times" — only a genuine pending -> decided transition
+        // should ever notify.
+        const wasPending = connection.status_accepted === null;
+
         connection.status_accepted = (action_type === 'accept');
         await connection.save();
 
-        // If accepted, notify the sender
-        if (action_type === 'accept') {
-            const senderUser = await User.findById(connection.userId);
+        // If accepted, notify the sender — only on the actual transition
+        if (wasPending && action_type === 'accept') {
             await Notification.create({
                 userId: connection.userId,
                 type: 'connection_accepted',
