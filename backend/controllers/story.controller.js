@@ -47,6 +47,10 @@ export const getStories = async (req, res) => {
 
         const grouped = new Map();
         for (const story of stories) {
+            // populate() leaves this null if the author user doc is ever
+            // missing — .toString() on that would throw and take the whole
+            // feed down with it, for every story in the batch, not just theirs.
+            if (!story.userId) continue;
             const key = story.userId._id.toString();
             if (!grouped.has(key)) {
                 grouped.set(key, { user: story.userId, stories: [], allViewed: true });

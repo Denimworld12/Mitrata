@@ -741,10 +741,17 @@ export const searchUsers = async (req, res) => {
             },
             {
                 $match: {
+                    // Suspended accounts shouldn't be discoverable via public
+                    // search regardless of what matches.
+                    active: true,
                     $or: [
                         { name: regex },
                         { username: regex },
-                        { email: regex },
+                        // No email match: this route has no auth, so matching
+                        // on email turned it into an account-enumeration
+                        // oracle — feed in someone's email and a hit confirms
+                        // they're registered and hands back their name,
+                        // username, avatar, bio and work history.
                         { 'profile.bio': regex },
                         { 'profile.skills': regex },
                         { 'profile.education.school': regex },

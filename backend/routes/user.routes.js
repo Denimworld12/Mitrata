@@ -9,7 +9,7 @@ import { Storage } from "../config/cloudinary.js";
 import { deleteChat, deleteMessageForEveryone, deleteMessages, getConversations, getMessages, markMessagesRead, sendMessage } from "../controllers/message.controller.js";
 const router = Router();
 
-const upload = multer({ storage: Storage })
+const upload = multer({ storage: Storage, limits: { fileSize: 25 * 1024 * 1024 } })
 
 // ============ PUBLIC ROUTES (no auth needed) ============
 router.route("/register").post(register);
@@ -30,9 +30,13 @@ router.route('/report').post(verifyToken, createReport);
 // ============ PROTECTED ROUTES (auth required) ============
 
 // Profile routes
-router.route('/user/update_profile_picture').post(upload.single('profilePicture'), verifyToken, uploadProfilePicture);
-router.route('/user/update_cover_photo').post(upload.single('coverPhoto'), verifyToken, uploadCoverPhoto);
-router.route('/upload/image').post(upload.single('image'), verifyToken, uploadImage);
+// verifyToken runs BEFORE multer — multer's CloudinaryStorage uploads to
+// Cloudinary as it parses the body, so with auth checked after, an
+// unauthenticated request already had its file stored (and billed) before
+// ever hitting the 401. Auth has to gate the upload, not follow it.
+router.route('/user/update_profile_picture').post(verifyToken, upload.single('profilePicture'), uploadProfilePicture);
+router.route('/user/update_cover_photo').post(verifyToken, upload.single('coverPhoto'), uploadCoverPhoto);
+router.route('/upload/image').post(verifyToken, upload.single('image'), uploadImage);
 router.route('/user/setting/user_update').post(verifyToken, updateUserProfile);
 router.route('/get_user_and_profile').get(verifyToken, getUserAndProfile);
 router.route('/update_profile').post(verifyToken, updateProfileData);
@@ -54,9 +58,9 @@ router.route('/user/get_user_based_on_username').get(getAllUserBasedOnUsername);
 
 // Messaging routes (all protected)
 router.route('/user/send_message').post(
-    upload.array('media', 5),   // Multer parses form data FIRST
-    verifyToken,                // THEN verify token
-    sendMessage                 // THEN send message
+    verifyToken,                // Auth gates the upload, not the other way around
+    upload.array('media', 5),
+    sendMessage
 );
 
 router.route('/user/get_messages').get(

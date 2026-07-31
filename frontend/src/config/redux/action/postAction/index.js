@@ -97,6 +97,22 @@ export const getLikedPosts = createAsyncThunk(
     }
 )
 
+// profile/activity/view_profile used to filter one page of getAllPosts()
+// (an engagement-ranked global feed) down to a single username — a user's
+// own posts that didn't happen to rank into that page were invisible on
+// their own profile. This queries their real posts directly.
+export const getPostsByUsername = createAsyncThunk(
+    'post/getPostsByUsername',
+    async ({ username, page = 1 } = {}, thunkapi) => {
+        try {
+            const response = await clientServer.get(`/posts/user/${username}`, { params: { page } });
+            return thunkapi.fulfillWithValue(response.data);
+        } catch (error) {
+            return thunkapi.rejectWithValue(error.response?.data || { message: "Failed to load posts" })
+        }
+    }
+)
+
 export const toggleBookmark = createAsyncThunk(
     'post/toggleBookmark',
     async (postId, thunkapi) => {

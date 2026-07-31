@@ -1,5 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { commentPost, createPost, getAllComments, getAllPosts, getBookmarkedPosts, getLikedPosts, reactToPost, toggleBookmark } from '../../action/postAction';
+import { commentPost, createPost, getAllComments, getAllPosts, getBookmarkedPosts, getLikedPosts, getPostsByUsername, reactToPost, toggleBookmark } from '../../action/postAction';
 
 
 
@@ -7,6 +7,9 @@ const initialState = {
     posts: [],
     likedPosts: [],
     bookmarkedPosts: [],
+    userPosts: [],
+    userPostsHasMore: false,
+    userPostsPage: 1,
     isError: false,
     postFetched: false,
     isLoading: false,
@@ -99,13 +102,17 @@ const postSlice = createSlice({
             .addCase(reactToPost.fulfilled, (state, action) => {
                 // Patch the single post in place — no full refetch needed,
                 // this is the same data getAllPosts already returns per-post.
+                // Also patches userPosts (activity/profile/view_profile's own
+                // posts list) — same post, same shape, just a different array.
                 const { postId, counts, likeCount, dislikeCount, reactions } = action.payload;
-                const post = state.posts.find((p) => p._id === postId);
-                if (post) {
-                    post.counts = counts;
-                    post.likeCount = likeCount;
-                    post.dislikeCount = dislikeCount;
-                    post.reactions = reactions;
+                for (const list of [state.posts, state.userPosts]) {
+                    const post = list.find((p) => p._id === postId);
+                    if (post) {
+                        post.counts = counts;
+                        post.likeCount = likeCount;
+                        post.dislikeCount = dislikeCount;
+                        post.reactions = reactions;
+                    }
                 }
             })
             .addCase(getLikedPosts.fulfilled, (state, action) => {
@@ -113,11 +120,19 @@ const postSlice = createSlice({
             })
             .addCase(toggleBookmark.fulfilled, (state, action) => {
                 const { postId, bookmarked } = action.payload;
-                const post = state.posts.find((p) => p._id === postId);
-                if (post) post.bookmarked = bookmarked;
+                for (const list of [state.posts, state.userPosts]) {
+                    const post = list.find((p) => p._id === postId);
+                    if (post) post.bookmarked = bookmarked;
+                }
             })
             .addCase(getBookmarkedPosts.fulfilled, (state, action) => {
                 state.bookmarkedPosts = action.payload.posts || []
+            })
+            .addCase(getPostsByUsername.fulfilled, (state, action) => {
+                const { posts, hasMore, page } = action.payload;
+                state.userPosts = page > 1 ? [...state.userPosts, ...(posts || [])] : (posts || []);
+                state.userPostsHasMore = !!hasMore;
+                state.userPostsPage = page || 1;
             })
     }
 })

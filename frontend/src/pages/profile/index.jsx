@@ -4,7 +4,7 @@ import { Base_Url, clientServer } from '@/config'
 import { useDispatch, useSelector } from 'react-redux'
 import { getAboutUser, getConnectionRequest, updateUserProfile } from '@/config/redux/action/authAction'
 import { useRouter } from 'next/router'
-import { getAllPosts, getBookmarkedPosts, getLikedPosts } from '@/config/redux/action/postAction'
+import { getPostsByUsername, getBookmarkedPosts, getLikedPosts } from '@/config/redux/action/postAction'
 import DashboardLayout from '@/layout/DashboardLayout' // Added for Tablet/Mobile logic
 import Skeleton from '@/Components/ui/Skeleton'
 import { Camera, Pencil, ArrowRight, Plus, X, Heart, Bookmark } from 'lucide-react'
@@ -121,23 +121,27 @@ export default function Profile() {
     const token = localStorage.getItem('token');
 
     if (token) {
-      // 1. Fetch user profile, connection requests, and posts immediately
-      // using the token directly from localStorage
+      // 1. Fetch user profile and connection requests immediately using the
+      // token directly from localStorage
       dispatch(getAboutUser());
       dispatch(getConnectionRequest());
-      dispatch(getAllPosts());
     } else {
       // 2. No token? Redirect to login immediately
       router.push('/login');
     }
   }, [dispatch, router]); // Dependency array should be stable
+
+  // Was filtering one page of the engagement-ranked global feed by user id —
+  // your own posts that didn't rank into that page were invisible on your
+  // own profile. Fetches your real posts directly instead, once the
+  // username is known (getAboutUser resolves it above).
+  const username = userProfile?.userId?.username;
+  useEffect(() => {
+    if (username) dispatch(getPostsByUsername({ username }));
+  }, [dispatch, username]);
+
   const tokenExists = typeof window !== 'undefined' ? !!localStorage.getItem('token') : false;
-  const userPosts = useMemo(() => {
-    if (postState.posts && userProfile?.userId?._id) { // Added optional chaining
-      return postState.posts.filter(post => post.userId?._id === userProfile.userId._id);
-    }
-    return [];
-  }, [postState.posts, userProfile?.userId?._id]);
+  const userPosts = postState.userPosts || [];
 
   const recentPosts = userPosts.slice(0, 3);
   const hasMorePosts = userPosts.length > 3;
