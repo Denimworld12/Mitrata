@@ -4,7 +4,7 @@ import DashboardLayout from '@/layout/DashboardLayout';
 import FaqItem from '@/Components/ui/FaqItem';
 import SettingsItem from '@/Components/ui/SettingsItem';
 import styles from './HelpSupport.module.css';
-import { ChevronLeft, Mail, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, Mail, ShieldCheck, Trash2 } from 'lucide-react';
 
 export const SUPPORT_EMAIL = 'mitrata.llp@gmail.com';
 
@@ -27,7 +27,7 @@ const FAQS = [
   },
   {
     q: 'How do I permanently delete my account?',
-    a: 'Go to Settings → Danger Zone → "Delete my account permanently". This removes your profile, posts, messages, connections and media, and cannot be undone.',
+    a: 'Scroll down to "Delete my account" below. It walks you through exactly what gets removed before asking you to confirm — this is deliberately not a one-click action from Settings, since it can\'t be undone.',
   },
 ];
 
@@ -72,6 +72,18 @@ export default function HelpSupport() {
             label="Privacy Policy"
             sub="How we handle your data"
             onClick={() => router.push('/privacy_policy')}
+          />
+        </div>
+
+        {/* Deliberately down here rather than a quick-access button in
+            Settings — see the comment on that page for why. */}
+        <div className={styles.sectionTitle}>Account</div>
+        <div className={`${styles.group} mt-enter`}>
+          <SettingsItem
+            icon={Trash2}
+            label="Delete my account"
+            sub="Permanent and cannot be undone"
+            onClick={() => router.push('/help_support/delete_account')}
           />
         </div>
       </div>

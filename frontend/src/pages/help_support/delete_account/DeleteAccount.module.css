@@ -1,0 +1,146 @@
+.container {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 24px 20px 100px;
+}
+
+.backBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    color: var(--mt-ink2);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 20px;
+}
+
+.backIcon {
+    width: 18px;
+    height: 18px;
+}
+
+.iconBadge {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--mt-danger) 12%, transparent);
+    color: var(--mt-danger);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.title {
+    font-family: var(--mt-font-display);
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--mt-ink);
+    margin: 0 0 8px;
+}
+
+.sub {
+    color: var(--mt-ink2);
+    font-size: 13.5px;
+    line-height: 1.6;
+    margin: 0 0 24px;
+}
+
+.list {
+    background: var(--mt-surface);
+    border: 1px solid var(--mt-border);
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin-bottom: 24px;
+    box-shadow: var(--mt-shadow);
+}
+
+.list h3 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--mt-ink3);
+    margin: 0 0 10px;
+}
+
+.list ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.list li {
+    font-size: 13px;
+    color: var(--mt-ink2);
+    line-height: 1.7;
+}
+
+.formCard {
+    background: var(--mt-surface);
+    border: 1px solid var(--mt-border);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: var(--mt-shadow);
+}
+
+.modalLabel {
+    display: block;
+    font-size: 12.5px;
+    color: var(--mt-ink2);
+    margin: 0 0 6px;
+}
+
+.modalInput {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--mt-border);
+    background: var(--mt-canvas);
+    color: var(--mt-ink);
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
+    margin-bottom: 16px;
+}
+
+.modalInput:focus {
+    border-color: var(--mt-danger);
+}
+
+.confirmRow {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.confirmRow input[type="checkbox"] {
+    margin-top: 3px;
+    accent-color: var(--mt-danger);
+}
+
+.confirmRow label {
+    font-size: 13px;
+    color: var(--mt-ink2);
+    line-height: 1.5;
+}
+
+.deleteBtn {
+    width: 100%;
+    padding: 13px;
+    border-radius: 999px;
+    border: none;
+    background: var(--mt-danger);
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.deleteBtn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}

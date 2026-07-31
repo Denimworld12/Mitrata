@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSelector, useDispatch } from 'react-redux';
 import styles from './Settings.module.css';
-import { logout, deleteAccount } from '@/config/redux/action/authAction/index';
-import { useToast } from '@/Components/Toast';
+import { logout } from '@/config/redux/action/authAction/index';
 import {
     ChevronRight,
     Moon,
@@ -12,28 +11,19 @@ import {
     ShieldCheck,
     CircleHelp,
     LogOut,
-    Trash2,
     UsersRound,
     Bell,
-    Search,
 } from 'lucide-react';
 import DashboardLayout from '@/layout/DashboardLayout';
 import SettingsItem from '@/Components/ui/SettingsItem';
 import { useNotification } from '@/Components/NotificationProvider';
 
-const DELETE_CONFIRM_WORD = 'DELETE';
-
 export default function Settings() {
     const router = useRouter();
     const dispatch = useDispatch();
-    const toast = useToast();
     const { user } = useSelector(state => state.auth);
     const { unreadCount } = useNotification();
     const [theme, setTheme] = useState('system'); // light, dark, system
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [deletePassword, setDeletePassword] = useState('');
-    const [deleteConfirmText, setDeleteConfirmText] = useState('');
-    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         const savedTheme = localStorage.getItem('theme') || 'system';
@@ -54,21 +44,6 @@ export default function Settings() {
         if (window.confirm("Are you sure you want to log out?")) {
             dispatch(logout());
             router.push('/login');
-        }
-    };
-
-    const hasPassword = !user?.userId?.googleId;
-
-    const handleDeleteAccount = async () => {
-        if (deleteConfirmText !== DELETE_CONFIRM_WORD) return;
-        setDeleting(true);
-        const result = await dispatch(deleteAccount({ password: deletePassword }));
-        setDeleting(false);
-        if (deleteAccount.fulfilled.match(result)) {
-            toast.success('Account permanently deleted');
-            router.push('/login');
-        } else {
-            toast.error(result.payload?.message || 'Failed to delete account');
         }
     };
 
@@ -118,12 +93,6 @@ export default function Settings() {
                         sub="Requests, likes and comments"
                         badge={unreadCount}
                         onClick={() => router.push('/notifications')}
-                    />
-                    <SettingsItem
-                        icon={Search}
-                        label="Explore"
-                        sub="Find people to connect with"
-                        onClick={() => router.push('/search')}
                     />
                 </div>
 
@@ -189,66 +158,12 @@ export default function Settings() {
                     </button>
                 </div>
 
-                {/* Danger Zone */}
-                <div className={styles.sectionTitle}>Danger Zone</div>
-                <div className={`${styles.group} mt-enter`} style={{ animationDelay: '220ms' }}>
-                    <button
-                        className={`${styles.logoutBtn} mt-btn-lift`}
-                        onClick={() => setShowDeleteModal(true)}
-                    >
-                        <Trash2 className={styles.logoutIcon} />
-                        Delete my account permanently
-                    </button>
-                </div>
-
-                {showDeleteModal && (
-                    <div className={styles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)}>
-                        <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
-                            <h3 className={styles.modalTitle}>Delete account permanently</h3>
-                            <p className={styles.modalSub}>
-                                This deletes your profile, posts, messages, connections and media forever.
-                                This can't be undone.
-                            </p>
-
-                            {hasPassword && (
-                                <input
-                                    type="password"
-                                    placeholder="Enter your password"
-                                    value={deletePassword}
-                                    onChange={(e) => setDeletePassword(e.target.value)}
-                                    className={styles.modalInput}
-                                />
-                            )}
-
-                            <label className={styles.modalLabel}>
-                                Type <strong>{DELETE_CONFIRM_WORD}</strong> to confirm
-                            </label>
-                            <input
-                                type="text"
-                                value={deleteConfirmText}
-                                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                                className={styles.modalInput}
-                            />
-
-                            <div className={styles.modalActions}>
-                                <button
-                                    className={styles.modalCancelBtn}
-                                    onClick={() => setShowDeleteModal(false)}
-                                    disabled={deleting}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    className={styles.modalDeleteBtn}
-                                    onClick={handleDeleteAccount}
-                                    disabled={deleting || deleteConfirmText !== DELETE_CONFIRM_WORD || (hasPassword && !deletePassword)}
-                                >
-                                    {deleting ? 'Deleting…' : 'Delete permanently'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                {/* Deleting an account permanently is intentionally NOT a
+                    direct action on this page anymore — it used to be a
+                    button styled identically to (and sitting right next to)
+                    Log out, which is exactly the kind of thing a misclick
+                    lands on. It's reachable only through Help & Support's
+                    guide now, adding real deliberate steps in between. */}
 
                 <div className={styles.footer}>
                     <p>Mitrata App v1.2.0</p>
