@@ -37,20 +37,19 @@ const issueOtp = async (email, purpose) => {
     await Otp.deleteMany({ email, purpose });
     const otp = generateOtp();
     await Otp.create({ email, purpose, otpHash: hashOtp(otp) });
-    try {
-        await sendMail({
-            to: email,
-            subject: purpose === "signup" ? "Verify your Mitrata account" : "Reset your Mitrata password",
-            html: otpEmailHtml(otp, purpose),
-        });
-    } catch (mailError) {
-        // The OTP row above is already saved with a real code — a transport
-        // hiccup here (as opposed to the rate-limit check above, which is
-        // deliberate and still throws) shouldn't turn into a 500 that makes
-        // register/resend look like they failed outright. resendOtp is the
-        // user's recovery path if this particular send didn't land.
+    // Deliberately NOT awaited: Gmail's SMTP round trip can occasionally run
+    // 30-90s+ (observed live), which blows past the frontend's 15s axios
+    // timeout and would surface as a false "request failed" even though the
+    // OTP row above is already saved and valid. register/resendOtp respond
+    // as soon as the code exists — delivery happens in the background, and
+    // resendOtp is the recovery path if a particular attempt didn't land.
+    sendMail({
+        to: email,
+        subject: purpose === "signup" ? "Verify your Mitrata account" : "Reset your Mitrata password",
+        html: otpEmailHtml(otp, purpose),
+    }).catch((mailError) => {
         console.error(`sendMail failed for ${email} (${purpose}):`, mailError.message);
-    }
+    });
 };
 
 export const sendOtp = async (req, res) => {
