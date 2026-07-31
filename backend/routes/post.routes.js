@@ -1,12 +1,12 @@
 
 import { Router } from "express";
-import { activecheck, commentPost, createPost, delete_Comments, deletePost, getAllPosts, getBookmarkedPosts, getComment_by_Post, getLikedPosts, getPostAnalytics, getPostById, getPublicStats, getTrendingTags, reactToComplaint, toggleBookmark } from "../controllers/post.controller.js";
+import { activecheck, commentPost, createPost, delete_Comments, deletePost, getAllPosts, getBookmarkedPosts, getComment_by_Post, getLikedPosts, getPostAnalytics, getPostById, getPostsByUsername, getPublicStats, getTrendingTags, reactToComplaint, toggleBookmark } from "../controllers/post.controller.js";
 import { verifyToken } from "../middleware/auth.middleware.js";
 import multer from "multer";
 import { Storage } from "../config/cloudinary.js";
 const router = Router();
 
-const upload = multer({ storage: Storage })
+const upload = multer({ storage: Storage, limits: { fileSize: 25 * 1024 * 1024 } })
 
 // Public health check
 router.route("/").get(activecheck);
@@ -19,8 +19,9 @@ router.route('/trending/tags').get(getTrendingTags);
 router.route('/stats/public').get(getPublicStats);
 
 // All post routes require authentication
-router.route('/post').post(upload.single('media'), verifyToken, createPost);
+router.route('/post').post(verifyToken, upload.single('media'), createPost);
 router.route('/posts').get(verifyToken, getAllPosts);
+router.route('/posts/user/:username').get(verifyToken, getPostsByUsername);
 router.route('/delete_post').post(verifyToken, deletePost);
 router.route('/comment_post').post(verifyToken, commentPost);
 router.route('/getcomment_by_post').get(verifyToken, getComment_by_Post);

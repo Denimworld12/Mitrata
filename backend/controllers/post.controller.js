@@ -204,6 +204,52 @@ export const getAllPosts = async (req, res) => {
   }
 };
 
+// profile/activity/view_profile were all filtering *one page* of the
+// engagement-ranked global getAllPosts() feed down to a single username —
+// a user's own posts that didn't rank into that page (very likely once
+// they have more than a handful) were invisible on their own profile.
+// This queries their actual posts directly instead.
+export const getPostsByUsername = async (req, res) => {
+  try {
+    const requesterId = req.userId;
+    const { username } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const author = await User.findOne({ username }).select("_id").lean();
+    if (!author) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const query = { userId: author._id };
+    const [posts, totalPosts] = await Promise.all([
+      Post.find(query)
+        .sort({ createId: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("userId", "name username email profilePicture createdAt")
+        .lean(),
+      Post.countDocuments(query)
+    ]);
+
+    const formattedPosts = posts.map((post) => ({
+      ...post,
+      ...summarise(post.reactions, requesterId),
+    }));
+
+    return res.status(200).json({
+      posts: formattedPosts,
+      hasMore: skip + limit < totalPosts,
+      totalPosts,
+      page,
+      limit
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export const deletePost = async (req, res) => {
   const { post_id } = req.body;
   try {
