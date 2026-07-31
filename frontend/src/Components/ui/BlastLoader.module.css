@@ -1,0 +1,50 @@
+.blast {
+    position: relative;
+    display: inline-block;
+}
+
+/* The starburst mark used as a mask over a spinning brand-gradient sweep —
+   same PNG as the favicon, just recolored/animated via CSS mask instead of
+   needing a second art asset. */
+.ring {
+    position: absolute;
+    inset: 0;
+    background: conic-gradient(from 0deg, #0447ff, #7b5cf0, #ff4704, #0447ff);
+    -webkit-mask-image: url('/brand/mitrata-mark.png');
+    mask-image: url('/brand/mitrata-mark.png');
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    animation: blastSpin 1.6s linear infinite, blastPulse 1.6s ease-in-out infinite;
+}
+
+/* A canvas-colored disc over the center turns the solid star into a hollow
+   ring — the "event horizon" look, dark center with the mark only visible
+   as its outer points. */
+.hole {
+    position: absolute;
+    inset: 30%;
+    border-radius: 50%;
+    background: var(--mt-canvas);
+}
+
+@keyframes blastSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes blastPulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+}
