@@ -10,6 +10,11 @@ const transporter = process.env.EMAIL_APP_PASSWORD
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_APP_PASSWORD,
         },
+        // Render's containers have no IPv6 egress route, but Node's default
+        // DNS resolution for smtp.gmail.com can still hand back an AAAA
+        // record first — every send then failed with ENETUNREACH before it
+        // ever reached Gmail. Forcing IPv4 is what actually fixes it.
+        family: 4,
     })
     : null;
 
