@@ -228,6 +228,26 @@ export function NotificationProvider({ children }) {
         Notification.requestPermission().catch(() => { });
     }, [authState.loggedIn]);
 
+    // Registers this browser for push (reaches a fully closed tab, which
+    // the in-tab Notification API above can't) — runs whenever permission
+    // is already granted, not just right after requesting it, so a returning
+    // visitor's browser re-registers too (tokens can rotate/expire).
+    // $addToSet server-side makes calling this on every login harmless.
+    useEffect(() => {
+        if (typeof window === 'undefined' || typeof Notification === 'undefined') return;
+        if (!authState.loggedIn || Notification.permission !== 'granted') return;
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        import('@/config/firebase').then(({ getFcmToken }) => getFcmToken()).then((fcmToken) => {
+            if (!fcmToken) return;
+            localStorage.setItem('fcmToken', fcmToken);
+            axios.post(`${Base_Url}/api/user/fcm-token`, { token: fcmToken }, {
+                headers: { Authorization: `Bearer ${token}` }
+            }).catch(() => { });
+        }).catch(() => { });
+    }, [authState.loggedIn]);
+
     // Fallback for anyone who hasn't granted (or whose browser doesn't
     // support) native notifications: the tab title itself carries the
     // unread count while you're away, and reverts the moment you're back.
