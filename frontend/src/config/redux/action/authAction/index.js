@@ -158,6 +158,14 @@ export const logout = createAsyncThunk(
         // of possibly several per-account cookies this browser is signing
         // out of.
         const userId = decodeJwtUserId(localStorage.getItem("token") || "");
+        // Best-effort — a logged-out device that stays registered would keep
+        // getting push notifications for an account it's no longer signed
+        // into. Not worth blocking/failing logout over if this errors.
+        const fcmToken = localStorage.getItem("fcmToken");
+        if (fcmToken) {
+            clientServer.delete('/user/fcm-token', { data: { token: fcmToken } }).catch(() => { });
+            localStorage.removeItem("fcmToken");
+        }
         try {
             await clientServer.post('/logout', { userId });
             localStorage.removeItem("token");
