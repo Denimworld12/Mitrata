@@ -30,10 +30,11 @@ export default function CallOverlay({
     const isPulsing = callState === 'calling' || callState === 'ringing';
     const isConnecting = callState !== 'active';
 
-    // Minimized: a small floating bubble (same idea as a browser's native
-    // PiP window) — lets you keep using the app underneath instead of the
-    // call pinning you to a full-screen modal until it ends.
-    if (isMinimized) {
+    // Voice calls have no <video> element in play at all — the audio element
+    // that actually carries the call lives outside CallOverlay, unconditionally
+    // mounted in CallProvider, so swapping this markup out for a bubble on
+    // minimize is safe here (nothing gets unmounted that the call depends on).
+    if (isMinimized && !isVideoCall) {
         return (
             <div className={styles.miniBubble} onClick={onExpand} role="button" tabIndex={0} aria-label="Expand call">
                 <img src={remoteUser?.avatar || '/default-avatar.svg'} alt="" className={styles.miniAvatar} />
@@ -55,18 +56,30 @@ export default function CallOverlay({
     }
 
     if (isVideoCall) {
+        // Minimizing a video call must NEVER unmount these <video> elements —
+        // that was the actual bug (video going blank on minimize/expand):
+        // .srcObject is a property of that specific DOM node, so once it's
+        // gone, remounting a fresh <video> later has no stream attached and
+        // nothing re-attaches it. Minimizing here is purely a CSS shrink of
+        // the same persistent elements instead of swapping in different markup.
         return (
-            <div className={styles.overlay}>
-                <div className={styles.videoStage}>
+            <div className={`${styles.overlay} ${isMinimized ? styles.overlayMinimized : ''}`}>
+                <div
+                    className={`${styles.videoStage} ${isMinimized ? styles.videoStageMinimized : ''}`}
+                    onClick={isMinimized ? onExpand : undefined}
+                    role={isMinimized ? 'button' : undefined}
+                    tabIndex={isMinimized ? 0 : undefined}
+                    aria-label={isMinimized ? 'Expand call' : undefined}
+                >
                     <video ref={remoteVideoRef} className={styles.remoteVideo} autoPlay playsInline />
 
-                    {callState !== 'ringing' && (
+                    {!isMinimized && callState !== 'ringing' && (
                         <button className={styles.minimizeBtn} onClick={onMinimize} aria-label="Minimize call">
                             <Minimize2 size={18} strokeWidth={2} />
                         </button>
                     )}
 
-                    {isConnecting && (
+                    {!isMinimized && isConnecting && (
                         <div className={styles.videoConnectingScrim}>
                             <div className={styles.avatarRing}>
                                 <div className={styles.pulseRing} />
@@ -80,7 +93,7 @@ export default function CallOverlay({
                         </div>
                     )}
 
-                    {!isConnecting && (
+                    {!isMinimized && !isConnecting && (
                         <div className={styles.videoNameChip}>
                             <img src={remoteUser?.avatar || '/default-avatar.svg'} alt="" />
                             <span>{remoteUser?.name || 'Unknown'}</span>
@@ -88,42 +101,53 @@ export default function CallOverlay({
                         </div>
                     )}
 
-                    <div className={`${styles.localVideoPip} ${isVideoOff ? styles.localVideoPipHidden : ''}`}>
+                    <div className={`${styles.localVideoPip} ${isVideoOff ? styles.localVideoPipHidden : ''} ${isMinimized ? styles.localVideoPipHidden : ''}`}>
                         <video ref={localVideoRef} autoPlay playsInline muted />
                     </div>
 
-                    <div className={styles.videoControlBar}>
-                        {callState === 'ringing' ? (
-                            <>
-                                <button className={`${styles.glassBtn} ${styles.glassBtnDanger}`} onClick={onReject} aria-label="Decline">
-                                    <PhoneOff size={20} strokeWidth={2} />
-                                </button>
-                                <button className={`${styles.glassBtn} ${styles.glassBtnAccept}`} onClick={onAccept} aria-label="Accept">
-                                    <Video size={20} strokeWidth={2} />
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <button
-                                    className={`${styles.glassBtn} ${isMuted ? styles.glassBtnActive : ''}`}
-                                    onClick={onToggleMute}
-                                    aria-label={isMuted ? 'Unmute' : 'Mute'}
-                                >
-                                    {isMuted ? <MicOff size={18} strokeWidth={2} /> : <Mic size={18} strokeWidth={2} />}
-                                </button>
-                                <button
-                                    className={`${styles.glassBtn} ${isVideoOff ? styles.glassBtnActive : ''}`}
-                                    onClick={onToggleVideo}
-                                    aria-label={isVideoOff ? 'Turn camera on' : 'Turn camera off'}
-                                >
-                                    {isVideoOff ? <VideoOff size={18} strokeWidth={2} /> : <Video size={18} strokeWidth={2} />}
-                                </button>
-                                <button className={`${styles.glassBtn} ${styles.glassBtnEnd}`} onClick={onEnd} aria-label="End call">
-                                    <PhoneOff size={18} strokeWidth={2} />
-                                </button>
-                            </>
-                        )}
-                    </div>
+                    {isMinimized ? (
+                        <button
+                            className={styles.miniEndBtn}
+                            style={{ position: 'absolute', bottom: 8, right: 8 }}
+                            onClick={(e) => { e.stopPropagation(); onEnd(); }}
+                            aria-label="End call"
+                        >
+                            <PhoneOff size={16} strokeWidth={2} />
+                        </button>
+                    ) : (
+                        <div className={styles.videoControlBar}>
+                            {callState === 'ringing' ? (
+                                <>
+                                    <button className={`${styles.glassBtn} ${styles.glassBtnDanger}`} onClick={onReject} aria-label="Decline">
+                                        <PhoneOff size={20} strokeWidth={2} />
+                                    </button>
+                                    <button className={`${styles.glassBtn} ${styles.glassBtnAccept}`} onClick={onAccept} aria-label="Accept">
+                                        <Video size={20} strokeWidth={2} />
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <button
+                                        className={`${styles.glassBtn} ${isMuted ? styles.glassBtnActive : ''}`}
+                                        onClick={onToggleMute}
+                                        aria-label={isMuted ? 'Unmute' : 'Mute'}
+                                    >
+                                        {isMuted ? <MicOff size={18} strokeWidth={2} /> : <Mic size={18} strokeWidth={2} />}
+                                    </button>
+                                    <button
+                                        className={`${styles.glassBtn} ${isVideoOff ? styles.glassBtnActive : ''}`}
+                                        onClick={onToggleVideo}
+                                        aria-label={isVideoOff ? 'Turn camera on' : 'Turn camera off'}
+                                    >
+                                        {isVideoOff ? <VideoOff size={18} strokeWidth={2} /> : <Video size={18} strokeWidth={2} />}
+                                    </button>
+                                    <button className={`${styles.glassBtn} ${styles.glassBtnEnd}`} onClick={onEnd} aria-label="End call">
+                                        <PhoneOff size={18} strokeWidth={2} />
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         );

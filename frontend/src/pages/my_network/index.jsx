@@ -8,6 +8,7 @@ import styles from './mynetwork.module.css'
 import { useRouter } from 'next/router';
 import { Phone, MessageCircle, Check, X, UsersRound, Inbox, SendHorizontal } from 'lucide-react';
 import EmptyState from '@/Components/ui/EmptyState';
+import PageLoader from '@/Components/ui/PageLoader';
 import { useCall } from '@/Components/CallProvider';
 
 export default function MyNetwork() {
@@ -87,7 +88,7 @@ export default function MyNetwork() {
         }
     };
 
-    if (!isMounted) return null;
+    if (!isMounted) return <PageLoader />;
 
     return (
                     <DashboardLayout>
