@@ -36,6 +36,10 @@ const getTransporter = async () => {
     return transporterPromise;
 };
 
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 2000;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const sendMail = async ({ to, subject, html }) => {
     if (!emailConfigured) {
         // Same "disabled until configured" pattern as googleLogin — lets the
@@ -46,11 +50,28 @@ export const sendMail = async ({ to, subject, html }) => {
         console.warn(`EMAIL_APP_PASSWORD not set — skipping email to ${to}: ${subject}\n${html}`);
         return;
     }
-    const transporter = await getTransporter();
-    await transporter.sendMail({
-        from: `"Mitrata" <${process.env.EMAIL_USER}>`,
-        to,
-        subject,
-        html,
-    });
+
+    let lastError;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+            const transporter = await getTransporter();
+            await transporter.sendMail({
+                from: `"Mitrata" <${process.env.EMAIL_USER}>`,
+                to,
+                subject,
+                html,
+            });
+            return;
+        } catch (err) {
+            lastError = err;
+            // Gmail's SMTP is a pool of IPs behind DNS round-robin — observed
+            // live, failures are often specific to whichever IP got resolved
+            // that attempt, not a persistent outage. Dropping the cached
+            // transporter forces a fresh DNS lookup (likely a different IP)
+            // on the next attempt instead of retrying the same bad address.
+            transporterPromise = null;
+            if (attempt < MAX_ATTEMPTS) await sleep(RETRY_DELAY_MS);
+        }
+    }
+    throw lastError;
 };
