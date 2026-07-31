@@ -1,0 +1,7 @@
+# Deploying from the repo root (monorepo) — only frontend/ is actually
+# needed; everything else here was getting uploaded too (891MB, including
+# the 1.3GB Flutter mobile/ project, which broke the deploy outright).
+mobile/
+backend/
+node_modules/
+.git/
