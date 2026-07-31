@@ -287,6 +287,30 @@
     background: #000;
 }
 
+/* Minimized video call — same PiP idea as the voice call's miniBubble, but
+   keeps the actual <video> element alive and playing instead of swapping it
+   out for different markup (see the comment in CallOverlay.jsx for why). */
+.overlayMinimized {
+    inset: auto;
+    right: 16px;
+    bottom: 88px;
+    left: auto;
+    top: auto;
+    background: none;
+    display: block;
+    animation: none;
+    pointer-events: none;
+}
+
+.videoStageMinimized {
+    width: 160px;
+    aspect-ratio: 3 / 4;
+    border-radius: 16px;
+    cursor: pointer;
+    box-shadow: var(--mt-shadow-lg);
+    pointer-events: auto;
+}
+
 .videoConnectingScrim {
     position: absolute;
     inset: 0;

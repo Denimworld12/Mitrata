@@ -10,6 +10,7 @@ import {
   toggleBookmark,
 } from "@/config/redux/action/postAction";
 import DashboardLayout from "@/layout/DashboardLayout";
+import PageLoader from "@/Components/ui/PageLoader";
 import { useRouter } from "next/router";
 import React, { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -311,7 +312,7 @@ export default function Dashboard() {
   }, [postState.postId]);
 
   // Prevent Hydration error
-  if (!isMounted) return null;
+  if (!isMounted) return <PageLoader />;
 
   // ... your return JSX remains exactly the same
 

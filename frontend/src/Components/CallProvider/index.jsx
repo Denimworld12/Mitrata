@@ -129,6 +129,29 @@ export function CallProvider({ children }) {
         return () => { document.body.style.overflow = ''; };
     }, [callState, isMinimized]);
 
+    // localVideoRef/remoteVideoRef only exist once CallOverlay's video markup
+    // is actually mounted — but callUser/answerCall assign .srcObject right
+    // after getUserMedia resolves, before that first render has happened (the
+    // caller's local preview was always blank because of this: at that exact
+    // moment callState was still 'idle', so the ref was null and the
+    // assignment silently no-opped). Re-syncing here on every render where
+    // the call is live catches the ref the moment it actually exists, and
+    // also re-attaches the streams if the video elements ever remount (e.g.
+    // were structured to unmount/remount around minimizing).
+    useEffect(() => {
+        if (callState === 'idle') return;
+        if (localVideoRef.current && localStream.current) {
+            localVideoRef.current.srcObject = localStream.current;
+        }
+        if (remoteVideoRef.current && peerConnection.current) {
+            const receivers = peerConnection.current.getReceivers?.() || [];
+            const tracks = receivers.map(r => r.track).filter(Boolean);
+            if (tracks.length && !remoteVideoRef.current.srcObject) {
+                remoteVideoRef.current.srcObject = new MediaStream(tracks);
+            }
+        }
+    });
+
     const createPeerConnection = useCallback((targetUserId) => {
         const pc = new RTCPeerConnection(ICE_SERVERS);
 

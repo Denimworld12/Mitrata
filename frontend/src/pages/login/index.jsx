@@ -8,6 +8,7 @@ import { emptyMessage } from '@/config/redux/reducer/authReducer'
 import { getSavedAccounts } from '@/config/savedAccounts'
 import Button from '@/Components/ui/Button'
 import GoogleLoginButton from '@/Components/ui/GoogleLoginButton'
+import PageLoader from '@/Components/ui/PageLoader'
 
 const RESEND_COOLDOWN_S = 60;
 
@@ -175,7 +176,7 @@ function LoginComponent() {
     }
   };
 
-  if (isChecking) return null;
+  if (isChecking) return <PageLoader />;
 
   return (
     <UserLayout>
