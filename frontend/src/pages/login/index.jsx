@@ -7,6 +7,7 @@ import { loginUser, registerUser, verifyOtp, resendOtp, switchAccountAction, get
 import { emptyMessage } from '@/config/redux/reducer/authReducer'
 import { getSavedAccounts } from '@/config/savedAccounts'
 import Button from '@/Components/ui/Button'
+import PasswordInput from '@/Components/ui/PasswordInput'
 import GoogleLoginButton from '@/Components/ui/GoogleLoginButton'
 import PageLoader from '@/Components/ui/PageLoader'
 
@@ -298,7 +299,12 @@ function LoginComponent() {
                 </div>
               )}
               <input value={email} onChange={(e) => setEmail(e.target.value)} type="text" placeholder="Email" className={styles.inputField} />
-              <input onChange={(e) => setPassword(e.target.value)} type="password" placeholder="Password" className={styles.inputField} />
+              <PasswordInput
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                className={styles.inputField}
+              />
 
               {userLoginMethod && (
                 <div style={{ textAlign: 'right', marginTop: '2px' }}>

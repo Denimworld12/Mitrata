@@ -6,6 +6,7 @@ import styles from '../login/styles.module.css'
 import { sendOtp, resendOtp, verifyOtp, resetPasswordAction } from '@/config/redux/action/authAction'
 import { useToast } from '@/Components/Toast'
 import Button from '@/Components/ui/Button'
+import PasswordInput from '@/Components/ui/PasswordInput'
 
 const RESEND_COOLDOWN_S = 60;
 
@@ -130,17 +131,15 @@ export default function ForgotPassword() {
                     className={styles.inputField}
                     style={{ textAlign: 'center', fontSize: '1.4rem', letterSpacing: '0.4em' }}
                   />
-                  <input
+                  <PasswordInput
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    type="password"
                     placeholder="New password"
                     className={styles.inputField}
                   />
-                  <input
+                  <PasswordInput
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    type="password"
                     placeholder="Confirm new password"
                     className={styles.inputField}
                   />

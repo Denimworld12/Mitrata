@@ -1,5 +1,8 @@
 .container {
-    min-height: 100svh;
+    /* Fills whatever height <main> actually has left after Navbar (now that
+       UserLayout is a real flex column) instead of a full extra 100svh
+       stacked on top of it. */
+    min-height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -214,7 +217,11 @@
 
 @media (max-width: 860px) {
     .cardContainer {
-        flex-direction: column-reverse;
+        /* Was column-reverse — the decorative "Remembered it? / Back to
+           sign in" panel rendered ABOVE the actual email/password form on
+           mobile, so the first thing anyone saw was a link to leave the
+           flow rather than the input they came here to use. */
+        flex-direction: column;
         width: 100%;
         min-height: 0;
     }
