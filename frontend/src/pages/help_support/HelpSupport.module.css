@@ -1,0 +1,132 @@
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 24px 20px 100px;
+}
+
+.header {
+    margin-bottom: 24px;
+}
+
+.backBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    color: var(--mt-ink2);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 12px;
+}
+
+.backIcon {
+    width: 18px;
+    height: 18px;
+}
+
+.title {
+    font-family: var(--mt-font-display);
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: var(--mt-grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+}
+
+.sub {
+    color: var(--mt-ink2);
+    font-size: 14px;
+    margin-top: 4px;
+}
+
+.contactCard {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--mt-surface);
+    border: 1px solid var(--mt-border);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: var(--mt-shadow);
+    margin-bottom: 32px;
+}
+
+.contactIconBox {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: var(--mt-grad-soft);
+    color: var(--mt-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.contactText h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--mt-ink);
+    margin: 0 0 2px;
+}
+
+.contactText p {
+    font-size: 12.5px;
+    color: var(--mt-ink2);
+    margin: 0;
+}
+
+.emailBtn {
+    margin-left: auto;
+    flex-shrink: 0;
+    background: var(--mt-grad);
+    color: #fff;
+    border: none;
+    padding: 9px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.sectionTitle {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--mt-ink3);
+    margin-bottom: 12px;
+    padding-left: 12px;
+    letter-spacing: 0.08em;
+}
+
+.group {
+    background: var(--mt-surface);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 24px;
+    box-shadow: var(--mt-shadow);
+    border: 1px solid var(--mt-border);
+}
+
+@media (max-width: 640px) {
+    .container {
+        padding: 16px 16px 100px;
+    }
+
+    .contactCard {
+        flex-wrap: wrap;
+    }
+
+    .emailBtn {
+        margin-left: 0;
+        width: 100%;
+        text-align: center;
+    }
+}
