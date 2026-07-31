@@ -53,6 +53,13 @@ const userSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "posts"
     }],
+    // One user can have several (web browser + phone app, or multiple
+    // browsers) — push sends go to all of them, and dead tokens FCM reports
+    // back as invalid get pruned from here rather than kept forever.
+    fcmTokens: {
+        type: [String],
+        default: []
+    },
 }, {
     timestamps: true
 })

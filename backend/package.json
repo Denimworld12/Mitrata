@@ -63,6 +63,7 @@
     "fast-json-stable-stringify": "^2.1.0",
     "fd-slicer": "^1.1.0",
     "finalhandler": "^2.1.0",
+    "firebase-admin": "^14.2.0",
     "fontkit": "^2.0.4",
     "forever-agent": "^0.6.1",
     "form-data": "^2.3.3",

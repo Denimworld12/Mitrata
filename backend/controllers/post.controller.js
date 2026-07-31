@@ -6,6 +6,7 @@ import Comment from "../models/comments.model.js";
 import { v2 as cloudinary } from "cloudinary";
 import ConnectionRequest from "../models/connection.model.js";
 import Notification from "../models/notification.model.js";
+import { sendPush } from "../utils/push.js";
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
@@ -24,6 +25,8 @@ const notifyOnce = async ({ userId, fromUser, type, message, metadata }) => {
   });
   if (recent) return;
   await Notification.create({ userId, fromUser, type, message, metadata });
+  sendPush(userId, { title: "Mitrata", body: message, data: { type, ...metadata } })
+    .catch((err) => console.error("sendPush failed:", err.message));
 };
 
 export const REACTION_TYPES = ["like", "dislike", "flame", "handHeart", "lightbulb"];
