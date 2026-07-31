@@ -11,6 +11,7 @@ import {
 } from "@/config/redux/action/postAction";
 import DashboardLayout from "@/layout/DashboardLayout";
 import PageLoader from "@/Components/ui/PageLoader";
+import BlastLoader from "@/Components/ui/BlastLoader";
 import { useRouter } from "next/router";
 import React, { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -786,9 +787,11 @@ export default function Dashboard() {
     );
   } else {
     return (
-              <DashboardLayout>
-          <div className="loading">...loading</div>
-        </DashboardLayout>
+      <DashboardLayout>
+        <div className="w-full flex items-center justify-center py-24">
+          <BlastLoader />
+        </div>
+      </DashboardLayout>
     );
   }
 }
