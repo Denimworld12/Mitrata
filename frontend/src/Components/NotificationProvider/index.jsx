@@ -37,10 +37,30 @@ export function NotificationProvider({ children }) {
     const socketRef = useRef(null);
     const hasShownWelcome = useRef(false);
 
+    // The in-app toast below only reaches someone already looking at the tab.
+    // A real OS notification is what actually reaches you on another tab,
+    // another app, or with the screen off — this is the whole reason a
+    // message could otherwise go unnoticed for hours. Only fires while the
+    // tab is hidden: while it's visible/focused the in-app toast already
+    // covers it, and duplicating both would be noisy.
+    const fireNativeNotification = useCallback(({ title, message, avatar, onClick }) => {
+        if (typeof window === 'undefined' || typeof Notification === 'undefined') return;
+        if (Notification.permission !== 'granted' || !document.hidden) return;
+        try {
+            const n = new Notification(title, { body: message, icon: avatar || '/favicon-192.png' });
+            n.onclick = () => {
+                window.focus();
+                onClick?.();
+                n.close();
+            };
+        } catch { }
+    }, []);
+
     // Show a floating notification popup
     const showNotification = useCallback(({ title, message, avatar, onClick, type = 'message', metadata = {} }) => {
         const id = ++nId;
         setNotifications(prev => [...prev, { id, title, message, avatar, onClick, type, exiting: false }]);
+        fireNativeNotification({ title, message, avatar, onClick });
 
         // Add to recent history — metadata (e.g. requestId) has to travel
         // with it, not just the popup: the /notifications page's Accept/
@@ -197,6 +217,35 @@ export function NotificationProvider({ children }) {
     // `showNotification` (stable via useCallback) — this should connect
     // once per login session, not reconnect on every navigation.
     }, [authState.loggedIn]);
+
+    // Ask once per login, not on every page load — permission persists once
+    // granted/denied, and re-asking after a "no" just trains people to
+    // reflexively dismiss it. A silent no-op on browsers without the API
+    // (or if already decided) rather than an error.
+    useEffect(() => {
+        if (typeof window === 'undefined' || typeof Notification === 'undefined') return;
+        if (!authState.loggedIn || Notification.permission !== 'default') return;
+        Notification.requestPermission().catch(() => { });
+    }, [authState.loggedIn]);
+
+    // Fallback for anyone who hasn't granted (or whose browser doesn't
+    // support) native notifications: the tab title itself carries the
+    // unread count while you're away, and reverts the moment you're back.
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+        const baseTitle = 'Mitrata';
+        const applyTitle = () => {
+            document.title = (!document.hidden || unreadCount === 0)
+                ? baseTitle
+                : `(${unreadCount > 9 ? '9+' : unreadCount}) ${baseTitle}`;
+        };
+        applyTitle();
+        document.addEventListener('visibilitychange', applyTitle);
+        return () => {
+            document.removeEventListener('visibilitychange', applyTitle);
+            document.title = baseTitle;
+        };
+    }, [unreadCount]);
 
     // Welcome notification — once per browser session, not once per component
     // mount. hasShownWelcome (a ref) only survives re-renders, not a full page
