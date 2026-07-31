@@ -9,6 +9,7 @@ import { useRouter } from 'next/router';
 import { Phone, MessageCircle, Check, X, UsersRound, Inbox, SendHorizontal } from 'lucide-react';
 import EmptyState from '@/Components/ui/EmptyState';
 import PageLoader from '@/Components/ui/PageLoader';
+import BlastLoader from '@/Components/ui/BlastLoader';
 import { useCall } from '@/Components/CallProvider';
 
 export default function MyNetwork() {
@@ -19,14 +20,21 @@ export default function MyNetwork() {
 
     const [activeTab, setActiveTab] = useState('connections');
     const [isMounted, setIsMounted] = useState(false);
+    // isMounted only ever meant "has this component rendered once" — it flips
+    // true well before the connection/request data actually arrives, so every
+    // tab showed its "No connections/requests yet" empty state for a beat
+    // before the real data replaced it. This tracks the actual fetch.
+    const [dataLoaded, setDataLoaded] = useState(false);
     const toast = useToast();
     const { callUser } = useCall();
 
     const refreshData = useCallback(() => {
         const token = localStorage.getItem("token");
         if (token) {
-            dispatch(getMyConnectionRequests());
-            dispatch(getConnectionRequest());
+            Promise.allSettled([
+                dispatch(getMyConnectionRequests()),
+                dispatch(getConnectionRequest())
+            ]).then(() => setDataLoaded(true));
         }
     }, [dispatch]);
 
@@ -123,6 +131,11 @@ export default function MyNetwork() {
                     </div>
 
                     <div className={styles.contentArea}>
+                        {!dataLoaded ? (
+                            <div className="w-full flex items-center justify-center py-16">
+                                <BlastLoader size={48} />
+                            </div>
+                        ) : <>
                         {activeTab === 'connections' && (
                             <div className={styles.connectionsList}>
                                 {myConnections.length === 0 ? (
@@ -225,6 +238,7 @@ export default function MyNetwork() {
                                 )}
                             </div>
                         )}
+                        </>}
                     </div>
                 </div>
             </DashboardLayout>

@@ -12,6 +12,8 @@ import { useNotification } from "@/Components/NotificationProvider";
 import { useCall } from "@/Components/CallProvider";
 import { compressImage } from "@/utils/imageProcessing";
 import EmptyState from "@/Components/ui/EmptyState";
+import PageLoader from "@/Components/ui/PageLoader";
+import BlastLoader from "@/Components/ui/BlastLoader";
 import { ArrowLeft, Search, Phone, Video, MoreVertical, Trash2, Plus, Send, Download, X, MessageCircle, UsersRound, Check, CheckCheck } from "lucide-react";
 
 export default function Messaging() {
@@ -36,6 +38,16 @@ export default function Messaging() {
     const [selectedMessages, setSelectedMessages] = useState([]);
     const [showDeleteMenu, setShowDeleteMenu] = useState(false);
     const [isTyping, setIsTyping] = useState(false);
+    // The sidebar's "No connections yet" empty state used to flash before
+    // the actual connections/conversations fetch resolved (there was no
+    // independent loaded flag — connections.length === 0 was true both
+    // before AND during loading, so they looked identical).
+    const [sidebarLoaded, setSidebarLoaded] = useState(false);
+    // Dedicated to the active-chat fetch specifically — the reducer's
+    // isLoading is shared with sendMessage's pending/fulfilled too, so using
+    // that here would blank the whole conversation every time you send a
+    // message, not just while the initial history is loading.
+    const [chatLoading, setChatLoading] = useState(false);
     const deleteMenuRef = useRef(null);
     const longPressTimer = useRef(null);
     const fileInputRef = useRef(null);
@@ -67,9 +79,12 @@ export default function Messaging() {
         }
 
         if (!authState.user) dispatch(getAboutUser());
-        if (authState.connectionRequest.length === 0) {
-            dispatch(getMyConnectionRequests());
-        }
+
+        const connReqPromise = authState.connectionRequest.length === 0
+            ? dispatch(getMyConnectionRequests())
+            : Promise.resolve();
+        Promise.allSettled([connReqPromise, dispatch(getConversations())])
+            .then(() => setSidebarLoaded(true));
     }, [dispatch, authState.user, authState.connectionRequest.length, mounted, router]);
 
     useEffect(() => {
@@ -103,11 +118,8 @@ export default function Messaging() {
     // Real conversation previews/unread counts (replaces the old hardcoded
     // "Click to chat" placeholder) — connections with an actual conversation
     // sort to the top by recency; message-less connections stay after, in
-    // their existing order.
-    useEffect(() => {
-        dispatch(getConversations());
-    }, [dispatch]);
-
+    // their existing order. Fetched together with connections above (see
+    // the auth-rehydration effect and sidebarLoaded).
     const conversationByUserId = useMemo(() => {
         const map = {};
         conversations.forEach((c) => { map[c.userId] = c; });
@@ -192,7 +204,8 @@ export default function Messaging() {
     /* -------------------- FETCH CHAT -------------------- */
     useEffect(() => {
         if (activeChatUser?.userId?._id) {
-            dispatch(getMessages({ receiverId: activeChatUser.userId._id }));
+            setChatLoading(true);
+            dispatch(getMessages({ receiverId: activeChatUser.userId._id })).finally(() => setChatLoading(false));
             dispatch(markMessagesRead({ senderId: activeChatUser.userId._id }));
         } else {
             dispatch(resetMessages());
@@ -459,7 +472,7 @@ export default function Messaging() {
     }, [selectedMessages, messages, authState.user]);
 
     /* -------------------- PREVENT FLASH -------------------- */
-    if (!mounted) return null;
+    if (!mounted) return <PageLoader />;
 
     /* -------------------- UI -------------------- */
     return (
@@ -479,7 +492,11 @@ export default function Messaging() {
                     </div>
 
                     <div className={styles.connectionsList}>
-                        {connections.length === 0 ? (
+                        {!sidebarLoaded ? (
+                            <div className="w-full flex items-center justify-center py-16">
+                                <BlastLoader size={48} />
+                            </div>
+                        ) : connections.length === 0 ? (
                             <EmptyState
                                 icon={UsersRound}
                                 title="No connections yet"
@@ -662,7 +679,11 @@ export default function Messaging() {
 
                             {/* MESSAGES AREA */}
                             <div className={styles.messagesArea}>
-                                {!showSearchModal && messages.length === 0 && (
+                                {chatLoading ? (
+                                    <div className="w-full flex items-center justify-center py-16">
+                                        <BlastLoader size={48} />
+                                    </div>
+                                ) : !showSearchModal && messages.length === 0 && (
                                     <EmptyState
                                         icon={MessageCircle}
                                         title="No messages yet"
