@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import dns from "dns";
 
 // Gmail SMTP requires a 16-character App Password (Google Account > Security
 // > 2-Step Verification > App Passwords), not the account's normal login
@@ -13,8 +14,14 @@ const transporter = process.env.EMAIL_APP_PASSWORD
         // Render's containers have no IPv6 egress route, but Node's default
         // DNS resolution for smtp.gmail.com can still hand back an AAAA
         // record first — every send then failed with ENETUNREACH before it
-        // ever reached Gmail. Forcing IPv4 is what actually fixes it.
+        // ever reached Gmail. `family: 4` alone did NOT fix this in practice
+        // (confirmed live — kept failing with the same error after adding
+        // it): nodemailer's "service" shorthand doesn't reliably thread that
+        // option down to the actual socket connect call. A custom `lookup`
+        // forces the DNS resolution itself to IPv4, which is what actually
+        // controls which address gets dialed.
         family: 4,
+        lookup: (hostname, options, callback) => dns.lookup(hostname, { family: 4 }, callback),
     })
     : null;
 
