@@ -4,7 +4,7 @@ import styles from './styles.module.css'
 import DashboardLayout from '@/layout/DashboardLayout'
 import { useRouter } from 'next/router'
 import { useDispatch, useSelector } from 'react-redux'
-import { getAllPosts } from '@/config/redux/action/postAction'
+import { getPostsByUsername } from '@/config/redux/action/postAction'
 import { downloadResume, getConnectionRequest, sendConnectionRequest } from '@/config/redux/action/authAction'
 import serverAxios from '@/config/serverAxios'
 import { UserPlus, Check, Download, ArrowRight } from 'lucide-react'
@@ -21,33 +21,6 @@ export default function viewProfilePage({ userProfile }) {
     const [isCurrentUserInConnection, setIsCurrentUserInConnection] = useState(false)
     const [isConnectionNull, setConnectionNull] = useState(true)
     const [connectionStatus, setConnectionStatus] = useState(undefined); // NEW STATE
-
-    if (!userProfile) {
-        return (
-            <DashboardLayout>
-                <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--mt-ink)" }}>
-                    <h2 style={{ fontFamily: "var(--mt-font-display)", fontWeight: 500 }}>User not found</h2>
-                    <p style={{ color: "var(--mt-ink2)" }}>The profile you are looking for does not exist or may have been removed.</p>
-                    <button
-                        onClick={() => router.push('/dashboard')}
-                        style={{
-                            marginTop: "20px",
-                            padding: "10px 22px",
-                            background: "var(--mt-grad)",
-                            color: "#fff",
-                            border: "none",
-                            borderRadius: "999px",
-                            fontWeight: 600,
-                            fontSize: "13.5px",
-                            cursor: "pointer"
-                        }}
-                    >
-                        Go to Dashboard
-                    </button>
-                </div>
-            </DashboardLayout>
-        );
-    }
 
     useEffect(() => {
         const connections = userState.connection;
@@ -78,17 +51,23 @@ export default function viewProfilePage({ userProfile }) {
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
-            dispatch(getAllPosts())
             dispatch(getConnectionRequest())
         }
     }, [dispatch]);
 
+    // Was filtering one page of the engagement-ranked global feed by
+    // username — someone's own posts that didn't rank into that page were
+    // invisible on their own profile. Queries their actual posts directly.
     useEffect(() => {
-        if (postState.posts) {
-            let posts = postState.posts.filter((post) => post.userId.username === router.query.username)
-            setUserPost(posts)
+        const token = localStorage.getItem('token');
+        if (token && router.query.username) {
+            dispatch(getPostsByUsername({ username: router.query.username }));
         }
-    }, [postState.posts, router.query.username])
+    }, [dispatch, router.query.username]);
+
+    useEffect(() => {
+        setUserPost(postState.userPosts || []);
+    }, [postState.userPosts])
 
     useEffect(() => {
         const connections = userState.connection;
@@ -109,6 +88,38 @@ export default function viewProfilePage({ userProfile }) {
             }
         }
     }, [userState.connection, userProfile?.userId?._id]);
+
+    // Placed after every hook above (not before, as this used to be) — a
+    // conditional `return` before some of this component's hooks meant
+    // client-side-navigating from a valid profile to a missing one reused
+    // the same component instance with fewer hooks called on the next
+    // render, which React throws on ("Rendered fewer hooks than expected").
+    if (!userProfile) {
+        return (
+            <DashboardLayout>
+                <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--mt-ink)" }}>
+                    <h2 style={{ fontFamily: "var(--mt-font-display)", fontWeight: 500 }}>User not found</h2>
+                    <p style={{ color: "var(--mt-ink2)" }}>The profile you are looking for does not exist or may have been removed.</p>
+                    <button
+                        onClick={() => router.push('/dashboard')}
+                        style={{
+                            marginTop: "20px",
+                            padding: "10px 22px",
+                            background: "var(--mt-grad)",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "999px",
+                            fontWeight: 600,
+                            fontSize: "13.5px",
+                            cursor: "pointer"
+                        }}
+                    >
+                        Go to Dashboard
+                    </button>
+                </div>
+            </DashboardLayout>
+        );
+    }
 
     const recentPosts = userPost.slice(0, 3);
     const hasMorePosts = userPost.length > 3;
@@ -197,7 +208,7 @@ export default function viewProfilePage({ userProfile }) {
                             userProfile.education.map((edu, idx) => (
                                 <div key={idx} className={styles.infoItem}>
                                     <h4>{edu.school}</h4>
-                                    <p>{edu.degree}  {edu.fieldOfStudy}</p>
+                                    <p>{edu.degree}  {edu.feildStudy}</p>
                                 </div>
                             ))
                         ) : <p className={styles.noDataText}>No education listed.</p>}

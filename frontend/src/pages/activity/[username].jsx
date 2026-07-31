@@ -5,7 +5,7 @@ import styles from './index.module.css';
 import DashboardLayout from '@/layout/DashboardLayout';
 import ReportMenu from '@/Components/ReportMenu';
 import EmptyState from '@/Components/ui/EmptyState';
-import { getAllPosts, deletePost, reactToPost, getAllComments, commentPost, toggleBookmark } from '@/config/redux/action/postAction';
+import { getPostsByUsername, deletePost, reactToPost, getAllComments, commentPost, toggleBookmark } from '@/config/redux/action/postAction';
 import { resetPostId } from '@/config/redux/reducer/postReducer';
 import { Base_Url } from '@/config';
 import { useToast } from '@/Components/Toast';
@@ -39,7 +39,7 @@ export default function UserActivityPage() {
     const toast = useToast();
 
     const refreshData = () => {
-        dispatch(getAllPosts());
+        if (username) dispatch(getPostsByUsername({ username }));
     };
 
     useEffect(() => {
@@ -53,19 +53,21 @@ export default function UserActivityPage() {
 
     useEffect(() => {
         setMounted(true);
-        const token = localStorage.getItem('token');
-        // Only fetch if Redux is empty to prevent "loading every time" flicker
-        if (token && postState.posts.length === 0) {
-            dispatch(getAllPosts());
-        }
-    }, [dispatch]);
+    }, []);
 
-    const userPosts = useMemo(() => {
-        if (postState.posts && username) {
-            return postState.posts.filter(post => post.userId?.username === username);
+    // Was reusing whatever was already in Redux for `posts` (the global
+    // feed) whenever it was non-empty — which could just as easily be a
+    // `feed=following` list from the dashboard, one that by definition
+    // never contains your own posts. Fetches this user's real posts
+    // directly instead, whenever `username` is actually available.
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token && username) {
+            dispatch(getPostsByUsername({ username }));
         }
-        return [];
-    }, [postState.posts, username]);
+    }, [dispatch, username]);
+
+    const userPosts = postState.userPosts || [];
 
     const isOwner = authState.user?.userId?.username === username;
 
@@ -106,7 +108,7 @@ export default function UserActivityPage() {
     const handleDelete = (postId) => {
         if (window.confirm("Are you sure you want to delete this post?")) {
             dispatch(deletePost(postId)).then(() => {
-                dispatch(getAllPosts());
+                refreshData();
                 toast.success("Post deleted.");
             });
         }

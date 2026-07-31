@@ -30,6 +30,86 @@ function saveRecentSearch(query) {
     return next;
 }
 
+// Was defined inside Search() — a fresh function identity every render, so
+// React remounted every card (resetting requestStatus back to null) on any
+// re-render of the parent, including every keystroke in the search box.
+// That let the same "Connect" click fire twice: the button visually reset
+// to its un-pressed state a moment after actually sending the request.
+function UserCard({ user }) {
+    const router = useRouter();
+    const toast = useToast();
+    const [requestStatus, setRequestStatus] = useState(null); // null, 'pending', 'sent'
+    const [loadingConn, setLoadingConn] = useState(false);
+
+    const navToProfile = () => router.push(`/view_profile/${user.username}`);
+
+    const handleConnect = async (e) => {
+        e.stopPropagation(); // Prevent card click
+        setLoadingConn(true);
+        try {
+            await clientServer.post('/user/send_connection_request', {
+                connectionId: user._id
+            });
+            setRequestStatus('sent');
+            toast.success(`Request sent to ${user.name}`);
+        } catch (error) {
+            console.error("Connection request failed", error);
+            const msg = error.response?.data?.message || "Failed to connect";
+            if (msg.includes("Already connected") || msg.includes("already pending")) {
+                setRequestStatus('sent'); // Treat as sent/connected
+            } else {
+                toast.error(msg);
+            }
+        } finally {
+            setLoadingConn(false);
+        }
+    };
+
+    return (
+        <div className={styles.card} onClick={navToProfile}>
+            <div className={styles.cardHeader}>
+                <img
+                    src={user.profilePicture || '/default-avatar.svg'}
+                    alt={user.name}
+                    className={styles.avatar}
+                />
+                <div className={styles.userInfo}>
+                    <h3 className={styles.name}>{user.name}</h3>
+                    <p className={styles.username}>@{user.username}</p>
+                </div>
+
+                <button
+                    className={`${styles.connectBtn} ${requestStatus === 'sent' ? styles.sent : ''} mt-btn-lift`}
+                    onClick={handleConnect}
+                    disabled={loadingConn || requestStatus === 'sent'}
+                >
+                    {loadingConn ? (
+                        <span className={styles.loadingDot}>•</span>
+                    ) : requestStatus === 'sent' ? (
+                        <Check className={styles.btnIcon} />
+                    ) : (
+                        <UserPlus className={styles.btnIcon} />
+                    )}
+                </button>
+            </div>
+
+            <div className={styles.cardBody}>
+                {user.profile?.bio && (
+                    <p className={styles.bio}>{user.profile.bio.substring(0, 60)}...</p>
+                )}
+
+                {user.profile?.skills?.length > 0 && (
+                    <div className={styles.skills}>
+                        {user.profile.skills.slice(0, 2).map((skill, index) => (
+                            <span key={index} className={styles.skillTag}>{skill}</span>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 const Search = () => {
     const router = useRouter();
     const toast = useToast();
@@ -107,84 +187,6 @@ const Search = () => {
         if (localQuery.trim()) {
             router.push(`/search?q=${encodeURIComponent(localQuery.trim())}`);
         }
-    };
-
-    const navToProfile = (username) => {
-        router.push(`/view_profile/${username}`);
-    }
-
-    // Extracted UserCard component to handle its own connection state
-    const UserCard = ({ user }) => {
-        const [requestStatus, setRequestStatus] = useState(null); // null, 'pending', 'sent'
-        const [loadingConn, setLoadingConn] = useState(false);
-
-        const handleConnect = async (e) => {
-            e.stopPropagation(); // Prevent card click
-            setLoadingConn(true);
-            try {
-                await clientServer.post('/user/send_connection_request', {
-                    connectionId: user._id
-                });
-                setRequestStatus('sent');
-                toast.success(`Request sent to ${user.name}`);
-            } catch (error) {
-                console.error("Connection request failed", error);
-                const msg = error.response?.data?.message || "Failed to connect";
-                if (msg.includes("Already connected") || msg.includes("already pending")) {
-                    setRequestStatus('sent'); // Treat as sent/connected
-                } else {
-                    toast.error(msg);
-                }
-            } finally {
-                setLoadingConn(false);
-            }
-        };
-
-        return (
-            <div className={styles.card} onClick={() => navToProfile(user.username)}>
-                <div className={styles.cardHeader}>
-                    <img
-                        src={user.profilePicture || '/default-avatar.svg'}
-                        alt={user.name}
-                        className={styles.avatar}
-                    />
-                    <div className={styles.userInfo}>
-                        <h3 className={styles.name}>{user.name}</h3>
-                        <p className={styles.username}>@{user.username}</p>
-                    </div>
-
-                    <button
-                        className={`${styles.connectBtn} ${requestStatus === 'sent' ? styles.sent : ''} mt-btn-lift`}
-                        onClick={handleConnect}
-                        disabled={loadingConn || requestStatus === 'sent'}
-                    >
-                        {loadingConn ? (
-                            <span className={styles.loadingDot}>•</span>
-                        ) : requestStatus === 'sent' ? (
-                            <Check className={styles.btnIcon} />
-                        ) : (
-                            <UserPlus className={styles.btnIcon} />
-                        )}
-                    </button>
-                </div>
-
-                <div className={styles.cardBody}>
-                    {/* Match reason removed as requested */}
-
-                    {user.profile?.bio && (
-                        <p className={styles.bio}>{user.profile.bio.substring(0, 60)}...</p>
-                    )}
-
-                    {user.profile?.skills?.length > 0 && (
-                        <div className={styles.skills}>
-                            {user.profile.skills.slice(0, 2).map((skill, index) => (
-                                <span key={index} className={styles.skillTag}>{skill}</span>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
     };
 
     return (
