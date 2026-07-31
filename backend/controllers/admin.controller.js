@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import User from "../models/users.model.js";
 import Post from "../models/posts.model.js";
 import Comment from "../models/comments.model.js";
@@ -87,6 +88,16 @@ export const createReport = async (req, res) => {
         const { targetType, targetId, reason } = req.body;
         if (!targetType || !targetId || !reason) {
             return res.status(400).json({ message: "targetType, targetId and reason are required" });
+        }
+        if (!mongoose.Types.ObjectId.isValid(targetId)) {
+            return res.status(400).json({ message: "targetId is not a valid id" });
+        }
+        // Without this, re-clicking "Report" (or a scripted retry) queued a
+        // fresh duplicate every time — the moderation queue was one bad
+        // click away from filling up with copies of the same report.
+        const existing = await Report.findOne({ reporterId: req.userId, targetType, targetId, status: "pending" });
+        if (existing) {
+            return res.status(409).json({ message: "You've already reported this" });
         }
         const report = await Report.create({ reporterId: req.userId, targetType, targetId, reason });
         return res.json({ message: "Report submitted", report });

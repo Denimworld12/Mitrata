@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Message from "../models/message.model.js";
 import Notification from "../models/notification.model.js";
+import ConnectionRequest from "../models/connection.model.js";
 import { v2 as cloudinary } from "cloudinary";
 
 export const sendMessage = async (req, res) => {
@@ -16,8 +17,23 @@ export const sendMessage = async (req, res) => {
         });
 
         // Validate receiver exists
-        if (!receiverId) {
-            return res.status(400).json({ message: "Receiver ID is required" });
+        if (!receiverId || !mongoose.Types.ObjectId.isValid(receiverId)) {
+            return res.status(400).json({ message: "A valid receiver ID is required" });
+        }
+
+        // The messaging UI only ever exposes a Send button on your own
+        // connections list — nothing server-side enforced that, so any
+        // authenticated account could DM (and get a notification bell entry
+        // in front of) a complete stranger via a direct API call.
+        const isConnected = await ConnectionRequest.exists({
+            status_accepted: true,
+            $or: [
+                { userId: senderId, connectionId: receiverId },
+                { userId: receiverId, connectionId: senderId }
+            ]
+        });
+        if (!isConnected) {
+            return res.status(403).json({ message: "You can only message accepted connections" });
         }
 
         // Handle Multiple Files (Up to 5)
@@ -240,20 +256,16 @@ export const deleteMessages = async (req, res) => {
 
         console.log("Messages marked as deleted:", result.modifiedCount);
 
-        // SOCKET.IO REAL-TIME EMISSION (optional - to notify other user)
+        // "Delete for me" only hides these messages for the caller (that's
+        // all the $addToSet above did) — it emitted to the OTHER
+        // participant's room, so their live chat silently lost messages
+        // that, for them, were never actually deleted (they'd reappear on
+        // their next reload). This is meant to sync the caller's OWN other
+        // open tabs/devices, so it needs to target the caller's room, not
+        // the other person's.
         const io = req.app.get("socketio");
-
         if (io) {
-            // Get the messages to find the other user
-            const messages = await Message.find({ _id: { $in: messageIds } });
-
-            messages.forEach(msg => {
-                const otherUserId = msg.sender.toString() === senderId.toString()
-                    ? msg.receiver.toString()
-                    : msg.sender.toString();
-
-                io.to(otherUserId).emit("messagesDeleted", { messageIds, deletedBy: senderId });
-            });
+            io.to(senderId.toString()).emit("messagesDeleted", { messageIds, deletedBy: senderId });
         }
 
         res.status(200).json({
