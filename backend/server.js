@@ -18,6 +18,12 @@ import { Server } from "socket.io";
 import http from "http";
 
 const app = express();
+// Render terminates TLS and proxies requests through, setting X-Forwarded-For.
+// Without this, express-rate-limit can't tell real client IPs apart (every
+// request looks like it comes from Render's proxy), which risks one heavy
+// user's traffic exhausting the rate-limit bucket for everyone else. `1`
+// trusts exactly one hop (Render's own proxy), not an arbitrary chain.
+app.set("trust proxy", 1);
 const httpServer = http.createServer(app);
 
 const allowedOrigins = [
