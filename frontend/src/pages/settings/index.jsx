@@ -13,8 +13,13 @@ import {
     CircleHelp,
     LogOut,
     Trash2,
+    UsersRound,
+    Bell,
+    Search,
 } from 'lucide-react';
 import DashboardLayout from '@/layout/DashboardLayout';
+import SettingsItem from '@/Components/ui/SettingsItem';
+import { useNotification } from '@/Components/NotificationProvider';
 
 const DELETE_CONFIRM_WORD = 'DELETE';
 
@@ -23,6 +28,7 @@ export default function Settings() {
     const dispatch = useDispatch();
     const toast = useToast();
     const { user } = useSelector(state => state.auth);
+    const { unreadCount } = useNotification();
     const [theme, setTheme] = useState('system'); // light, dark, system
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deletePassword, setDeletePassword] = useState('');
@@ -93,6 +99,34 @@ export default function Settings() {
 
                 {/* Settings Groups */}
 
+                {/* Quick Access — some pages (My Network, notably) never had a
+                    direct link on mobile: no bottom-bar slot, no menu entry,
+                    only reachable by chance through another page's button.
+                    Centralizing shortcuts here means there's always at least
+                    one guaranteed way to find them, on any screen size. */}
+                <div className={styles.sectionTitle}>Quick Access</div>
+                <div className={`${styles.group} mt-enter`} style={{ animationDelay: '30ms' }}>
+                    <SettingsItem
+                        icon={UsersRound}
+                        label="My Network"
+                        sub="Connections and requests"
+                        onClick={() => router.push('/my_network')}
+                    />
+                    <SettingsItem
+                        icon={Bell}
+                        label="Notifications"
+                        sub="Requests, likes and comments"
+                        badge={unreadCount}
+                        onClick={() => router.push('/notifications')}
+                    />
+                    <SettingsItem
+                        icon={Search}
+                        label="Explore"
+                        sub="Find people to connect with"
+                        onClick={() => router.push('/search')}
+                    />
+                </div>
+
                 {/* Appearance */}
                 <div className={styles.sectionTitle}>Appearance</div>
                 <div className={`${styles.group} mt-enter`} style={{ animationDelay: '60ms' }}>
@@ -133,27 +167,18 @@ export default function Settings() {
                 {/* Privacy & Support */}
                 <div className={styles.sectionTitle}>Privacy & Support</div>
                 <div className={`${styles.group} mt-enter`} style={{ animationDelay: '120ms' }}>
-                    <div className={styles.item} onClick={() => router.push('/privacy_policy')}>
-                        <div className={styles.iconBox}>
-                            <ShieldCheck className={styles.icon} />
-                        </div>
-                        <div className={styles.labelBlock}>
-                            <span className={styles.label}>Privacy Policy</span>
-                            <span className={styles.sub}>How we handle your data</span>
-                        </div>
-                        <ChevronRight className={styles.arrowIcon} />
-                    </div>
-
-                    <div className={styles.item} onClick={() => { window.location.href = 'mailto:support@mitrata.app'; }}>
-                        <div className={styles.iconBox}>
-                            <CircleHelp className={styles.icon} />
-                        </div>
-                        <div className={styles.labelBlock}>
-                            <span className={styles.label}>Help & Support</span>
-                            <span className={styles.sub}>Get answers or contact us</span>
-                        </div>
-                        <ChevronRight className={styles.arrowIcon} />
-                    </div>
+                    <SettingsItem
+                        icon={ShieldCheck}
+                        label="Privacy Policy"
+                        sub="How we handle your data"
+                        onClick={() => router.push('/privacy_policy')}
+                    />
+                    <SettingsItem
+                        icon={CircleHelp}
+                        label="Help & Support"
+                        sub="FAQs and how to reach us"
+                        onClick={() => router.push('/help_support')}
+                    />
                 </div>
 
                 {/* Account Actions */}
