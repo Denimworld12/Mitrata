@@ -1,6 +1,6 @@
 
 import multer from "multer";
-import { acceptConnectionRequest, downloadProfile, findSearchUser, getAllUserBasedOnUsername, getMyConnectionRequest, getUserAndProfile, login, logout, register, sendconnectionrequest, updateProfileData, updateUserProfile, uploadCoverPhoto, uploadImage, uploadProfilePicture, whatAreMyConnection, searchUsers, getSuggestions, googleLogin, googleLoginCallback, refreshAccessToken, deleteMyAccount, switchAccount } from "../controllers/user.controller.js";
+import { acceptConnectionRequest, downloadProfile, findSearchUser, getAllUserBasedOnUsername, getMyConnectionRequest, getUserAndProfile, login, logout, register, sendconnectionrequest, updateProfileData, updateUserProfile, uploadCoverPhoto, uploadImage, uploadProfilePicture, whatAreMyConnection, searchUsers, getSuggestions, googleLogin, googleLoginCallback, refreshAccessToken, deleteMyAccount, switchAccount, registerFcmToken, unregisterFcmToken } from "../controllers/user.controller.js";
 import { sendOtp, verifyOtp, resendOtp, resetPassword } from "../controllers/otp.controller.js";
 import { createReport } from "../controllers/admin.controller.js";
 import { Router } from "express"
@@ -87,5 +87,9 @@ router.route('/user/conversations').get(verifyToken, getConversations);
 router.route('/user/mark_read').post(verifyToken, markMessagesRead);
 
 router.route('/user/delete_account').post(verifyToken, deleteMyAccount);
+
+// Push notifications (FCM)
+router.route('/user/fcm-token').post(verifyToken, registerFcmToken);
+router.route('/user/fcm-token').delete(verifyToken, unregisterFcmToken);
 
 export default router;

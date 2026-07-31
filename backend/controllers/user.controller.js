@@ -24,6 +24,7 @@ import ConvertUserDataToPdf from "./PdfFormat.js";
 import { escapeRegex } from "../utils/regex.js";
 import { issueOtp } from "./otp.controller.js";
 import { issueSession, hashToken, refreshCookieName, refreshCookieOptions } from "../utils/session.js";
+import { sendPush } from "../utils/push.js";
 
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
 
@@ -568,6 +569,11 @@ export const sendconnectionrequest = async (req, res) => {
                 requestId: request._id
             });
         }
+        sendPush(connectionUser._id, {
+            title: "New connection request",
+            body: `${user.name} sent you a connection request`,
+            data: { type: "connection_request", requestId: request._id.toString() }
+        }).catch((err) => console.error("sendPush failed:", err.message));
 
         return res.json({ message: "Request sent successfully" });
     } catch (error) {
@@ -697,6 +703,11 @@ export const acceptConnectionRequest = async (req, res) => {
                     message: `${user.name} accepted your connection request`
                 });
             }
+            sendPush(connection.userId, {
+                title: "Connection accepted",
+                body: `${user.name} accepted your connection request`,
+                data: { type: "connection_accepted", username: user.username }
+            }).catch((err) => console.error("sendPush failed:", err.message));
         }
 
         return res.status(200).json({
@@ -930,6 +941,34 @@ export const deleteMyAccount = async (req, res) => {
         return res.json({ message: "Account permanently deleted" });
     } catch (error) {
         console.error("Delete account error:", error);
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+// Called once after login (web) / app start (Flutter) with whatever token
+// Firebase handed that device — $addToSet so logging in from the same
+// device repeatedly doesn't pile up duplicate entries.
+export const registerFcmToken = async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token) return res.status(400).json({ message: "token is required" });
+        await User.updateOne({ _id: req.userId }, { $addToSet: { fcmTokens: token } });
+        return res.json({ message: "Token registered" });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+// Called on logout — a token that stays registered after logging out would
+// keep pushing notifications for an account this device is no longer
+// signed into.
+export const unregisterFcmToken = async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token) return res.status(400).json({ message: "token is required" });
+        await User.updateOne({ _id: req.userId }, { $pull: { fcmTokens: token } });
+        return res.json({ message: "Token unregistered" });
+    } catch (error) {
         return res.status(500).json({ message: error.message });
     }
 };
