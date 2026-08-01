@@ -204,6 +204,11 @@ export default function Messaging() {
     /* -------------------- FETCH CHAT -------------------- */
     useEffect(() => {
         if (activeChatUser?.userId?._id) {
+            // The previous thread's messages were still sitting in Redux —
+            // clearing them here (not just gating the loader) means there's
+            // no window where switching from A to B briefly shows A's
+            // bubbles while B's fetch is still in flight.
+            dispatch(resetMessages());
             setChatLoading(true);
             dispatch(getMessages({ receiverId: activeChatUser.userId._id })).finally(() => setChatLoading(false));
             dispatch(markMessagesRead({ senderId: activeChatUser.userId._id }));
@@ -683,14 +688,13 @@ export default function Messaging() {
                                     <div className="w-full flex items-center justify-center py-16">
                                         <BlastLoader size={48} />
                                     </div>
-                                ) : !showSearchModal && messages.length === 0 && (
+                                ) : !showSearchModal && messages.length === 0 ? (
                                     <EmptyState
                                         icon={MessageCircle}
                                         title="No messages yet"
                                         description={`Say hello to ${activeChatUser.userId?.name || 'your connection'} to start the conversation.`}
                                     />
-                                )}
-                                {(showSearchModal ? filteredMessages : messages).map((msg, idx) => {
+                                ) : (showSearchModal ? filteredMessages : messages).map((msg, idx) => {
                                     const senderId = msg.sender?.userId?._id || msg.sender?._id || msg.sender;
                                     const isMe = senderId === authState.user?.userId?._id;
                                     const isSelected = selectedMessages.includes(msg._id);
