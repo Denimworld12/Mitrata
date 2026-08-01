@@ -208,6 +208,7 @@ const authSlice = createSlice({
                     if (action.payload.username !== undefined) state.user.userId.username = action.payload.username;
                     if (action.payload.isPrivate !== undefined) state.user.userId.isPrivate = action.payload.isPrivate;
                     if (action.payload.pushEnabled !== undefined) state.user.userId.pushEnabled = action.payload.pushEnabled;
+                    if (action.payload.quietHours !== undefined) state.user.userId.quietHours = action.payload.quietHours;
                 }
             })
             .addCase(getBlockedUsers.fulfilled, (state, action) => {

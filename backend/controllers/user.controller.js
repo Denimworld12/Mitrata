@@ -559,7 +559,7 @@ export const updateUserProfile = async (req, res) => {
 // Profile document's fields.
 export const updateAccountSettings = async (req, res) => {
     try {
-        const { username, isPrivate, pushEnabled } = req.body;
+        const { username, isPrivate, pushEnabled, quietHours } = req.body;
         const user = await User.findById(req.userId);
         if (!user) return res.status(404).json({ message: "User not found" });
 
@@ -576,8 +576,28 @@ export const updateAccountSettings = async (req, res) => {
         if (isPrivate !== undefined) user.isPrivate = !!isPrivate;
         if (pushEnabled !== undefined) user.pushEnabled = !!pushEnabled;
 
+        if (quietHours !== undefined) {
+            const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+            if (quietHours.start !== undefined && !timeRegex.test(quietHours.start)) {
+                return res.status(400).json({ message: "quietHours.start must be HH:mm" });
+            }
+            if (quietHours.end !== undefined && !timeRegex.test(quietHours.end)) {
+                return res.status(400).json({ message: "quietHours.end must be HH:mm" });
+            }
+            if (quietHours.enabled !== undefined) user.quietHours.enabled = !!quietHours.enabled;
+            if (quietHours.start !== undefined) user.quietHours.start = quietHours.start;
+            if (quietHours.end !== undefined) user.quietHours.end = quietHours.end;
+            if (quietHours.timezone !== undefined) user.quietHours.timezone = quietHours.timezone;
+        }
+
         await user.save();
-        return res.json({ message: "Updated successfully!", isPrivate: user.isPrivate, pushEnabled: user.pushEnabled, username: user.username });
+        return res.json({
+            message: "Updated successfully!",
+            isPrivate: user.isPrivate,
+            pushEnabled: user.pushEnabled,
+            username: user.username,
+            quietHours: user.quietHours
+        });
     } catch (error) {
         if (error.code === 11000) {
             return res.status(400).json({ message: "Username already taken" });
@@ -646,7 +666,7 @@ export const getUserAndProfile = async (req, res) => {
         // req.userId is already a verified-to-exist user (see verifyToken) —
         // no need to re-fetch the User doc just to read its own id back.
         const userProfile = await Profile.findOne({ userId: req.userId })
-            .populate("userId", "name email username profilePicture coverPhoto createAt role googleId isPrivate pushEnabled");
+            .populate("userId", "name email username profilePicture coverPhoto createAt role googleId isPrivate pushEnabled quietHours");
 
         if (!userProfile) {
             return res.status(404).json({ message: "profile not found" });
