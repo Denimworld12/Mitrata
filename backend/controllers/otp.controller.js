@@ -108,7 +108,7 @@ export const verifyOtp = async (req, res) => {
             // Auto-login on successful verification — matches the UX of every
             // other "confirm and continue" flow in the app rather than
             // bouncing the user to a separate login step right after signup.
-            const accessToken = await issueSession(res, user);
+            const accessToken = await issueSession(res, user, req);
             return res.json({ message: "Email verified", verified: true, token: accessToken });
         }
 
@@ -165,7 +165,7 @@ export const resetPassword = async (req, res) => {
         // Reset invalidates every existing session, not just the current
         // device — a password reset is exactly the moment you want any
         // stolen/stale session logged out too.
-        user.refreshTokenHash = null;
+        user.sessions = [];
         await user.save();
 
         return res.json({ message: "Password reset successfully" });

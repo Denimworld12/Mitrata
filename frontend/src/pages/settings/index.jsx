@@ -21,6 +21,7 @@ import {
     UserX,
     BellRing,
     ShieldPlus,
+    Laptop,
 } from 'lucide-react';
 import DashboardLayout from '@/layout/DashboardLayout';
 import SettingsItem from '@/Components/ui/SettingsItem';
@@ -220,6 +221,12 @@ export default function Settings() {
                         label="Two-step verification"
                         sub={twoFactorEnabled ? "On — using an authenticator app" : "Add an extra step at login"}
                         onClick={() => router.push('/settings/two_factor')}
+                    />
+                    <SettingsItem
+                        icon={Laptop}
+                        label="Login activity"
+                        sub="Where you're signed in"
+                        onClick={() => router.push('/settings/login_activity')}
                     />
                 </div>
 

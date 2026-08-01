@@ -37,10 +37,18 @@ const userSchema = new mongoose.Schema({
         enum: ["user", "admin"],
         default: "user"
     },
-    refreshTokenHash: {
-        type: String,
-        default: null
-    },
+    // One entry per active refresh cookie — replaces the old single
+    // refreshTokenHash field, which meant logging in on a second device
+    // silently kicked the first one out (its hash no longer matched the one
+    // shared field). Now each device/browser keeps its own entry, which is
+    // also what powers the "login activity" list in Settings.
+    sessions: [{
+        tokenHash: { type: String, required: true },
+        userAgent: { type: String, default: "" },
+        ip: { type: String, default: "" },
+        createdAt: { type: Date, default: Date.now },
+        lastActiveAt: { type: Date, default: Date.now },
+    }],
     profilePicture: {
         type: String,
         default: 'https://res.cloudinary.com/detvfqvem/image/upload/v1767007231/default_qzkkui.jpg'
