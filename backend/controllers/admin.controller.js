@@ -44,7 +44,7 @@ export const setUserActive = async (req, res) => {
         if (user.role === "admin") return res.status(400).json({ message: "Cannot suspend an admin account" });
 
         user.active = !!active;
-        if (!user.active) user.refreshTokenHash = null; // force logout on suspend
+        if (!user.active) user.sessions = []; // force logout on suspend, every device
         await user.save();
 
         return res.json({ message: active ? "User reactivated" : "User suspended", active: user.active });

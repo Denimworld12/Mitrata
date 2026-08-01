@@ -106,6 +106,42 @@ export const disableTwoFactor = createAsyncThunk(
         }
     }
 )
+
+export const getSessions = createAsyncThunk(
+    "user/getSessions",
+    async (_arg, thunkApi) => {
+        try {
+            const response = await clientServer.get('/user/sessions');
+            return thunkApi.fulfillWithValue(response.data)
+        } catch (error) {
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Failed to load" })
+        }
+    }
+)
+
+export const revokeSession = createAsyncThunk(
+    "user/revokeSession",
+    async (sessionId, thunkApi) => {
+        try {
+            const response = await clientServer.delete(`/user/sessions/${sessionId}`);
+            return thunkApi.fulfillWithValue({ sessionId, ...response.data })
+        } catch (error) {
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Failed to sign out that device" })
+        }
+    }
+)
+
+export const revokeOtherSessions = createAsyncThunk(
+    "user/revokeOtherSessions",
+    async (_arg, thunkApi) => {
+        try {
+            const response = await clientServer.post('/user/sessions/revoke_others');
+            return thunkApi.fulfillWithValue(response.data)
+        } catch (error) {
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Failed to sign out other devices" })
+        }
+    }
+)
 export const registerUser = createAsyncThunk(
     "user/register",
     async (user, thunkApi) => {

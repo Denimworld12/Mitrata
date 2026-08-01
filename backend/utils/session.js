@@ -16,6 +16,32 @@ const signRefreshToken = (userId) =>
 
 const hashToken = (token) => crypto.createHash("sha256").update(token).digest("hex");
 
+// One user account can have several concurrent sessions now (phone + laptop
+// + a future Flutter app) — capped so a compromised/scripted account can't
+// grow this array without bound; oldest dropped first.
+const MAX_SESSIONS_PER_USER = 10;
+
+// Rough device label parsed out of User-Agent for the login-activity list —
+// deliberately not a full UA-parsing dependency, just enough to tell "Chrome
+// on Windows" from "Safari on iPhone" at a glance.
+export const describeDevice = (userAgent = "") => {
+    const ua = userAgent || "";
+    let os = "Unknown OS";
+    if (/iPhone|iPad/.test(ua)) os = "iOS";
+    else if (/Android/.test(ua)) os = "Android";
+    else if (/Mac OS X/.test(ua)) os = "macOS";
+    else if (/Windows/.test(ua)) os = "Windows";
+    else if (/Linux/.test(ua)) os = "Linux";
+
+    let browser = "Unknown browser";
+    if (/Edg\//.test(ua)) browser = "Edge";
+    else if (/Chrome\//.test(ua) && !/Chromium/.test(ua)) browser = "Chrome";
+    else if (/Firefox\//.test(ua)) browser = "Firefox";
+    else if (/Safari\//.test(ua) && !/Chrome/.test(ua)) browser = "Safari";
+
+    return `${browser} on ${os}`;
+};
+
 // Keyed per account rather than one fixed "refreshToken" cookie name — this
 // is what lets a browser hold a real, long-lived (30-day) session for
 // several accounts at once (see switchAccount) without ever putting a
@@ -50,11 +76,24 @@ const setRefreshCookie = (res, refreshToken, userId) => {
 
 // Shared by login, googleLogin, refreshAccessToken, switchAccount, and
 // verifyOtp's signup-verified auto-login — every path that hands out a
-// fresh session.
-export const issueSession = async (res, user) => {
+// fresh session. `req` is optional (passed wherever available) purely to
+// label the session for the login-activity list — a missing one just means
+// that entry shows as "Unknown browser on Unknown OS", not a functional gap.
+export const issueSession = async (res, user, req = null) => {
     const accessToken = signAccessToken(user._id);
     const refreshToken = signRefreshToken(user._id);
-    user.refreshTokenHash = hashToken(refreshToken);
+
+    user.sessions = user.sessions || [];
+    user.sessions.push({
+        tokenHash: hashToken(refreshToken),
+        userAgent: req?.headers?.["user-agent"] || "",
+        ip: req?.ip || "",
+        createdAt: new Date(),
+        lastActiveAt: new Date(),
+    });
+    if (user.sessions.length > MAX_SESSIONS_PER_USER) {
+        user.sessions = user.sessions.slice(user.sessions.length - MAX_SESSIONS_PER_USER);
+    }
     await user.save();
     setRefreshCookie(res, refreshToken, user._id);
     return accessToken;

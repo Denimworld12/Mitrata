@@ -27,7 +27,7 @@ import { authenticator } from "otplib";
 import QRCode from "qrcode";
 
 import { issueOtp } from "./otp.controller.js";
-import { issueSession, hashToken, refreshCookieName, refreshCookieOptions, signTwoFactorChallenge, verifyTwoFactorChallenge } from "../utils/session.js";
+import { issueSession, hashToken, refreshCookieName, refreshCookieOptions, signTwoFactorChallenge, verifyTwoFactorChallenge, describeDevice } from "../utils/session.js";
 import { sendPush } from "../utils/push.js";
 
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
@@ -130,7 +130,7 @@ export const login = async (req, res) => {
             return res.json({ requires2FA: true, challengeToken: signTwoFactorChallenge(user._id) });
         }
 
-        const accessToken = await issueSession(res, user);
+        const accessToken = await issueSession(res, user, req);
         return res.json({ token: accessToken });
 
     } catch (error) {
@@ -173,7 +173,7 @@ export const verifyTwoFactorLogin = async (req, res) => {
 
         if (usedBackupCode) await user.save();
 
-        const accessToken = await issueSession(res, user);
+        const accessToken = await issueSession(res, user, req);
         return res.json({ token: accessToken, usedBackupCode });
     } catch (error) {
         return res.status(500).json({ message: error.message });
@@ -258,6 +258,59 @@ export const disableTwoFactor = async (req, res) => {
     }
 };
 
+// Powers Settings > Login activity. "isCurrent" is worked out by hashing
+// this very request's own refresh cookie and matching it against the list —
+// no separate "current session id" needs to be threaded through anywhere.
+export const getSessions = async (req, res) => {
+    try {
+        const user = await User.findById(req.userId).select("sessions");
+        const currentToken = req.cookies?.[refreshCookieName(req.userId)];
+        const currentHash = currentToken ? hashToken(currentToken) : null;
+
+        const sessions = (user?.sessions || [])
+            .slice()
+            .sort((a, b) => new Date(b.lastActiveAt) - new Date(a.lastActiveAt))
+            .map((s) => ({
+                id: s._id,
+                device: describeDevice(s.userAgent),
+                ip: s.ip,
+                createdAt: s.createdAt,
+                lastActiveAt: s.lastActiveAt,
+                isCurrent: s.tokenHash === currentHash,
+            }));
+
+        return res.json({ sessions });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+export const revokeSession = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await User.findByIdAndUpdate(req.userId, { $pull: { sessions: { _id: id } } });
+        return res.json({ message: "Signed out of that device" });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+export const revokeOtherSessions = async (req, res) => {
+    try {
+        const currentToken = req.cookies?.[refreshCookieName(req.userId)];
+        const currentHash = currentToken ? hashToken(currentToken) : null;
+
+        const user = await User.findById(req.userId);
+        if (!user) return res.status(404).json({ message: "User not found" });
+        user.sessions = currentHash ? user.sessions.filter((s) => s.tokenHash === currentHash) : [];
+        await user.save();
+
+        return res.json({ message: "Signed out of all other devices" });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
 // Shared by both the popup flow (googleLogin) and the redirect-fallback
 // flow (googleLoginCallback) — Safari's Intelligent Tracking Prevention and
 // Edge's Tracking Prevention both block the popup+iframe handshake GSI's
@@ -317,7 +370,7 @@ const verifyAndUpsertGoogleUser = async (idToken) => {
 export const googleLogin = async (req, res) => {
     try {
         const user = await verifyAndUpsertGoogleUser(req.body.idToken);
-        const accessToken = await issueSession(res, user);
+        const accessToken = await issueSession(res, user, req);
         return res.json({ token: accessToken });
     } catch (error) {
         console.error("Google login error:", error.message);
@@ -335,7 +388,7 @@ export const googleLoginCallback = async (req, res) => {
     const failUrl = `${process.env.FRONTEND_URL}/login?googleError=1`;
     try {
         const user = await verifyAndUpsertGoogleUser(req.body.credential);
-        const accessToken = await issueSession(res, user);
+        const accessToken = await issueSession(res, user, req);
         return res.redirect(`${process.env.FRONTEND_URL}/login?googleToken=${accessToken}`);
     } catch (error) {
         console.error("Google login callback error:", error.message);
@@ -356,11 +409,16 @@ export const refreshAccessToken = async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
         const user = await User.findById(decoded.userId);
         if (!user || !user.active) return res.status(401).json({ message: "User no longer exists" });
-        if (user.refreshTokenHash !== hashToken(token)) {
+
+        const tokenHash = hashToken(token);
+        if (!user.sessions.some((s) => s.tokenHash === tokenHash)) {
             return res.status(401).json({ message: "Refresh token has been revoked" });
         }
+        // Rotating: this device's old session entry is replaced by the fresh
+        // one issueSession appends below, every other device's is untouched.
+        user.sessions = user.sessions.filter((s) => s.tokenHash !== tokenHash);
 
-        const accessToken = await issueSession(res, user); // rotate refresh token too
+        const accessToken = await issueSession(res, user, req); // rotate refresh token too
         return res.json({ token: accessToken });
     } catch (error) {
         return res.status(401).json({ message: "Refresh token invalid or expired, please login again" });
@@ -373,7 +431,10 @@ export const logout = async (req, res) => {
     try {
         const { userId } = req.body || {};
         if (userId) {
-            await User.findByIdAndUpdate(userId, { refreshTokenHash: null });
+            const token = req.cookies?.[refreshCookieName(userId)];
+            if (token) {
+                await User.findByIdAndUpdate(userId, { $pull: { sessions: { tokenHash: hashToken(token) } } });
+            }
             res.clearCookie(refreshCookieName(userId), refreshCookieOptions());
         }
         return res.json({ message: "Logged out successfully" });
@@ -408,12 +469,14 @@ export const switchAccount = async (req, res) => {
             res.clearCookie(cookieName, refreshCookieOptions());
             return res.status(401).json({ message: "Account unavailable", needsLogin: true });
         }
-        if (user.refreshTokenHash !== hashToken(token)) {
+        const tokenHash = hashToken(token);
+        if (!user.sessions.some((s) => s.tokenHash === tokenHash)) {
             res.clearCookie(cookieName, refreshCookieOptions());
             return res.status(401).json({ message: "Session expired, please log in again", needsLogin: true });
         }
+        user.sessions = user.sessions.filter((s) => s.tokenHash !== tokenHash);
 
-        const accessToken = await issueSession(res, user);
+        const accessToken = await issueSession(res, user, req);
         return res.json({ token: accessToken });
     } catch (error) {
         return res.status(500).json({ message: error.message });
@@ -1214,7 +1277,7 @@ export const deleteMyAccount = async (req, res) => {
 
         await User.deleteOne({ _id: userId });
 
-        res.clearCookie("refreshToken", refreshCookieOptions());
+        res.clearCookie(refreshCookieName(userId), refreshCookieOptions());
         return res.json({ message: "Account permanently deleted" });
     } catch (error) {
         console.error("Delete account error:", error);
