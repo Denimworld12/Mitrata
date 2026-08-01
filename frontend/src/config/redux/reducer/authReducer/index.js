@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { getAboutUser, loginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, acceptConnectionRequest, downloadResume, updateUserProfile, updateAccountSettings, blockUser, unblockUser, getBlockedUsers, logout, verifyOtp, resendOtp, sendOtp, resetPasswordAction, deleteAccount, switchAccountAction, verifyTwoFactorLogin, getTwoFactorStatus, completeGoogleLogin } from "../../action/authAction/index";
+import { getAboutUser, loginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, sendConnectionRequest, acceptConnectionRequest, downloadResume, updateUserProfile, updateAccountSettings, blockUser, unblockUser, getBlockedUsers, logout, verifyOtp, resendOtp, sendOtp, resetPasswordAction, deleteAccount, switchAccountAction, verifyTwoFactorLogin, getTwoFactorStatus, completeGoogleLogin } from "../../action/authAction/index";
 import { rememberAccount } from "../../../savedAccounts";
 
 
@@ -184,9 +184,36 @@ const authSlice = createSlice({
             .addCase(getMyConnectionRequests.pending, (state) => {
                 state.isLoading = true
             })
+            .addCase(sendConnectionRequest.fulfilled, (state, action) => {
+                state.isError = false;
+                state.message = action.payload.message;
+                // Patched directly instead of a full getConnectionRequest()
+                // refetch — the backend already hands back this exact shape.
+                if (action.payload.connection) {
+                    state.connection = [...(state.connection || []), action.payload.connection];
+                }
+            })
+            .addCase(sendConnectionRequest.rejected, (state, action) => {
+                state.isError = true;
+                state.message = action.payload?.message;
+            })
             .addCase(acceptConnectionRequest.fulfilled, (state, action) => {
-                state.isError = false,
-                    state.message = action.payload.message
+                state.isError = false;
+                state.message = action.payload.message;
+                const updated = action.payload.connection;
+                if (updated) {
+                    state.connection = (state.connection || []).map((c) =>
+                        c._id === updated._id ? { ...c, status_accepted: updated.status_accepted } : c
+                    );
+                    // Accepting also means it now belongs in the accepted-only
+                    // list a full getMyConnectionRequests() would return.
+                    if (updated.status_accepted === true) {
+                        const alreadyThere = (state.connectionRequest || []).some((c) => c._id === updated._id);
+                        if (!alreadyThere) {
+                            state.connectionRequest = [...(state.connectionRequest || []), updated];
+                        }
+                    }
+                }
             })
             .addCase(acceptConnectionRequest.rejected, (state, action) => {
                 state.isError = true;

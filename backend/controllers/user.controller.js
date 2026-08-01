@@ -897,7 +897,18 @@ export const sendconnectionrequest = async (req, res) => {
             status_accepted: null
         });
 
-        await request.save();
+        try {
+            await request.save();
+        } catch (saveError) {
+            // The unique pairKey index catching a genuine race — someone else's
+            // request for this exact pair landed between our findOne check
+            // above and this save. Same friendly message as the check above,
+            // not a raw 500.
+            if (saveError.code === 11000) {
+                return res.status(400).json({ message: "Request already pending" });
+            }
+            throw saveError;
+        }
 
         // Create persistent notification
         await Notification.create({
@@ -928,7 +939,24 @@ export const sendconnectionrequest = async (req, res) => {
             data: { type: "connection_request", requestId: request._id.toString() }
         }).catch((err) => console.error("sendPush failed:", err.message));
 
-        return res.json({ message: "Request sent successfully" });
+        // Same shape getMyConnectionRequest returns per-item — lets the
+        // frontend patch this one new request straight into state instead
+        // of refetching the entire connections list just to show it.
+        return res.json({
+            message: "Request sent successfully",
+            connection: {
+                _id: request._id,
+                status_accepted: null,
+                iAmSender: true,
+                userId: {
+                    _id: connectionUser._id,
+                    name: connectionUser.name,
+                    username: connectionUser.username,
+                    email: connectionUser.email,
+                    profilePicture: connectionUser.profilePicture
+                }
+            }
+        });
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
@@ -1011,7 +1039,8 @@ export const acceptConnectionRequest = async (req, res) => {
         const user = await User.findById(req.userId);
         if (!user) return res.status(404).json({ message: "User not found" });
 
-        const connection = await ConnectionRequest.findOne({ _id: requestId });
+        const connection = await ConnectionRequest.findOne({ _id: requestId })
+            .populate('userId', 'name username email profilePicture');
         if (!connection) {
             return res.status(400).json({ message: "Connection request not found" });
         }
@@ -1035,10 +1064,12 @@ export const acceptConnectionRequest = async (req, res) => {
         connection.status_accepted = (action_type === 'accept');
         await connection.save();
 
+        const senderId = connection.userId._id;
+
         // If accepted, notify the sender — only on the actual transition
         if (wasPending && action_type === 'accept') {
             await Notification.create({
-                userId: connection.userId,
+                userId: senderId,
                 type: 'connection_accepted',
                 fromUser: user._id,
                 message: `${user.name} accepted your connection request`
@@ -1046,7 +1077,7 @@ export const acceptConnectionRequest = async (req, res) => {
 
             const io = req.app.get('socketio');
             if (io) {
-                io.to(connection.userId.toString()).emit('connectionAccepted', {
+                io.to(senderId.toString()).emit('connectionAccepted', {
                     fromUser: {
                         _id: user._id,
                         name: user.name,
@@ -1056,17 +1087,26 @@ export const acceptConnectionRequest = async (req, res) => {
                     message: `${user.name} accepted your connection request`
                 });
             }
-            sendPush(connection.userId, {
+            sendPush(senderId, {
                 title: "Connection accepted",
                 body: `${user.name} accepted your connection request`,
                 data: { type: "connection_accepted", username: user.username }
             }).catch((err) => console.error("sendPush failed:", err.message));
         }
 
+        // Same shape getMyConnectionRequest returns per-item — lets the
+        // frontend patch this one request's new status straight into state
+        // instead of refetching the whole connections + requests lists.
         return res.status(200).json({
             message: action_type === 'accept'
                 ? "Connection accepted"
-                : "Connection rejected"
+                : "Connection rejected",
+            connection: {
+                _id: connection._id,
+                status_accepted: connection.status_accepted,
+                iAmSender: false,
+                userId: connection.userId
+            }
         });
     } catch (error) {
         return res.status(500).json({ message: error.message });

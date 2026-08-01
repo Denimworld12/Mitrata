@@ -403,10 +403,13 @@ export const sendConnectionRequest = createAsyncThunk(
     async (user, thunkApi) => {
         try {
             // Token is auto-attached via axios interceptor
+            // Backend now hands back the new request already in the shape
+            // getConnectionRequest's list uses per-item — the reducer patches
+            // it straight into state.connection, no need to refetch the
+            // whole list just to show this one row.
             const response = await clientServer.post('/user/send_connection_request', {
                 connectionId: user.connectionId
             })
-            thunkApi.dispatch(getConnectionRequest())
             return thunkApi.fulfillWithValue(response.data)
         } catch (error) {
             return thunkApi.rejectWithValue(error.response?.data || { message: "Request failed" })
