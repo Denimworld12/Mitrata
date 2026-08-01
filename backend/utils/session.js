@@ -26,6 +26,14 @@ const MAX_SESSIONS_PER_USER = 10;
 // on Windows" from "Safari on iPhone" at a glance.
 export const describeDevice = (userAgent = "") => {
     const ua = userAgent || "";
+
+    // The Flutter app identifies itself with this marker (see mobile's
+    // ApiClient request interceptor) instead of dart:io's generic default —
+    // callers of this function never need to know mobile exists as a
+    // separate case, it's just a nicer label for the same session list.
+    const mobileMatch = ua.match(/MitrataMobile\/[\d.]+ \((\w+)\)/);
+    if (mobileMatch) return `Mitrata App on ${mobileMatch[1]}`;
+
     let os = "Unknown OS";
     if (/iPhone|iPad/.test(ua)) os = "iOS";
     else if (/Android/.test(ua)) os = "Android";
