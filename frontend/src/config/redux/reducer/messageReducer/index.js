@@ -89,21 +89,57 @@ const messageSlice = createSlice({
             })
 
             /* ---------------- SEND MESSAGE ---------------- */
-            .addCase(sendMessage.pending, (state) => {
+            .addCase(sendMessage.pending, (state, action) => {
                 state.isLoading = true;
                 state.isError = false;
                 state.errorMessage = null;
+
+                // A real optimistic placeholder — the actual round trip
+                // (DB write, Cloudinary upload if there's media) can take a
+                // beat, and showing nothing in the thread until it resolves
+                // is what made sending feel laggy. RTK auto-attaches a
+                // requestId to every dispatch of this thunk, shared across
+                // its pending/fulfilled/rejected — used here purely to find
+                // and replace/flag THIS specific placeholder later, not sent
+                // to the server.
+                const { receiverId, content, senderId, media } = action.meta.arg;
+                state.messages.push({
+                    _id: `pending-${action.meta.requestId}`,
+                    __pendingId: action.meta.requestId,
+                    __status: 'sending',
+                    // File objects aren't kept here (Redux state should stay
+                    // serializable) — __hadMedia just lets a failed retry
+                    // warn that any attachment needs to be re-picked, rather
+                    // than silently retrying text-only and dropping it.
+                    __hadMedia: !!(media && media.length > 0),
+                    content: content || '',
+                    media: [],
+                    sender: senderId,
+                    receiver: receiverId,
+                    isRead: false,
+                    createdAt: new Date().toISOString(),
+                });
             })
             .addCase(sendMessage.fulfilled, (state, action) => {
                 state.isLoading = false;
-
-                // Push sent message instantly (optimistic UI)
-                state.messages.push(action.payload);
+                const idx = state.messages.findIndex((m) => m.__pendingId === action.meta.requestId);
+                if (idx !== -1) {
+                    state.messages[idx] = action.payload;
+                } else {
+                    state.messages.push(action.payload);
+                }
             })
             .addCase(sendMessage.rejected, (state, action) => {
                 state.isLoading = false;
                 state.isError = true;
                 state.errorMessage = action.payload?.message || "Failed to send message";
+                // Left in the thread flagged as failed (not removed) — losing
+                // what you just typed silently on a network blip is worse
+                // than showing a "failed, tap to retry" bubble.
+                const idx = state.messages.findIndex((m) => m.__pendingId === action.meta.requestId);
+                if (idx !== -1) {
+                    state.messages[idx].__status = 'failed';
+                }
             })
 
             /* ---------------- DELETE CHAT ---------------- */

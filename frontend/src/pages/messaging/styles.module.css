@@ -443,6 +443,21 @@
     white-space: pre-wrap;
 }
 
+.sendingMsg {
+    opacity: 0.6;
+}
+
+.failedMsg {
+    cursor: pointer;
+    border: 1px solid var(--mt-danger);
+}
+
+.sendFailedHint {
+    margin: 4px 0 0 !important;
+    font-size: 11.5px;
+    color: var(--mt-danger);
+}
+
 .selectableMsg {
     cursor: pointer;
     padding-left: 34px;
