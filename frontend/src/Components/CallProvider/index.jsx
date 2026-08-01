@@ -426,12 +426,25 @@ export function CallProvider({ children }) {
             setRemoteRinging(true);
         };
 
+        // The receiver's presence can say "online" while their actual socket
+        // is already gone (network drop, closed lid — Socket.IO hasn't
+        // noticed yet, see the server's pingTimeout comment). The server
+        // now checks real room membership at call time instead of firing
+        // blind, so this fires almost immediately instead of the caller
+        // sitting in ringback for the full 30s client-side timeout with no
+        // feedback at all.
+        const handleCallFailed = (data) => {
+            toast.error("That person isn't reachable right now — they may have just gone offline.");
+            cleanupCall();
+        };
+
         socketInstance.on('incomingCall', handleIncomingCall);
         socketInstance.on('callAnswered', handleCallAnswered);
         socketInstance.on('iceCandidate', handleIceCandidate);
         socketInstance.on('callEnded', handleCallEnded);
         socketInstance.on('callRejected', handleCallRejected);
         socketInstance.on('callDelivered', handleCallDelivered);
+        socketInstance.on('callFailed', handleCallFailed);
 
         return () => {
             socketInstance.off('incomingCall', handleIncomingCall);
@@ -440,6 +453,7 @@ export function CallProvider({ children }) {
             socketInstance.off('callEnded', handleCallEnded);
             socketInstance.off('callRejected', handleCallRejected);
             socketInstance.off('callDelivered', handleCallDelivered);
+            socketInstance.off('callFailed', handleCallFailed);
         };
     }, [socketInstance, callState, cleanupCall]);
 
