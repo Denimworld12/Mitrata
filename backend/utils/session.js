@@ -159,4 +159,25 @@ export const verifyTwoFactorChallenge = (token) => {
     return decoded.userId;
 };
 
+// Google's redirect sign-in flow is a genuine top-level browser navigation
+// straight to this backend's own origin (GSI POSTs to login_uri directly —
+// there's no way to route that hop through the frontend's same-origin proxy
+// the way every other request goes). A cookie set on THAT response would be
+// scoped to the backend's own host, not the frontend's — useless for every
+// later request, which all go through the proxy and only ever carry
+// frontend-scoped cookies. So googleLoginCallback doesn't set a cookie at
+// all; it hands back this one-time code instead, and the frontend exchanges
+// it via a normal proxied POST (see completeGoogleLogin), which DOES land
+// the cookie on the right origin, exactly like every other login path.
+const GOOGLE_SESSION_CODE_TTL = "2m";
+
+export const signGoogleSessionCode = (userId) =>
+    jwt.sign({ userId, type: "google_session_code" }, process.env.JWT_SECRET, { expiresIn: GOOGLE_SESSION_CODE_TTL });
+
+export const verifyGoogleSessionCode = (token) => {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.type !== "google_session_code") throw new Error("Invalid session code");
+    return decoded.userId;
+};
+
 export { hashToken };

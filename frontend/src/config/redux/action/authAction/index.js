@@ -59,6 +59,25 @@ export const verifyTwoFactorLogin = createAsyncThunk(
     }
 )
 
+// Second half of the Google redirect flow — googleLoginCallback (a genuine
+// cross-origin top-level navigation straight to the backend) can't set a
+// same-origin session cookie itself, so it hands back a one-time code
+// instead. This exchanges it via a normal proxied request, which DOES land
+// the refresh cookie on the frontend's own origin like every other login path.
+export const completeGoogleLogin = createAsyncThunk(
+    "user/completeGoogleLogin",
+    async (code, thunkApi) => {
+        try {
+            const response = await clientServer.post('/auth/google/complete', { code });
+            if (!response.data.token) return thunkApi.rejectWithValue({ message: "token not provided" });
+            startNewSession(response.data.token);
+            return thunkApi.fulfillWithValue(response.data.token)
+        } catch (error) {
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Google sign-in failed" })
+        }
+    }
+)
+
 export const getTwoFactorStatus = createAsyncThunk(
     "user/getTwoFactorStatus",
     async (_arg, thunkApi) => {

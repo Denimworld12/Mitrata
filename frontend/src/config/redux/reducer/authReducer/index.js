@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { getAboutUser, loginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, acceptConnectionRequest, downloadResume, updateUserProfile, updateAccountSettings, blockUser, unblockUser, getBlockedUsers, logout, verifyOtp, resendOtp, sendOtp, resetPasswordAction, deleteAccount, switchAccountAction, verifyTwoFactorLogin, getTwoFactorStatus } from "../../action/authAction/index";
+import { getAboutUser, loginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, acceptConnectionRequest, downloadResume, updateUserProfile, updateAccountSettings, blockUser, unblockUser, getBlockedUsers, logout, verifyOtp, resendOtp, sendOtp, resetPasswordAction, deleteAccount, switchAccountAction, verifyTwoFactorLogin, getTwoFactorStatus, completeGoogleLogin } from "../../action/authAction/index";
 import { rememberAccount } from "../../../savedAccounts";
 
 
@@ -83,6 +83,23 @@ const authSlice = createSlice({
                 state.requires2FA = false
                 state.twoFactorChallengeToken = null
                 state.message = "login sucessfully"
+            })
+            .addCase(completeGoogleLogin.pending, (state) => {
+                state.isLoading = true
+                state.isError = false
+            })
+            .addCase(completeGoogleLogin.fulfilled, (state) => {
+                state.isLoading = false
+                state.isSuccess = true
+                state.isError = false
+                state.loggedIn = true
+                state.isTokenThere = true
+                state.message = "login sucessfully"
+            })
+            .addCase(completeGoogleLogin.rejected, (state, action) => {
+                state.isLoading = false
+                state.isError = true
+                state.message = action.payload?.message || 'Google sign-in failed';
             })
             .addCase(verifyTwoFactorLogin.rejected, (state, action) => {
                 state.isLoading = false
