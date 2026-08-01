@@ -26,6 +26,15 @@ export const clientServer = axios.create({
     withCredentials: true, // send/receive the httpOnly refresh-token cookie
 });
 
+// The Render free-tier backend spins down after inactivity and can take
+// 30-90s to cold-start back up — well past the normal 15s timeout above.
+// Someone closing the browser and returning later is exactly the case that
+// hits a cold start on their very first request. The refresh call gets its
+// own longer timeout so that's survivable instead of reading as a dead
+// session (see the 401-interceptor below for why the timeout length alone
+// isn't the whole fix).
+const REFRESH_TIMEOUT_MS = 60000;
+
 // Auto-attach JWT token to all requests
 clientServer.interceptors.request.use((config) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -72,7 +81,9 @@ clientServer.interceptors.response.use(
                 if (!refreshPromise) {
                     const expiringToken = localStorage.getItem("token");
                     const userId = expiringToken ? decodeJwtUserId(expiringToken) : null;
-                    refreshPromise = clientServer.post('/auth/refresh', { userId }).finally(() => { refreshPromise = null; });
+                    refreshPromise = clientServer
+                        .post('/auth/refresh', { userId }, { timeout: REFRESH_TIMEOUT_MS })
+                        .finally(() => { refreshPromise = null; });
                 }
                 const { data } = await refreshPromise;
                 localStorage.setItem("token", data.token);
@@ -92,7 +103,21 @@ clientServer.interceptors.response.use(
                     originalRequest.headers.Authorization = `Bearer ${currentToken}`;
                     return clientServer(originalRequest);
                 }
-                goToLogin();
+
+                // Only a definitive 401/403 FROM THE REFRESH CALL means the
+                // session is actually gone (cookie missing/revoked/expired).
+                // Anything else — a timeout, a network error, a 5xx — means
+                // the request never got a real answer (a cold-starting Render
+                // backend routinely takes longer than any reasonable timeout
+                // right after a period of inactivity, which is exactly when
+                // someone re-opens a closed browser). Treating that the same
+                // as "revoked" was logging people out of perfectly valid
+                // sessions. Leave the token alone and let the next request
+                // retry — by then the backend answers normally again.
+                const status = refreshError.response?.status;
+                if (status === 401 || status === 403) {
+                    goToLogin();
+                }
                 return Promise.reject(refreshError);
             }
         }

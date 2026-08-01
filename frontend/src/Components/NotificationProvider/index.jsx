@@ -1,6 +1,6 @@
     import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { Base_Url } from '@/config';
+import { Base_Url, clientServer, decodeJwtUserId } from '@/config';
 import { useRouter } from 'next/router';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
@@ -147,7 +147,38 @@ export function NotificationProvider({ children }) {
         const socket = io(Base_Url, {
             transports: ['websocket'],
             autoConnect: true,
-            auth: { token }
+            // A function, not a static object — access tokens are 15-minute
+            // JWTs, and this used to snapshot the token once at connect time.
+            // REST calls silently refresh a stale token via the axios
+            // interceptor, but nothing told the socket, so any reconnection
+            // (network blip, phone backgrounding, laptop sleep — all common)
+            // retried the handshake with the SAME expired token, got rejected
+            // server-side (io.use's jwt.verify), and never recovered: the
+            // user kept using the app fine over REST while their socket sat
+            // dead, showing them as permanently "offline" to everyone else.
+            // socket.io-client calls a function `auth` fresh before every
+            // (re)connection attempt, so this always sends whatever's
+            // current in localStorage.
+            auth: (cb) => cb({ token: localStorage.getItem('token') }),
+        });
+
+        // Belt-and-suspenders for the rarer case where NO REST call happened
+        // during the staleness window (e.g. a backgrounded tab with only the
+        // socket active) — refresh the token once and let socket.io's own
+        // reconnection backoff pick it up on the next attempt.
+        socket.on('connect_error', async (err) => {
+            if (!/token|auth/i.test(err.message || '')) return;
+            try {
+                const currentToken = localStorage.getItem('token');
+                const userId = currentToken ? decodeJwtUserId(currentToken) : null;
+                if (!userId) return;
+                const { data } = await clientServer.post('/auth/refresh', { userId });
+                localStorage.setItem('token', data.token);
+            } catch {
+                // Refresh itself failed (genuinely logged out, or backend
+                // still cold-starting) — socket.io keeps retrying its own
+                // backoff regardless; nothing more to do here.
+            }
         });
 
         socketRef.current = socket;
