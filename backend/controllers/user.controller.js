@@ -316,6 +316,25 @@ export const revokeOtherSessions = async (req, res) => {
 // Edge's Tracking Prevention both block the popup+iframe handshake GSI's
 // classic ux_mode:"popup" button relies on, so browsers that can't complete
 // that handshake fall back to a full-page redirect instead.
+// Google's own avatar CDN (lh3.googleusercontent.com/accounts.google.com)
+// is on several ad/privacy-blocker filter lists and gets blocked outright by
+// browser tracking prevention in third-party contexts — storing that URL
+// directly meant a Google-signed-in user's avatar could silently fail to
+// render everywhere in the app, on any browser/extension that blocks it.
+// Re-hosting through our own Cloudinary once removes that dependency
+// entirely; cloudinary.uploader.upload accepts a remote URL directly; it
+// fetches server-side, no need to download the bytes ourselves here.
+const rehostGoogleAvatar = async (pictureUrl) => {
+    if (!pictureUrl) return null;
+    try {
+        const result = await cloudinary.uploader.upload(pictureUrl, { folder: "mitrata_social" });
+        return result.secure_url;
+    } catch (err) {
+        console.error("Failed to re-host Google avatar:", err.message);
+        return pictureUrl; // fall back to the original — better than nothing
+    }
+};
+
 const verifyAndUpsertGoogleUser = async (idToken) => {
     if (!googleClient) {
         const err = new Error("Google login is not configured on this server");
@@ -348,7 +367,7 @@ const verifyAndUpsertGoogleUser = async (idToken) => {
             email: payload.email,
             username,
             googleId: payload.sub,
-            profilePicture: payload.picture || undefined,
+            profilePicture: (await rehostGoogleAvatar(payload.picture)) || undefined,
             // Google already verified this address — no OTP step needed.
             emailVerified: true
         });
@@ -358,10 +377,18 @@ const verifyAndUpsertGoogleUser = async (idToken) => {
         const err = new Error("This account has been suspended");
         err.status = 403;
         throw err;
-    } else if (!user.googleId || !user.emailVerified) {
-        user.googleId = user.googleId || payload.sub;
-        user.emailVerified = true;
-        await user.save();
+    } else {
+        let changed = false;
+        if (!user.googleId) { user.googleId = payload.sub; changed = true; }
+        if (!user.emailVerified) { user.emailVerified = true; changed = true; }
+        // Existing accounts created before this fix still point straight at
+        // Google's CDN — migrate them the next time they sign in instead of
+        // needing a one-off backend script.
+        if (!user.profilePicture || user.profilePicture.includes("googleusercontent.com")) {
+            user.profilePicture = await rehostGoogleAvatar(payload.picture);
+            changed = true;
+        }
+        if (changed) await user.save();
     }
 
     return user;
