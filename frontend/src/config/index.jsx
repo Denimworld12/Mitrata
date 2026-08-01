@@ -18,7 +18,10 @@ export const decodeJwtUserId = (token) => {
 };
 
 export const clientServer = axios.create({
-    baseURL: `${Base_Url}/api`,
+    // Relative, not `${Base_Url}/api` — proxied same-origin via the rewrite
+    // in next.config.mjs so the refresh cookie is first-party (see that file
+    // for why: cross-site cookies get purged by browser ITP within days).
+    baseURL: `/api`,
     timeout: 15000,
     withCredentials: true, // send/receive the httpOnly refresh-token cookie
 });
