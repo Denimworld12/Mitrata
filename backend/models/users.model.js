@@ -60,6 +60,22 @@ const userSchema = new mongoose.Schema({
         type: [String],
         default: []
     },
+    // Private account: profile/posts are only visible to accepted
+    // connections; everyone else sees a limited "this account is private"
+    // card. Doesn't affect search visibility (same as Instagram/X — you can
+    // still find a private account, just not see into it uninvited).
+    isPrivate: {
+        type: Boolean,
+        default: false
+    },
+    blockedUsers: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user"
+    }],
+    pushEnabled: {
+        type: Boolean,
+        default: true
+    },
 }, {
     timestamps: true
 })

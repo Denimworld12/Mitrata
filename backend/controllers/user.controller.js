@@ -423,6 +423,90 @@ export const updateUserProfile = async (req, res) => {
     }
 }
 
+// User-model account fields (username, privacy, push preference) — kept
+// separate from updateUserProfile above, which only ever touched the
+// Profile document's fields.
+export const updateAccountSettings = async (req, res) => {
+    try {
+        const { username, isPrivate, pushEnabled } = req.body;
+        const user = await User.findById(req.userId);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        if (username !== undefined && username !== user.username) {
+            const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/;
+            if (!usernameRegex.test(username)) {
+                return res.status(400).json({ message: "Username must be 3-30 characters, alphanumeric and underscores only" });
+            }
+            const taken = await User.findOne({ username, _id: { $ne: user._id } });
+            if (taken) return res.status(400).json({ message: "Username already taken" });
+            user.username = username;
+        }
+
+        if (isPrivate !== undefined) user.isPrivate = !!isPrivate;
+        if (pushEnabled !== undefined) user.pushEnabled = !!pushEnabled;
+
+        await user.save();
+        return res.json({ message: "Updated successfully!", isPrivate: user.isPrivate, pushEnabled: user.pushEnabled, username: user.username });
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(400).json({ message: "Username already taken" });
+        }
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+// Blocking someone removes any existing connection between you (so it
+// disappears from both My Network lists) and prevents new connection
+// requests/messages either direction, in addition to hiding a private
+// account's content — see the isPrivate gate in getUserAndProfile.
+export const blockUser = async (req, res) => {
+    try {
+        const { targetId } = req.body;
+        if (!targetId || !mongoose.Types.ObjectId.isValid(targetId)) {
+            return res.status(400).json({ message: "A valid targetId is required" });
+        }
+        if (targetId === req.userId.toString()) {
+            return res.status(400).json({ message: "You can't block yourself" });
+        }
+
+        await User.updateOne({ _id: req.userId }, { $addToSet: { blockedUsers: targetId } });
+        await ConnectionRequest.deleteMany({
+            $or: [
+                { userId: req.userId, connectionId: targetId },
+                { userId: targetId, connectionId: req.userId }
+            ]
+        });
+
+        return res.json({ message: "User blocked" });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+export const unblockUser = async (req, res) => {
+    try {
+        const { targetId } = req.body;
+        if (!targetId || !mongoose.Types.ObjectId.isValid(targetId)) {
+            return res.status(400).json({ message: "A valid targetId is required" });
+        }
+        await User.updateOne({ _id: req.userId }, { $pull: { blockedUsers: targetId } });
+        return res.json({ message: "User unblocked" });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+export const getBlockedUsers = async (req, res) => {
+    try {
+        const user = await User.findById(req.userId)
+            .populate('blockedUsers', 'name username profilePicture')
+            .select('blockedUsers');
+        return res.json({ blockedUsers: user?.blockedUsers || [] });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
 
 
 export const getUserAndProfile = async (req, res) => {
@@ -431,7 +515,7 @@ export const getUserAndProfile = async (req, res) => {
         // req.userId is already a verified-to-exist user (see verifyToken) —
         // no need to re-fetch the User doc just to read its own id back.
         const userProfile = await Profile.findOne({ userId: req.userId })
-            .populate("userId", "name email username profilePicture coverPhoto createAt role googleId");
+            .populate("userId", "name email username profilePicture coverPhoto createAt role googleId isPrivate pushEnabled");
 
         if (!userProfile) {
             return res.status(404).json({ message: "profile not found" });
@@ -518,6 +602,12 @@ export const sendconnectionrequest = async (req, res) => {
         // Prevent sending request to yourself
         if (user._id.toString() === connectionUser._id.toString()) {
             return res.status(400).json({ message: "Cannot send request to yourself" });
+        }
+
+        const blocked = user.blockedUsers?.some((id) => id.toString() === connectionUser._id.toString())
+            || connectionUser.blockedUsers?.some((id) => id.toString() === user._id.toString());
+        if (blocked) {
+            return res.status(403).json({ message: "Unable to connect with this user" });
         }
 
         // Check if request already exists IN EITHER DIRECTION
@@ -723,9 +813,45 @@ export const acceptConnectionRequest = async (req, res) => {
 export const getAllUserBasedOnUsername = async (req, res) => {
     const { username } = req.query
     try {
-        const users = await User.findOne({ username })
-        if (!users) return res.status(404).json({ message: 'user not found' })
-        const userProfile = await Profile.findOne({ userId: users._id })
+        const targetUser = await User.findOne({ username })
+        if (!targetUser) return res.status(404).json({ message: 'user not found' })
+
+        const viewerId = req.userId;
+        const isSelf = viewerId && viewerId.toString() === targetUser._id.toString();
+
+        if (targetUser.blockedUsers?.some((id) => id.toString() === viewerId?.toString())) {
+            return res.status(404).json({ message: 'user not found' });
+        }
+
+        // Private account: only accepted connections (and the owner) see
+        // the real profile — everyone else gets a limited card, same as
+        // Instagram/X. Search/discovery is unaffected by this.
+        let isConnection = isSelf;
+        if (!isSelf && targetUser.isPrivate) {
+            isConnection = !!(await ConnectionRequest.exists({
+                status_accepted: true,
+                $or: [
+                    { userId: viewerId, connectionId: targetUser._id },
+                    { userId: targetUser._id, connectionId: viewerId }
+                ]
+            }));
+        }
+
+        if (targetUser.isPrivate && !isSelf && !isConnection) {
+            return res.json({
+                profile: {
+                    userId: {
+                        _id: targetUser._id,
+                        name: targetUser.name,
+                        username: targetUser.username,
+                        profilePicture: targetUser.profilePicture
+                    },
+                    isPrivateLocked: true
+                }
+            });
+        }
+
+        const userProfile = await Profile.findOne({ userId: targetUser._id })
             .populate('userId', 'name username email profilePicture coverPhoto');
         return res.json({ "profile": userProfile })
     } catch (error) {

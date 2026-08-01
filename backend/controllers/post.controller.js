@@ -220,9 +220,29 @@ export const getPostsByUsername = async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const author = await User.findOne({ username }).select("_id").lean();
+    const author = await User.findOne({ username }).select("_id isPrivate blockedUsers").lean();
     if (!author) {
       return res.status(404).json({ message: "User not found" });
+    }
+
+    const isSelf = requesterId && requesterId.toString() === author._id.toString();
+    if (author.blockedUsers?.some((id) => id.toString() === requesterId?.toString())) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (author.isPrivate && !isSelf) {
+      // Same gate as getAllUserBasedOnUsername — a private account's posts
+      // shouldn't be fetchable directly even if the profile card itself is
+      // locked, since this is a separate endpoint the activity page hits.
+      const isConnection = await ConnectionRequest.exists({
+        status_accepted: true,
+        $or: [
+          { userId: requesterId, connectionId: author._id },
+          { userId: author._id, connectionId: requesterId }
+        ]
+      });
+      if (!isConnection) {
+        return res.status(200).json({ posts: [], hasMore: false, totalPosts: 0, page: 1, limit });
+      }
     }
 
     const query = { userId: author._id };

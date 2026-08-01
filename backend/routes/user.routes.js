@@ -1,6 +1,6 @@
 
 import multer from "multer";
-import { acceptConnectionRequest, downloadProfile, findSearchUser, getAllUserBasedOnUsername, getMyConnectionRequest, getUserAndProfile, login, logout, register, sendconnectionrequest, updateProfileData, updateUserProfile, uploadCoverPhoto, uploadImage, uploadProfilePicture, whatAreMyConnection, searchUsers, getSuggestions, googleLogin, googleLoginCallback, refreshAccessToken, deleteMyAccount, switchAccount, registerFcmToken, unregisterFcmToken } from "../controllers/user.controller.js";
+import { acceptConnectionRequest, downloadProfile, findSearchUser, getAllUserBasedOnUsername, getMyConnectionRequest, getUserAndProfile, login, logout, register, sendconnectionrequest, updateProfileData, updateUserProfile, updateAccountSettings, uploadCoverPhoto, uploadImage, uploadProfilePicture, whatAreMyConnection, searchUsers, getSuggestions, googleLogin, googleLoginCallback, refreshAccessToken, deleteMyAccount, switchAccount, registerFcmToken, unregisterFcmToken, blockUser, unblockUser, getBlockedUsers } from "../controllers/user.controller.js";
 import { sendOtp, verifyOtp, resendOtp, resetPassword } from "../controllers/otp.controller.js";
 import { createReport } from "../controllers/admin.controller.js";
 import { Router } from "express"
@@ -38,6 +38,10 @@ router.route('/user/update_profile_picture').post(verifyToken, upload.single('pr
 router.route('/user/update_cover_photo').post(verifyToken, upload.single('coverPhoto'), uploadCoverPhoto);
 router.route('/upload/image').post(verifyToken, upload.single('image'), uploadImage);
 router.route('/user/setting/user_update').post(verifyToken, updateUserProfile);
+router.route('/user/setting/account_update').post(verifyToken, updateAccountSettings);
+router.route('/user/block').post(verifyToken, blockUser);
+router.route('/user/unblock').post(verifyToken, unblockUser);
+router.route('/user/blocked').get(verifyToken, getBlockedUsers);
 router.route('/get_user_and_profile').get(verifyToken, getUserAndProfile);
 router.route('/update_profile').post(verifyToken, updateProfileData);
 router.route('/user/findinguser').get(verifyToken, findSearchUser);
@@ -54,7 +58,10 @@ router.route('/user/is_accepted_connection_request').post(verifyToken, acceptCon
 router.route('/user/search').get(searchUsers);
 router.route('/user/suggestions').get(verifyToken, getSuggestions);
 
-router.route('/user/get_user_based_on_username').get(getAllUserBasedOnUsername);
+// Needs to know WHO's asking to gate private accounts correctly (see
+// getAllUserBasedOnUsername) — view_profile is only ever reached from
+// within the authenticated app shell anyway, same as everything else here.
+router.route('/user/get_user_based_on_username').get(verifyToken, getAllUserBasedOnUsername);
 
 // Messaging routes (all protected)
 router.route('/user/send_message').post(

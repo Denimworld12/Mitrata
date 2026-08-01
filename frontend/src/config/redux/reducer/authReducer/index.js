@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { getAboutUser, loginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, acceptConnectionRequest, downloadResume, updateUserProfile, logout, verifyOtp, resendOtp, sendOtp, resetPasswordAction, deleteAccount, switchAccountAction } from "../../action/authAction/index";
+import { getAboutUser, loginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, acceptConnectionRequest, downloadResume, updateUserProfile, updateAccountSettings, blockUser, unblockUser, getBlockedUsers, logout, verifyOtp, resendOtp, sendOtp, resetPasswordAction, deleteAccount, switchAccountAction } from "../../action/authAction/index";
 import { rememberAccount } from "../../../savedAccounts";
 
 
@@ -16,7 +16,8 @@ const initialState = {
     connection: [],
     all_user: [],
     connectionRequest: [],
-    all_profile_fetched: false
+    all_profile_fetched: false,
+    blockedUsers: []
 }
 
 const authSlice = createSlice({
@@ -170,6 +171,29 @@ const authSlice = createSlice({
             })
             .addCase(updateUserProfile.pending, (state) => {
                 state.isLoading = true
+            })
+            .addCase(updateAccountSettings.fulfilled, (state, action) => {
+                if (state.user?.userId) {
+                    if (action.payload.username !== undefined) state.user.userId.username = action.payload.username;
+                    if (action.payload.isPrivate !== undefined) state.user.userId.isPrivate = action.payload.isPrivate;
+                    if (action.payload.pushEnabled !== undefined) state.user.userId.pushEnabled = action.payload.pushEnabled;
+                }
+            })
+            .addCase(getBlockedUsers.fulfilled, (state, action) => {
+                state.blockedUsers = action.payload.blockedUsers || [];
+            })
+            .addCase(blockUser.fulfilled, (state, action) => {
+                // Optimistic-ish: remove from connections too, matches the
+                // backend deleting the connection on block.
+                state.connection = state.connection.filter(
+                    (c) => c.userId?._id !== action.payload.targetId && c.connectionId?._id !== action.payload.targetId
+                );
+                state.connectionRequest = state.connectionRequest.filter(
+                    (c) => c.userId?._id !== action.payload.targetId
+                );
+            })
+            .addCase(unblockUser.fulfilled, (state, action) => {
+                state.blockedUsers = state.blockedUsers.filter((u) => u._id !== action.payload.targetId);
             })
             .addCase(logout.fulfilled, (state) => {
                 state.user = null;

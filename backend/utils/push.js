@@ -8,7 +8,8 @@ import User from "../models/users.model.js";
 export const sendPush = async (userId, { title, body, data = {} }) => {
     if (!messaging) return; // not configured — same no-op pattern as sendMail
 
-    const user = await User.findById(userId).select("fcmTokens").lean();
+    const user = await User.findById(userId).select("fcmTokens pushEnabled").lean();
+    if (user?.pushEnabled === false) return; // user turned push off in Settings
     const tokens = user?.fcmTokens || [];
     if (tokens.length === 0) return;
 
