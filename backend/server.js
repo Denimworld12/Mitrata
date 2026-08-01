@@ -49,7 +49,15 @@ const io = new Server(httpServer, {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true
-  }
+  },
+  // Defaults (pingInterval 25s + pingTimeout 20s) mean an abruptly-dropped
+  // connection — laptop lid closed, network cut, tab killed, no clean
+  // disconnect handshake — can sit in onlineUsers as "online" for up to
+  // ~45s before the server notices. During that window the UI still shows
+  // a green dot, but there's no live socket to actually deliver a call to.
+  // Shorter timers don't remove that window, just shrink it.
+  pingInterval: 10000,
+  pingTimeout: 8000
 });
 
 // ============ SECURITY MIDDLEWARE ============
@@ -247,7 +255,27 @@ io.on("connection", (socket) => {
   // ============ WEBRTC VOICE CALLING SIGNALING ============
   socket.on("callUser", (data) => {
     // data: { receiverId, offer, callerInfo: { name, avatar }, isVideo }
-    io.to(data.receiverId).emit("incomingCall", {
+    const receiverId = data.receiverId?.toString();
+    const receiverRoom = io.sockets.adapter.rooms.get(receiverId);
+
+    // onlineUsers can say "online" for a socket that's actually already
+    // dead (see the pingTimeout comment above) — the room membership check
+    // here is the real-time truth: it reflects only sockets Socket.IO has
+    // confirmed are still connected. If it's empty, `io.to(receiverId).emit`
+    // below would silently go nowhere, and the caller would otherwise sit
+    // in ringback for the full 30s client-side timeout with zero feedback.
+    // Telling them immediately, and reconciling the stale presence entry,
+    // is strictly better than waiting to find out the same way regardless.
+    if (!receiverRoom || receiverRoom.size === 0) {
+      if (onlineUsers.has(receiverId)) {
+        onlineUsers.delete(receiverId);
+        io.emit("userOffline", { userId: receiverId });
+      }
+      socket.emit("callFailed", { targetId: receiverId, reason: "offline" });
+      return;
+    }
+
+    io.to(receiverId).emit("incomingCall", {
       callerId: userId,
       callerInfo: data.callerInfo,
       offer: data.offer,
