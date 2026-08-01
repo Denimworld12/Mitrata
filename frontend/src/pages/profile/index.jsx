@@ -9,6 +9,8 @@ import DashboardLayout from '@/layout/DashboardLayout' // Added for Tablet/Mobil
 import Skeleton from '@/Components/ui/Skeleton'
 import { Camera, Pencil, ArrowRight, Plus, X, Heart, Bookmark } from 'lucide-react'
 import EmptyState from '@/Components/ui/EmptyState'
+import PageLoader from '@/Components/ui/PageLoader'
+import BlastLoader from '@/Components/ui/BlastLoader'
 import { useToast } from '@/Components/Toast'
 import { compressImage, resizeToExactSize } from '@/utils/imageProcessing'
 
@@ -407,7 +409,11 @@ export default function Profile() {
             </div>
 
             {contentTab === 'posts' && (
-              userPosts.length > 0 ? (
+              !postState.userPostsLoaded ? (
+                <div className="w-full flex items-center justify-center py-12">
+                  <BlastLoader size={40} />
+                </div>
+              ) : userPosts.length > 0 ? (
                 <div className={styles.textPostList}>
                   {userPosts.map((post) => (
                     <div key={post._id} className={styles.textPostCard}>
@@ -641,7 +647,7 @@ export default function Profile() {
   );
 
   // FIXED: Replaced standard return with null if not mounted to solve SSR hydration errors
-  if (!mounted) return null;
+  if (!mounted) return <PageLoader />;
 
   return <DashboardLayout>{MainContent}</DashboardLayout>;
 }

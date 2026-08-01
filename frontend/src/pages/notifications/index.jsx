@@ -6,6 +6,7 @@ import { useNotification } from "@/Components/NotificationProvider";
 import { useToast } from "@/Components/Toast";
 import { acceptConnectionRequest } from "@/config/redux/action/authAction";
 import EmptyState from "@/Components/ui/EmptyState";
+import BlastLoader from "@/Components/ui/BlastLoader";
 import Button from "@/Components/ui/Button";
 import {
   CheckCheck,
@@ -132,7 +133,7 @@ function Row({ n, onClick }) {
 
 export default function Notifications() {
   const router = useRouter();
-  const { recentNotifs, clearUnread } = useNotification();
+  const { recentNotifs, clearUnread, notificationsLoaded } = useNotification();
 
   const { today, earlier } = useMemo(() => {
     const startOfToday = new Date();
@@ -177,7 +178,11 @@ export default function Notifications() {
           </div>
 
           <div className="rounded-[22px] border border-[var(--mt-border)] bg-[var(--mt-surface)] shadow-[var(--mt-shadow)] overflow-hidden">
-            {recentNotifs.length === 0 ? (
+            {!notificationsLoaded ? (
+              <div className="w-full flex items-center justify-center py-16">
+                <BlastLoader size={48} />
+              </div>
+            ) : recentNotifs.length === 0 ? (
               <EmptyState
                 icon={Bell}
                 title="No notifications yet"
