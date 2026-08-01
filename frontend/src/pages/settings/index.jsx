@@ -105,6 +105,45 @@ export default function Settings() {
         }
     };
 
+    const quietHours = user?.userId?.quietHours || { enabled: false, start: '22:00', end: '07:00' };
+    const [quietStart, setQuietStart] = useState(quietHours.start);
+    const [quietEnd, setQuietEnd] = useState(quietHours.end);
+
+    useEffect(() => {
+        setQuietStart(quietHours.start);
+        setQuietEnd(quietHours.end);
+    }, [quietHours.start, quietHours.end]);
+
+    const handleToggleQuietHours = async (next) => {
+        const result = await dispatch(updateAccountSettings({
+            quietHours: {
+                enabled: next,
+                start: quietStart,
+                end: quietEnd,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            }
+        }));
+        if (!updateAccountSettings.fulfilled.match(result)) {
+            toast.error(result.payload?.message || 'Failed to update');
+        }
+    };
+
+    const handleSaveQuietHoursWindow = async () => {
+        const result = await dispatch(updateAccountSettings({
+            quietHours: {
+                enabled: true,
+                start: quietStart,
+                end: quietEnd,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            }
+        }));
+        if (updateAccountSettings.fulfilled.match(result)) {
+            toast.success('Quiet hours updated');
+        } else {
+            toast.error(result.payload?.message || 'Failed to update');
+        }
+    };
+
     return (
                         <DashboardLayout>
         <div className={styles.container}>
@@ -248,6 +287,41 @@ export default function Settings() {
                             />
                         }
                     />
+                    <SettingsItem
+                        icon={MoonStar}
+                        label="Quiet hours"
+                        sub={quietHours.enabled ? `Muted ${quietStart}–${quietEnd}` : "Mute push notifications overnight"}
+                        right={
+                            <Toggle
+                                checked={!!quietHours.enabled}
+                                onChange={handleToggleQuietHours}
+                            />
+                        }
+                    />
+                    {quietHours.enabled && (
+                        <div className={styles.item} style={{ paddingTop: 0 }}>
+                            <div className={styles.labelBlock} style={{ flex: 'none' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
+                                <input
+                                    type="time"
+                                    value={quietStart}
+                                    onChange={(e) => setQuietStart(e.target.value)}
+                                    onBlur={handleSaveQuietHoursWindow}
+                                    className={styles.modalInput}
+                                    style={{ width: 'auto', marginBottom: 0 }}
+                                />
+                                <span style={{ color: 'var(--mt-ink3)', fontSize: 12.5 }}>to</span>
+                                <input
+                                    type="time"
+                                    value={quietEnd}
+                                    onChange={(e) => setQuietEnd(e.target.value)}
+                                    onBlur={handleSaveQuietHoursWindow}
+                                    className={styles.modalInput}
+                                    style={{ width: 'auto', marginBottom: 0 }}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Appearance */}

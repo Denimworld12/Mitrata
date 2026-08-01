@@ -1,6 +1,29 @@
 import { messaging } from "../config/firebase.js";
 import User from "../models/users.model.js";
 
+// True if "now" falls inside the user's quiet-hours window, evaluated in
+// their own local time (native Intl, no tz library needed). start > end means
+// the window crosses midnight (e.g. 22:00-07:00).
+const isWithinQuietHours = ({ start, end, timezone }) => {
+    try {
+        const parts = new Intl.DateTimeFormat("en-GB", {
+            timeZone: timezone || "UTC", hour: "2-digit", minute: "2-digit", hour12: false
+        }).formatToParts(new Date());
+        const nowMinutes = Number(parts.find(p => p.type === "hour").value) * 60
+            + Number(parts.find(p => p.type === "minute").value);
+        const [sh, sm] = start.split(":").map(Number);
+        const [eh, em] = end.split(":").map(Number);
+        const startMinutes = sh * 60 + sm;
+        const endMinutes = eh * 60 + em;
+        if (startMinutes === endMinutes) return false;
+        return startMinutes < endMinutes
+            ? nowMinutes >= startMinutes && nowMinutes < endMinutes
+            : nowMinutes >= startMinutes || nowMinutes < endMinutes;
+    } catch {
+        return false; // unrecognized timezone string — fail open, don't block real pushes
+    }
+};
+
 // Sends a push to every device a user has registered — used alongside the
 // existing Notification.create()+socket.emit() calls (message, connection
 // request/accepted, likes, comments) so someone still gets notified even
@@ -8,8 +31,9 @@ import User from "../models/users.model.js";
 export const sendPush = async (userId, { title, body, data = {} }) => {
     if (!messaging) return; // not configured — same no-op pattern as sendMail
 
-    const user = await User.findById(userId).select("fcmTokens pushEnabled").lean();
+    const user = await User.findById(userId).select("fcmTokens pushEnabled quietHours").lean();
     if (user?.pushEnabled === false) return; // user turned push off in Settings
+    if (user?.quietHours?.enabled && isWithinQuietHours(user.quietHours)) return;
     const tokens = user?.fcmTokens || [];
     if (tokens.length === 0) return;
 

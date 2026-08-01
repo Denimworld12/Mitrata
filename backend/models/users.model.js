@@ -76,6 +76,16 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    // A single daily on/off window in the user's own local time (captured as
+    // an IANA zone name when they set it, e.g. "Asia/Kolkata") — not a
+    // per-day schedule. sendPush checks the current time against this before
+    // sending; start > end means the window wraps past midnight (22:00-07:00).
+    quietHours: {
+        enabled: { type: Boolean, default: false },
+        start: { type: String, default: "22:00" },
+        end: { type: String, default: "07:00" },
+        timezone: { type: String, default: "UTC" },
+    },
     // TOTP two-step verification. `secret` holds a pending (unconfirmed)
     // secret while the user is mid-setup, and the confirmed one once
     // `enabled`. `select: false` keeps these out of any query that doesn't
