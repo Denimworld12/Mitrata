@@ -28,6 +28,11 @@ export const loginUser = createAsyncThunk(
                 email: user.email,
                 password: user.password
             })
+            // Password's correct, but the account has 2FA on — no session yet,
+            // the caller needs to prompt for a code and call verifyTwoFactorLogin.
+            if (response.data.requires2FA) {
+                return thunkApi.fulfillWithValue(response.data)
+            }
             if (response.data.token)
                 startNewSession(response.data.token);
             else
@@ -36,6 +41,68 @@ export const loginUser = createAsyncThunk(
 
         } catch (error) {
             return thunkApi.rejectWithValue(error.response?.data || { message: "Login failed" })
+        }
+    }
+)
+
+export const verifyTwoFactorLogin = createAsyncThunk(
+    "user/verifyTwoFactorLogin",
+    async ({ challengeToken, code }, thunkApi) => {
+        try {
+            const response = await clientServer.post('/auth/2fa/verify-login', { challengeToken, code });
+            if (!response.data.token) return thunkApi.rejectWithValue({ message: "token not provided" });
+            startNewSession(response.data.token);
+            return thunkApi.fulfillWithValue(response.data.token)
+        } catch (error) {
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Invalid code" })
+        }
+    }
+)
+
+export const getTwoFactorStatus = createAsyncThunk(
+    "user/getTwoFactorStatus",
+    async (_arg, thunkApi) => {
+        try {
+            const response = await clientServer.get('/user/2fa/status');
+            return thunkApi.fulfillWithValue(response.data)
+        } catch (error) {
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Failed to load" })
+        }
+    }
+)
+
+export const setupTwoFactor = createAsyncThunk(
+    "user/setupTwoFactor",
+    async (_arg, thunkApi) => {
+        try {
+            const response = await clientServer.post('/user/2fa/setup');
+            return thunkApi.fulfillWithValue(response.data)
+        } catch (error) {
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Failed to start setup" })
+        }
+    }
+)
+
+export const verifyTwoFactorSetup = createAsyncThunk(
+    "user/verifyTwoFactorSetup",
+    async (code, thunkApi) => {
+        try {
+            const response = await clientServer.post('/user/2fa/verify', { code });
+            return thunkApi.fulfillWithValue(response.data)
+        } catch (error) {
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Invalid code" })
+        }
+    }
+)
+
+export const disableTwoFactor = createAsyncThunk(
+    "user/disableTwoFactor",
+    async (password, thunkApi) => {
+        try {
+            const response = await clientServer.post('/user/2fa/disable', { password });
+            return thunkApi.fulfillWithValue(response.data)
+        } catch (error) {
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Failed to disable" })
         }
     }
 )

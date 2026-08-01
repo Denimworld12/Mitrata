@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSelector, useDispatch } from 'react-redux';
 import styles from './Settings.module.css';
-import { logout, updateAccountSettings } from '@/config/redux/action/authAction/index';
+import { logout, updateAccountSettings, getTwoFactorStatus } from '@/config/redux/action/authAction/index';
 import { useToast } from '@/Components/Toast';
 import {
     ChevronRight,
@@ -20,6 +20,7 @@ import {
     Lock,
     UserX,
     BellRing,
+    ShieldPlus,
 } from 'lucide-react';
 import DashboardLayout from '@/layout/DashboardLayout';
 import SettingsItem from '@/Components/ui/SettingsItem';
@@ -30,17 +31,24 @@ export default function Settings() {
     const router = useRouter();
     const dispatch = useDispatch();
     const toast = useToast();
-    const { user } = useSelector(state => state.auth);
+    const { user, twoFactorEnabled } = useSelector(state => state.auth);
     const { unreadCount } = useNotification();
     const [theme, setTheme] = useState('system'); // light, dark, system
     const [showUsernameModal, setShowUsernameModal] = useState(false);
     const [usernameInput, setUsernameInput] = useState('');
     const [savingUsername, setSavingUsername] = useState(false);
+    const [loaded2FA, setLoaded2FA] = useState(false);
+    const [dismissedTwoFactorNudge, setDismissedTwoFactorNudge] = useState(true);
 
     useEffect(() => {
         const savedTheme = localStorage.getItem('theme') || 'system';
         setTheme(savedTheme);
     }, []);
+
+    useEffect(() => {
+        setDismissedTwoFactorNudge(localStorage.getItem('dismissed2faNudge') === '1');
+        dispatch(getTwoFactorStatus()).finally(() => setLoaded2FA(true));
+    }, [dispatch]);
 
     const handleThemeChange = (newTheme) => {
         setTheme(newTheme);
@@ -168,7 +176,41 @@ export default function Settings() {
                             onClick={() => router.push('/forgot-password')}
                         />
                     )}
+                    <SettingsItem
+                        icon={ShieldPlus}
+                        label="Two-step verification"
+                        sub={twoFactorEnabled ? "On — using an authenticator app" : "Add an extra step at login"}
+                        onClick={() => router.push('/settings/two_factor')}
+                    />
                 </div>
+
+                {/* A quiet, dismissible nudge rather than a modal/interstitial —
+                    security prompts that block the page train people to click
+                    through them without reading. Dismissing just hides it for
+                    this browser; it comes back if 2FA is still off next visit
+                    somewhere without that flag (a fresh browser, cleared storage). */}
+                {loaded2FA && !twoFactorEnabled && !dismissedTwoFactorNudge && (
+                    <div className={`${styles.group} mt-enter`} style={{ animationDelay: '60ms', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <ShieldPlus size={20} strokeWidth={1.8} style={{ color: 'var(--mt-accent, #0447ff)', flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--mt-ink)' }}>Secure your account</p>
+                            <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--mt-ink3)' }}>Turn on two-step verification to protect your account, even if your password leaks.</p>
+                        </div>
+                        <button
+                            onClick={() => router.push('/settings/two_factor')}
+                            style={{ flexShrink: 0, padding: '7px 14px', borderRadius: 999, border: 'none', background: 'var(--mt-grad)', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+                        >
+                            Turn on
+                        </button>
+                        <button
+                            onClick={() => { localStorage.setItem('dismissed2faNudge', '1'); setDismissedTwoFactorNudge(true); }}
+                            style={{ flexShrink: 0, background: 'none', border: 'none', color: 'var(--mt-ink3)', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: 4 }}
+                            aria-label="Dismiss"
+                        >
+                            ×
+                        </button>
+                    </div>
+                )}
 
                 {/* Privacy */}
                 <div className={styles.sectionTitle}>Privacy</div>

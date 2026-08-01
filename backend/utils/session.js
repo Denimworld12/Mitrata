@@ -60,4 +60,19 @@ export const issueSession = async (res, user) => {
     return accessToken;
 };
 
+// Bridges login's password step to the 2FA code step without a full session:
+// short-lived on purpose (5m is plenty to type a 6-digit code), and its own
+// `type` claim so it can never be replayed as an access token even if JWT_SECRET
+// is shared with it.
+const TWO_FA_CHALLENGE_TTL = "5m";
+
+export const signTwoFactorChallenge = (userId) =>
+    jwt.sign({ userId, type: "2fa_challenge" }, process.env.JWT_SECRET, { expiresIn: TWO_FA_CHALLENGE_TTL });
+
+export const verifyTwoFactorChallenge = (token) => {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.type !== "2fa_challenge") throw new Error("Invalid challenge token");
+    return decoded.userId;
+};
+
 export { hashToken };

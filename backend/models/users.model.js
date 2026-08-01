@@ -76,6 +76,15 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    // TOTP two-step verification. `secret` holds a pending (unconfirmed)
+    // secret while the user is mid-setup, and the confirmed one once
+    // `enabled`. `select: false` keeps these out of any query that doesn't
+    // explicitly ask for them (they're never needed for a normal populate).
+    twoFactor: {
+        enabled: { type: Boolean, default: false, select: false },
+        secret: { type: String, default: null, select: false },
+        backupCodeHashes: { type: [String], default: [], select: false },
+    },
 }, {
     timestamps: true
 })
