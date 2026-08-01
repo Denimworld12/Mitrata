@@ -27,7 +27,7 @@ import { authenticator } from "otplib";
 import QRCode from "qrcode";
 
 import { issueOtp } from "./otp.controller.js";
-import { issueSession, hashToken, refreshCookieName, refreshCookieOptions, signTwoFactorChallenge, verifyTwoFactorChallenge, describeDevice } from "../utils/session.js";
+import { issueSession, rotateSession, hashToken, refreshCookieName, refreshCookieOptions, signTwoFactorChallenge, verifyTwoFactorChallenge, describeDevice } from "../utils/session.js";
 import { sendPush } from "../utils/push.js";
 
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
@@ -410,15 +410,8 @@ export const refreshAccessToken = async (req, res) => {
         const user = await User.findById(decoded.userId);
         if (!user || !user.active) return res.status(401).json({ message: "User no longer exists" });
 
-        const tokenHash = hashToken(token);
-        if (!user.sessions.some((s) => s.tokenHash === tokenHash)) {
-            return res.status(401).json({ message: "Refresh token has been revoked" });
-        }
-        // Rotating: this device's old session entry is replaced by the fresh
-        // one issueSession appends below, every other device's is untouched.
-        user.sessions = user.sessions.filter((s) => s.tokenHash !== tokenHash);
-
-        const accessToken = await issueSession(res, user, req); // rotate refresh token too
+        const accessToken = await rotateSession(res, user, hashToken(token), req);
+        if (!accessToken) return res.status(401).json({ message: "Refresh token has been revoked" });
         return res.json({ token: accessToken });
     } catch (error) {
         return res.status(401).json({ message: "Refresh token invalid or expired, please login again" });
@@ -469,14 +462,12 @@ export const switchAccount = async (req, res) => {
             res.clearCookie(cookieName, refreshCookieOptions());
             return res.status(401).json({ message: "Account unavailable", needsLogin: true });
         }
-        const tokenHash = hashToken(token);
-        if (!user.sessions.some((s) => s.tokenHash === tokenHash)) {
+
+        const accessToken = await rotateSession(res, user, hashToken(token), req);
+        if (!accessToken) {
             res.clearCookie(cookieName, refreshCookieOptions());
             return res.status(401).json({ message: "Session expired, please log in again", needsLogin: true });
         }
-        user.sessions = user.sessions.filter((s) => s.tokenHash !== tokenHash);
-
-        const accessToken = await issueSession(res, user, req);
         return res.json({ token: accessToken });
     } catch (error) {
         return res.status(500).json({ message: error.message });

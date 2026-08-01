@@ -67,6 +67,7 @@ clientServer.interceptors.response.use(
             typeof window !== "undefined"
         ) {
             originalRequest._retried = true;
+            const tokenBeforeRefresh = localStorage.getItem("token");
             try {
                 if (!refreshPromise) {
                     const expiringToken = localStorage.getItem("token");
@@ -78,6 +79,19 @@ clientServer.interceptors.response.use(
                 originalRequest.headers.Authorization = `Bearer ${data.token}`;
                 return clientServer(originalRequest);
             } catch (refreshError) {
+                // `refreshPromise` only dedupes concurrent refreshes within THIS
+                // tab — every open tab of the same account shares one refresh
+                // cookie, so two tabs' access tokens expiring around the same
+                // moment can both hit /auth/refresh at once. The backend lets
+                // only one rotate (see rotateSession); this tab is the loser,
+                // but localStorage is shared across tabs, so if the winner's
+                // write already landed, just use it instead of forcing a
+                // logout over what was really just a lost race, not a revoke.
+                const currentToken = localStorage.getItem("token");
+                if (currentToken && currentToken !== tokenBeforeRefresh) {
+                    originalRequest.headers.Authorization = `Bearer ${currentToken}`;
+                    return clientServer(originalRequest);
+                }
                 goToLogin();
                 return Promise.reject(refreshError);
             }

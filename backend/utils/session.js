@@ -99,6 +99,43 @@ export const issueSession = async (res, user, req = null) => {
     return accessToken;
 };
 
+// Rotates one existing session in place, keyed by its OLD token hash, via a
+// single atomic findOneAndUpdate (positional operator) instead of the
+// read-array/filter/push/save round trip issueSession does. That mattered
+// because refreshCookieName is per-USER, not per-tab — every open tab of the
+// same account on the same browser shares one cookie, so when two tabs' 15m
+// access tokens expire around the same moment, both fire /auth/refresh with
+// the IDENTICAL cookie value at nearly the same time. A read-modify-write
+// there is a lost-update race: whichever save() landed second could silently
+// overwrite the winner's rotation, leaving BOTH tabs' cookies invalid and
+// forcing a real logout — which is exactly the "logging in kicks everyone
+// else out" bug this was mistaken for. Here, only one concurrent call can
+// match `sessions.tokenHash: oldTokenHash` (Mongo serializes writes to a
+// single document); the loser just gets `null` back and no session is lost
+// or corrupted, it was already rotated by the winner.
+export const rotateSession = async (res, user, oldTokenHash, req = null) => {
+    const accessToken = signAccessToken(user._id);
+    const refreshToken = signRefreshToken(user._id);
+
+    const Model = user.constructor;
+    const updated = await Model.findOneAndUpdate(
+        { _id: user._id, "sessions.tokenHash": oldTokenHash },
+        {
+            $set: {
+                "sessions.$.tokenHash": hashToken(refreshToken),
+                "sessions.$.lastActiveAt": new Date(),
+                "sessions.$.userAgent": req?.headers?.["user-agent"] || "",
+                "sessions.$.ip": req?.ip || "",
+            }
+        },
+        { new: true }
+    );
+    if (!updated) return null; // another request already rotated this exact session
+
+    setRefreshCookie(res, refreshToken, user._id);
+    return accessToken;
+};
+
 // Bridges login's password step to the 2FA code step without a full session:
 // short-lived on purpose (5m is plenty to type a 6-digit code), and its own
 // `type` claim so it can never be replayed as an access token even if JWT_SECRET
