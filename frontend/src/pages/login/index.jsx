@@ -28,6 +28,11 @@ function LoginComponent() {
   const [savedAccounts, setSavedAccounts] = useState([]);
   const [showChooser, setShowChooser] = useState(false);
   const [switchingAccountId, setSwitchingAccountId] = useState(null);
+  // Set when a saved Google-linked account's quick-switch session expired —
+  // that account has no password at all, so the normal email/password form
+  // is a dead end for it; this instead surfaces just the Google button,
+  // pre-aimed at the same account, one click instead of a form nobody can fill in.
+  const [googleReauthAccount, setGoogleReauthAccount] = useState(null);
 
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -101,6 +106,12 @@ function LoginComponent() {
       // Full reload, not a client-side push — see the identical note in
       // DashboardLayout's handleSwitchAccount for why.
       window.location.href = '/dashboard';
+    } else if (acc.googleId) {
+      // No password exists for this account at all — dropping into the
+      // email/password form here was a dead end that just looked like
+      // "asking for a password" with nothing the user could type.
+      setShowChooser(false);
+      setGoogleReauthAccount(acc);
     } else {
       // That account's session actually expired — fall through to a normal,
       // prefilled sign-in instead of leaving them stuck.
@@ -196,7 +207,7 @@ function LoginComponent() {
         <div className={styles.cardContainer}>
           <div className={styles.cardContainer_left}>
             <p className={styles.cardHeading}>
-              {authState.requires2FA ? 'Two-step verification' : verifyingEmail ? 'Verify your email' : showChooser ? 'Choose an account' : (userLoginMethod ? 'SignIn' : 'Signup')}
+              {googleReauthAccount ? 'Sign in again' : authState.requires2FA ? 'Two-step verification' : verifyingEmail ? 'Verify your email' : showChooser ? 'Choose an account' : (userLoginMethod ? 'SignIn' : 'Signup')}
             </p>
 
             {/* General API Status Messages */}
@@ -218,7 +229,30 @@ function LoginComponent() {
                </div>
             )}
 
-            {authState.requires2FA ? (
+            {googleReauthAccount ? (
+              <div className={styles.inputContainer} style={{ textAlign: 'center' }}>
+                <img
+                  src={googleReauthAccount.profilePicture || '/default-avatar.svg'}
+                  alt=""
+                  style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', margin: '0 auto 12px' }}
+                />
+                <p className="text-sm mb-1" style={{ color: 'var(--mt-ink)', fontWeight: 600 }}>
+                  {googleReauthAccount.name}
+                </p>
+                <p className="text-sm mb-4" style={{ color: 'var(--mt-ink2)' }}>
+                  Your saved session expired — sign in again with Google to continue as {googleReauthAccount.email}.
+                </p>
+                <GoogleLoginButton />
+                <button
+                  type="button"
+                  onClick={() => { setGoogleReauthAccount(null); setShowChooser(savedAccounts.length > 0); }}
+                  className="text-sm mt-3"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mt-ink3)' }}
+                >
+                  Use a different account
+                </button>
+              </div>
+            ) : authState.requires2FA ? (
               <div className={styles.inputContainer}>
                 <p className="text-sm mb-3" style={{ color: 'var(--mt-ink2)' }}>
                   Enter the 6-digit code from your authenticator app, or one of your backup codes.
@@ -380,7 +414,7 @@ function LoginComponent() {
             <img src="/brand/orb-violet.png" alt="" className={styles.rightOrb} />
             <div className={styles.rightContent}>
               <span className={styles.rightLogo} role="img" aria-label="Mitrata" />
-              {!showChooser && !verifyingEmail && !authState.requires2FA && (
+              {!showChooser && !verifyingEmail && !authState.requires2FA && !googleReauthAccount && (
                 <>
                   <span>{userLoginMethod ? 'Create an account? ' : 'Already have an account? '}</span>
                   <span
