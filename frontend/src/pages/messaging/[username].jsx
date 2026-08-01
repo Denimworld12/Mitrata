@@ -217,6 +217,26 @@ export default function Messaging() {
         }
     }, [activeChatUser, dispatch]);
 
+    // A socket only delivers "newMessage" while it's actually connected —
+    // anything sent during a disconnect (network blip, laptop sleep, the
+    // brief window before the server's ping-timeout notices a dead
+    // connection) never arrives, and nothing was resyncing afterward. A
+    // chat left open across a reconnect could sit stale until the user
+    // happened to navigate away and back. socket.io-client's `reconnect`
+    // (on the underlying Manager, not the Socket itself) fires specifically
+    // on a RECONNECT — not the first connect, which the FETCH CHAT effect
+    // above already covers — so this only does extra work when it's
+    // actually needed.
+    useEffect(() => {
+        if (!socket.current || !activeChatUser?.userId?._id) return;
+        const receiverId = activeChatUser.userId._id;
+        const handleReconnect = () => {
+            dispatch(getMessages({ receiverId }));
+        };
+        socket.current.io.on('reconnect', handleReconnect);
+        return () => socket.current?.io.off('reconnect', handleReconnect);
+    }, [socket, activeChatUser, dispatch]);
+
     // The other person read our messages while this thread is open — flip
     // our sent bubbles to the read state. This ignored WHO the read receipt
     // was actually from and marked the entire open thread read regardless —
@@ -316,26 +336,56 @@ export default function Messaging() {
 
         if (!message.trim() && selectedFiles.length === 0) return;
 
+        const content = message;
+        const media = selectedFiles;
+
+        // Cleared immediately, not after the round trip resolves — the
+        // optimistic placeholder (see sendMessage.pending in messageReducer)
+        // shows up in the thread right away, so there's no reason typing
+        // the next message should have to wait on the network.
+        setMessage("");
+        setSelectedFiles([]);
         setSending(true);
+        if (socket.current) {
+            socket.current.emit("stopTyping", { receiverId });
+        }
 
         try {
             await dispatch(sendMessage({
                 receiverId,
-                content: message,
-                media: selectedFiles
+                content,
+                media,
+                senderId: authState.user?.userId?._id
             })).unwrap();
-
-            setMessage("");
-            setSelectedFiles([]);
-            // Emit stop typing
-            if (socket.current && activeChatUser?.userId?._id) {
-                socket.current.emit("stopTyping", { receiverId: activeChatUser.userId._id });
-            }
         } catch (error) {
             console.error("Error sending message:", error);
-            toast.error("Failed to send message. Please try again.");
+            toast.error("Message failed to send — tap it to retry.");
         } finally {
             setSending(false);
+        }
+    };
+
+    // A failed send is left in the thread (see sendMessage.rejected) instead
+    // of silently vanishing — tapping it retries with the same content.
+    // Attachments aren't kept in Redux state (see __hadMedia), so a failed
+    // message that had media can only retry its text; the user re-picks
+    // the photo/video themselves rather than it silently vanishing.
+    const handleRetryMessage = async (msg) => {
+        if (msg.__hadMedia) {
+            toast.error("Couldn't retry the attachment automatically — please resend the photo/video.");
+        }
+        dispatch(removeDeletedMessages({ messageIds: [msg._id] }));
+        const receiverId = activeChatUser?.userId?._id;
+        if (!receiverId || !msg.content) return;
+        try {
+            await dispatch(sendMessage({
+                receiverId,
+                content: msg.content,
+                media: [],
+                senderId: authState.user?.userId?._id
+            })).unwrap();
+        } catch (error) {
+            toast.error("Still couldn't send — check your connection.");
         }
     };
 
@@ -703,13 +753,14 @@ export default function Messaging() {
                                         <div
                                             key={msg._id || idx}
                                             className={`${isMe ? styles.sentMsg : styles.receivedMsg} ${isSelected ? styles.selectedMsg : ''
-                                                } ${selectionMode ? styles.selectableMsg : ''}`}
+                                                } ${selectionMode ? styles.selectableMsg : ''} ${msg.__status === 'sending' ? styles.sendingMsg : ''
+                                                } ${msg.__status === 'failed' ? styles.failedMsg : ''}`}
                                             onMouseDown={() => handleLongPressStart(msg._id)}
                                             onMouseUp={handleLongPressEnd}
                                             onMouseLeave={handleLongPressEnd}
                                             onTouchStart={() => handleLongPressStart(msg._id)}
                                             onTouchEnd={handleLongPressEnd}
-                                            onClick={() => handleMessageClick(msg._id)}
+                                            onClick={() => msg.__status === 'failed' ? handleRetryMessage(msg) : handleMessageClick(msg._id)}
                                         >
                                             {selectionMode && (
                                                 <div className={styles.selectionCheckbox}>
@@ -767,12 +818,19 @@ export default function Messaging() {
                                                 </div>
                                             )}
                                             {msg.content && <p>{msg.content}</p>}
+                                            {msg.__status === 'failed' && (
+                                                <p className={styles.sendFailedHint}>Failed to send · tap to retry</p>
+                                            )}
                                             <span className={styles.timeStamp}>
-                                                {new Date(msg.createdAt).toLocaleTimeString([], {
-                                                    hour: "2-digit",
-                                                    minute: "2-digit"
-                                                })}
-                                                {isMe && (
+                                                {msg.__status === 'sending' ? (
+                                                    'Sending…'
+                                                ) : (
+                                                    new Date(msg.createdAt).toLocaleTimeString([], {
+                                                        hour: "2-digit",
+                                                        minute: "2-digit"
+                                                    })
+                                                )}
+                                                {isMe && msg.__status !== 'sending' && msg.__status !== 'failed' && (
                                                     msg.isRead
                                                         ? <CheckCheck size={13} strokeWidth={2} className={styles.readTick} />
                                                         : <Check size={13} strokeWidth={2} />
