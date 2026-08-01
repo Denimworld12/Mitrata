@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import React, { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import styles from './styles.module.css'
-import { loginUser, registerUser, verifyOtp, resendOtp, switchAccountAction, getAboutUser } from '@/config/redux/action/authAction'
+import { loginUser, registerUser, verifyOtp, resendOtp, switchAccountAction, getAboutUser, verifyTwoFactorLogin } from '@/config/redux/action/authAction'
 import { emptyMessage } from '@/config/redux/reducer/authReducer'
 import { getSavedAccounts } from '@/config/savedAccounts'
 import Button from '@/Components/ui/Button'
@@ -41,6 +41,7 @@ function LoginComponent() {
   const [otp, setOtp] = useState("");
   const [resendIn, setResendIn] = useState(0);
   const resendTimerRef = useRef(null);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -116,7 +117,7 @@ function LoginComponent() {
 
   const handleLogin = async () => {
     const result = await dispatch(loginUser({ email, password }));
-    if (loginUser.fulfilled.match(result)) {
+    if (loginUser.fulfilled.match(result) && !result.payload?.requires2FA) {
       router.push('/dashboard');
     } else if (result.payload?.needsVerification) {
       // Account exists but was never OTP-verified (e.g. they closed the tab
@@ -146,6 +147,16 @@ function LoginComponent() {
     // Strictly remove all spaces immediately
     const sanitizedValue = val.replace(/\s/g, "");
     setUsername(sanitizedValue);
+  };
+
+  const handleVerifyTwoFactor = async () => {
+    const result = await dispatch(verifyTwoFactorLogin({
+      challengeToken: authState.twoFactorChallengeToken,
+      code: twoFactorCode
+    }));
+    if (verifyTwoFactorLogin.fulfilled.match(result)) {
+      router.push('/dashboard');
+    }
   };
 
   const handleRegister = async () => {
@@ -185,7 +196,7 @@ function LoginComponent() {
         <div className={styles.cardContainer}>
           <div className={styles.cardContainer_left}>
             <p className={styles.cardHeading}>
-              {verifyingEmail ? 'Verify your email' : showChooser ? 'Choose an account' : (userLoginMethod ? 'SignIn' : 'Signup')}
+              {authState.requires2FA ? 'Two-step verification' : verifyingEmail ? 'Verify your email' : showChooser ? 'Choose an account' : (userLoginMethod ? 'SignIn' : 'Signup')}
             </p>
 
             {/* General API Status Messages */}
@@ -207,7 +218,33 @@ function LoginComponent() {
                </div>
             )}
 
-            {showChooser && !verifyingEmail ? (
+            {authState.requires2FA ? (
+              <div className={styles.inputContainer}>
+                <p className="text-sm mb-3" style={{ color: 'var(--mt-ink2)' }}>
+                  Enter the 6-digit code from your authenticator app, or one of your backup codes.
+                </p>
+                <input
+                  value={twoFactorCode}
+                  onChange={(e) => setTwoFactorCode(e.target.value.slice(0, 12))}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="000000"
+                  maxLength={12}
+                  autoFocus
+                  className={styles.inputField}
+                  style={{ textAlign: 'center', fontSize: '1.4rem', letterSpacing: '0.2em' }}
+                />
+
+                <Button
+                  onClick={handleVerifyTwoFactor}
+                  className="w-full mt-3 !rounded-full !py-3.5 !text-base"
+                  loading={authState.isLoading}
+                  disabled={twoFactorCode.length < 6}
+                >
+                  Verify
+                </Button>
+              </div>
+            ) : showChooser && !verifyingEmail ? (
               <div className={styles.inputContainer}>
                 {savedAccounts.map((acc) => (
                   <button
@@ -343,7 +380,7 @@ function LoginComponent() {
             <img src="/brand/orb-violet.png" alt="" className={styles.rightOrb} />
             <div className={styles.rightContent}>
               <span className={styles.rightLogo} role="img" aria-label="Mitrata" />
-              {!showChooser && !verifyingEmail && (
+              {!showChooser && !verifyingEmail && !authState.requires2FA && (
                 <>
                   <span>{userLoginMethod ? 'Create an account? ' : 'Already have an account? '}</span>
                   <span

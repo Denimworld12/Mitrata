@@ -22,8 +22,12 @@ import Report from "../models/report.model.js";
 
 import ConvertUserDataToPdf from "./PdfFormat.js";
 import { escapeRegex } from "../utils/regex.js";
+import crypto from "crypto";
+import { authenticator } from "otplib";
+import QRCode from "qrcode";
+
 import { issueOtp } from "./otp.controller.js";
-import { issueSession, hashToken, refreshCookieName, refreshCookieOptions } from "../utils/session.js";
+import { issueSession, hashToken, refreshCookieName, refreshCookieOptions, signTwoFactorChallenge, verifyTwoFactorChallenge } from "../utils/session.js";
 import { sendPush } from "../utils/push.js";
 
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
@@ -104,7 +108,7 @@ export const login = async (req, res) => {
         const { email, password } = req.body;
         if (!email || !password) return res.status(400).json({ message: "All fields are required" });
 
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email }).select("+twoFactor.enabled");
         if (!user) return res.status(404).json({ message: "User does not exist" });
         if (!user.active) return res.status(403).json({ message: "This account has been suspended" });
 
@@ -119,6 +123,13 @@ export const login = async (req, res) => {
             });
         }
 
+        // Password verified, but the session isn't issued yet — the browser
+        // gets a short-lived challenge token instead, and only the matching
+        // /auth/2fa/verify-login call (below) actually logs them in.
+        if (user.twoFactor?.enabled) {
+            return res.json({ requires2FA: true, challengeToken: signTwoFactorChallenge(user._id) });
+        }
+
         const accessToken = await issueSession(res, user);
         return res.json({ token: accessToken });
 
@@ -126,6 +137,126 @@ export const login = async (req, res) => {
         return res.status(500).json({ message: error.message });
     }
 }
+
+// Completes a login that stopped at requires2FA above. `code` may be a
+// 6-digit authenticator code or one of the one-time backup codes.
+export const verifyTwoFactorLogin = async (req, res) => {
+    try {
+        const { challengeToken, code } = req.body || {};
+        if (!challengeToken || !code) return res.status(400).json({ message: "Code is required" });
+
+        let userId;
+        try {
+            userId = verifyTwoFactorChallenge(challengeToken);
+        } catch {
+            return res.status(401).json({ message: "Login session expired, please log in again" });
+        }
+
+        const user = await User.findById(userId).select("+twoFactor.enabled +twoFactor.secret +twoFactor.backupCodeHashes");
+        if (!user || !user.active || !user.twoFactor?.enabled) {
+            return res.status(401).json({ message: "Two-step verification is not active for this account" });
+        }
+
+        const cleanCode = String(code).replace(/\s/g, "");
+        let usedBackupCode = false;
+
+        if (!authenticator.check(cleanCode, user.twoFactor.secret)) {
+            const normalized = cleanCode.replace(/-/g, "").toLowerCase();
+            const matches = await Promise.all(
+                user.twoFactor.backupCodeHashes.map((hash) => bcrypt.compare(normalized, hash))
+            );
+            const matchIndex = matches.findIndex(Boolean);
+            if (matchIndex === -1) return res.status(400).json({ message: "Invalid code" });
+            usedBackupCode = true;
+            user.twoFactor.backupCodeHashes.splice(matchIndex, 1); // single-use
+        }
+
+        if (usedBackupCode) await user.save();
+
+        const accessToken = await issueSession(res, user);
+        return res.json({ token: accessToken, usedBackupCode });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+export const getTwoFactorStatus = async (req, res) => {
+    try {
+        const user = await User.findById(req.userId).select("+twoFactor.enabled");
+        return res.json({ enabled: !!user?.twoFactor?.enabled });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+// Step 1 of enabling: generates a pending secret and a QR code for it.
+// Nothing takes effect until verifyTwoFactorSetup confirms the user can
+// actually produce a valid code from it.
+export const setupTwoFactor = async (req, res) => {
+    try {
+        const user = await User.findById(req.userId).select("+twoFactor.enabled +twoFactor.secret +twoFactor.backupCodeHashes");
+        if (!user) return res.status(404).json({ message: "User not found" });
+        if (user.twoFactor.enabled) return res.status(400).json({ message: "Two-step verification is already enabled" });
+
+        const secret = authenticator.generateSecret();
+        user.twoFactor.secret = secret;
+        await user.save();
+
+        const otpauth = authenticator.keyuri(user.email, "Mitrata", secret);
+        const qrCodeDataUrl = await QRCode.toDataURL(otpauth);
+        return res.json({ secret, qrCodeDataUrl });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+// Step 2: confirms the code, turns 2FA on, and hands back one-time backup
+// codes (shown once, stored only as hashes from here on — same handling as
+// the password itself).
+export const verifyTwoFactorSetup = async (req, res) => {
+    try {
+        const { code } = req.body || {};
+        const user = await User.findById(req.userId).select("+twoFactor.enabled +twoFactor.secret +twoFactor.backupCodeHashes");
+        if (!user) return res.status(404).json({ message: "User not found" });
+        if (!user.twoFactor.secret) return res.status(400).json({ message: "Start setup first" });
+        if (!code || !authenticator.check(String(code).replace(/\s/g, ""), user.twoFactor.secret)) {
+            return res.status(400).json({ message: "Invalid code" });
+        }
+
+        const backupCodes = Array.from({ length: 8 }, () => crypto.randomBytes(5).toString("hex"));
+        user.twoFactor.backupCodeHashes = await Promise.all(backupCodes.map((c) => bcrypt.hash(c, 10)));
+        user.twoFactor.enabled = true;
+        await user.save();
+
+        return res.json({ message: "Two-step verification enabled", backupCodes });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+export const disableTwoFactor = async (req, res) => {
+    try {
+        const { password } = req.body || {};
+        const user = await User.findById(req.userId).select("+twoFactor.enabled +twoFactor.secret +twoFactor.backupCodeHashes +password");
+        if (!user) return res.status(404).json({ message: "User not found" });
+        if (!user.twoFactor.enabled) return res.status(400).json({ message: "Two-step verification is not enabled" });
+
+        if (user.password) {
+            if (!password) return res.status(400).json({ message: "Password is required to disable two-step verification" });
+            const isMatch = await bcrypt.compare(password, user.password);
+            if (!isMatch) return res.status(400).json({ message: "Incorrect password" });
+        }
+
+        user.twoFactor.enabled = false;
+        user.twoFactor.secret = null;
+        user.twoFactor.backupCodeHashes = [];
+        await user.save();
+
+        return res.json({ message: "Two-step verification disabled" });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
 
 // Shared by both the popup flow (googleLogin) and the redirect-fallback
 // flow (googleLoginCallback) — Safari's Intelligent Tracking Prevention and

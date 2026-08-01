@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { getAboutUser, loginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, acceptConnectionRequest, downloadResume, updateUserProfile, updateAccountSettings, blockUser, unblockUser, getBlockedUsers, logout, verifyOtp, resendOtp, sendOtp, resetPasswordAction, deleteAccount, switchAccountAction } from "../../action/authAction/index";
+import { getAboutUser, loginUser, registerUser, getAllUser, getConnectionRequest, getMyConnectionRequests, acceptConnectionRequest, downloadResume, updateUserProfile, updateAccountSettings, blockUser, unblockUser, getBlockedUsers, logout, verifyOtp, resendOtp, sendOtp, resetPasswordAction, deleteAccount, switchAccountAction, verifyTwoFactorLogin, getTwoFactorStatus } from "../../action/authAction/index";
 import { rememberAccount } from "../../../savedAccounts";
 
 
@@ -17,7 +17,10 @@ const initialState = {
     all_user: [],
     connectionRequest: [],
     all_profile_fetched: false,
-    blockedUsers: []
+    blockedUsers: [],
+    requires2FA: false,
+    twoFactorChallengeToken: null,
+    twoFactorEnabled: false
 }
 
 const authSlice = createSlice({
@@ -50,16 +53,44 @@ const authSlice = createSlice({
             })
             .addCase(loginUser.fulfilled, (state, action) => {
                 state.isLoading = false
+                if (action.payload?.requires2FA) {
+                    state.isSuccess = false
+                    state.requires2FA = true
+                    state.twoFactorChallengeToken = action.payload.challengeToken
+                    return
+                }
                 state.isSuccess = true
                 state.isError = false
                 state.loggedIn = true
                 state.isTokenThere = true
-                state.message = action.payload.message || "login sucessfully"
+                state.message = "login sucessfully"
             })
             .addCase(loginUser.rejected, (state, action) => {
                 state.isLoading = false
                 state.isError = true
                 state.message = action.payload.message || 'Login failed';
+            })
+            .addCase(verifyTwoFactorLogin.pending, (state) => {
+                state.isLoading = true
+                state.isError = false
+            })
+            .addCase(verifyTwoFactorLogin.fulfilled, (state) => {
+                state.isLoading = false
+                state.isSuccess = true
+                state.isError = false
+                state.loggedIn = true
+                state.isTokenThere = true
+                state.requires2FA = false
+                state.twoFactorChallengeToken = null
+                state.message = "login sucessfully"
+            })
+            .addCase(verifyTwoFactorLogin.rejected, (state, action) => {
+                state.isLoading = false
+                state.isError = true
+                state.message = action.payload.message || 'Invalid code';
+            })
+            .addCase(getTwoFactorStatus.fulfilled, (state, action) => {
+                state.twoFactorEnabled = !!action.payload.enabled
             })
             .addCase(registerUser.pending, (state) => {
                 state.isLoading = true

@@ -96,6 +96,7 @@ const authLimiter = rateLimit({
 app.use("/api/login", authLimiter);
 app.use("/api/register", authLimiter);
 app.use("/api/auth/google", authLimiter);
+app.use("/api/auth/2fa/verify-login", authLimiter); // guesses a 6-digit code — same budget as password guessing
 
 // Session upkeep, not credential guessing — generous ceiling just to blunt
 // outright abuse, not to throttle normal use.

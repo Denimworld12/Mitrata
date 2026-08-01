@@ -1,6 +1,6 @@
 
 import multer from "multer";
-import { acceptConnectionRequest, downloadProfile, findSearchUser, getAllUserBasedOnUsername, getMyConnectionRequest, getUserAndProfile, login, logout, register, sendconnectionrequest, updateProfileData, updateUserProfile, updateAccountSettings, uploadCoverPhoto, uploadImage, uploadProfilePicture, whatAreMyConnection, searchUsers, getSuggestions, googleLogin, googleLoginCallback, refreshAccessToken, deleteMyAccount, switchAccount, registerFcmToken, unregisterFcmToken, blockUser, unblockUser, getBlockedUsers } from "../controllers/user.controller.js";
+import { acceptConnectionRequest, downloadProfile, findSearchUser, getAllUserBasedOnUsername, getMyConnectionRequest, getUserAndProfile, login, logout, register, sendconnectionrequest, updateProfileData, updateUserProfile, updateAccountSettings, uploadCoverPhoto, uploadImage, uploadProfilePicture, whatAreMyConnection, searchUsers, getSuggestions, googleLogin, googleLoginCallback, refreshAccessToken, deleteMyAccount, switchAccount, registerFcmToken, unregisterFcmToken, blockUser, unblockUser, getBlockedUsers, verifyTwoFactorLogin, getTwoFactorStatus, setupTwoFactor, verifyTwoFactorSetup, disableTwoFactor } from "../controllers/user.controller.js";
 import { sendOtp, verifyOtp, resendOtp, resetPassword } from "../controllers/otp.controller.js";
 import { createReport } from "../controllers/admin.controller.js";
 import { Router } from "express"
@@ -23,6 +23,12 @@ router.route('/auth/verify-otp').post(verifyOtp);
 router.route('/auth/resend-otp').post(resendOtp);
 router.route('/auth/reset-password').post(resetPassword);
 router.route('/auth/switch-account').post(switchAccount);
+router.route('/auth/2fa/verify-login').post(verifyTwoFactorLogin);
+
+router.route('/user/2fa/status').get(verifyToken, getTwoFactorStatus);
+router.route('/user/2fa/setup').post(verifyToken, setupTwoFactor);
+router.route('/user/2fa/verify').post(verifyToken, verifyTwoFactorSetup);
+router.route('/user/2fa/disable').post(verifyToken, disableTwoFactor);
 
 // ============ REPORTING (any authenticated user) ============
 router.route('/report').post(verifyToken, createReport);
