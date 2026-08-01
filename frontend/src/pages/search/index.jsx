@@ -263,7 +263,7 @@ const Search = () => {
                 {q && (
                     <div className={styles.section}>
                         <h2 className={styles.sectionTitle}>
-                            {results.length > 0 ? `Results for "${q}"` : `No matches for "${q}"`}
+                            {loading ? `Searching for "${q}"` : results.length > 0 ? `Results for "${q}"` : `No matches for "${q}"`}
                         </h2>
 
                         {loading ? (

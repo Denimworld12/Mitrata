@@ -7,6 +7,7 @@ import { reset, setTokenNotThere, setTokenThere } from '@/config/redux/reducer/a
 import { useNotification } from '@/Components/NotificationProvider';
 import { getSavedAccounts } from '@/config/savedAccounts';
 import { Search, MessageCircle, Bell, SunMoon, CircleUser, LogOut, ChevronsUpDown } from 'lucide-react';
+import BlastLoader from '@/Components/ui/BlastLoader';
 
 export default function Navbar({ inShell = false }) {
     const router = useRouter();
@@ -21,7 +22,7 @@ export default function Navbar({ inShell = false }) {
     const [showNotifDropdown, setShowNotifDropdown] = useState(false);
     const [isDark, setIsDark] = useState(false);
 
-    const { unreadCount, clearUnread, recentNotifs } = useNotification();
+    const { unreadCount, clearUnread, recentNotifs, notificationsLoaded } = useNotification();
 
     useEffect(() => {
         setMounted(true);
@@ -192,7 +193,11 @@ export default function Navbar({ inShell = false }) {
                                             </span>
                                         </div>
                                         <div className={styles.notifDropdownList}>
-                                            {recentNotifs.length === 0 ? (
+                                            {!notificationsLoaded ? (
+                                                <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 0' }}>
+                                                    <BlastLoader size={32} />
+                                                </div>
+                                            ) : recentNotifs.length === 0 ? (
                                                 <p className={styles.notifEmpty}>No notifications yet</p>
                                             ) : (
                                                 recentNotifs.map(n => (
