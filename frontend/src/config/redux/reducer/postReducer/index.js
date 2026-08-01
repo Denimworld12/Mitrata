@@ -10,6 +10,7 @@ const initialState = {
     userPosts: [],
     userPostsHasMore: false,
     userPostsPage: 1,
+    userPostsLoaded: false,
     isError: false,
     postFetched: false,
     isLoading: false,
@@ -128,11 +129,27 @@ const postSlice = createSlice({
             .addCase(getBookmarkedPosts.fulfilled, (state, action) => {
                 state.bookmarkedPosts = action.payload.posts || []
             })
+            .addCase(getPostsByUsername.pending, (state, action) => {
+                // Not on page>1 (load-more) — only the first page of a fresh
+                // username should show the loader again, so navigating
+                // between two different users' activity pages doesn't
+                // briefly show the PREVIOUS user's now-stale posts as if
+                // they were the new user's.
+                if (!action.meta.arg?.page || action.meta.arg.page === 1) {
+                    state.userPostsLoaded = false;
+                }
+            })
             .addCase(getPostsByUsername.fulfilled, (state, action) => {
                 const { posts, hasMore, page } = action.payload;
                 state.userPosts = page > 1 ? [...state.userPosts, ...(posts || [])] : (posts || []);
                 state.userPostsHasMore = !!hasMore;
                 state.userPostsPage = page || 1;
+                state.userPostsLoaded = true;
+            })
+            .addCase(getPostsByUsername.rejected, (state) => {
+                // Still "loaded" (just empty) — otherwise a failed fetch
+                // leaves the page stuck on its loading spinner forever.
+                state.userPostsLoaded = true;
             })
     }
 })

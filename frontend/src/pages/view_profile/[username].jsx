@@ -9,6 +9,7 @@ import { downloadResume, getConnectionRequest, sendConnectionRequest } from '@/c
 import serverAxios from '@/config/serverAxios'
 import { UserPlus, Check, Download, ArrowRight } from 'lucide-react'
 import ReportMenu from '@/Components/ReportMenu'
+import BlastLoader from '@/Components/ui/BlastLoader'
 
 export default function viewProfilePage({ userProfile }) {
     const router = useRouter()
@@ -219,7 +220,11 @@ export default function viewProfilePage({ userProfile }) {
                 <div className={styles.userActivitySidebar}>
                     <h3>Recent Activity</h3>
 
-                    {userPost.length > 0 ? (
+                    {!postState.userPostsLoaded ? (
+                        <div className="w-full flex items-center justify-center py-8">
+                            <BlastLoader size={36} />
+                        </div>
+                    ) : userPost.length > 0 ? (
                         <>
                             {recentPosts.map((post) => (
                                 <div key={post._id} className={styles.sidebarPostCard}>

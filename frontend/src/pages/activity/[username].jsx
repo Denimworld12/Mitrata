@@ -5,6 +5,8 @@ import styles from './index.module.css';
 import DashboardLayout from '@/layout/DashboardLayout';
 import ReportMenu from '@/Components/ReportMenu';
 import EmptyState from '@/Components/ui/EmptyState';
+import PageLoader from '@/Components/ui/PageLoader';
+import BlastLoader from '@/Components/ui/BlastLoader';
 import { getPostsByUsername, deletePost, reactToPost, getAllComments, commentPost, toggleBookmark } from '@/config/redux/action/postAction';
 import { resetPostId } from '@/config/redux/reducer/postReducer';
 import { Base_Url } from '@/config';
@@ -126,7 +128,11 @@ export default function UserActivityPage() {
                 <p className={styles.postCount}>{userPosts.length} post{userPosts.length === 1 ? '' : 's'}</p>
             </div>
 
-            {userPosts.length === 0 ? (
+            {!postState.userPostsLoaded ? (
+                <div className="w-full flex items-center justify-center py-16">
+                    <BlastLoader size={48} />
+                </div>
+            ) : userPosts.length === 0 ? (
                 <EmptyState
                     icon={FileText}
                     title="No posts yet"
@@ -270,6 +276,6 @@ export default function UserActivityPage() {
         </div>
     );
 
-    if (!mounted) return null;
+    if (!mounted) return <PageLoader />;
     return <DashboardLayout>{ActivityContent}</DashboardLayout>;
 }

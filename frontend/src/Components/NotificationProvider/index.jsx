@@ -32,6 +32,11 @@ export function NotificationProvider({ children }) {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [recentNotifs, setRecentNotifs] = useState([]);
+    // recentNotifs.length === 0 reads identically whether nothing has loaded
+    // yet or there's genuinely nothing there — the notifications page was
+    // showing "No notifications yet" for a beat before the real fetch below
+    // resolved, every single time.
+    const [notificationsLoaded, setNotificationsLoaded] = useState(false);
     const [onlineUsers, setOnlineUsers] = useState(new Set());
     const [socketInstance, setSocketInstance] = useState(null);
     const socketRef = useRef(null);
@@ -97,7 +102,10 @@ export function NotificationProvider({ children }) {
     useEffect(() => {
         const fetchNotifications = async () => {
             const token = localStorage.getItem('token');
-            if (!token) return;
+            if (!token) {
+                setNotificationsLoaded(true);
+                return;
+            }
             try {
                 const res = await axios.get(`${Base_Url}/api/notification/all`, {
                     headers: { Authorization: `Bearer ${token}` }
@@ -121,7 +129,10 @@ export function NotificationProvider({ children }) {
                     metadata: n.metadata || {}
                 })));
                 setUnreadCount(count);
-            } catch { }
+            } catch {
+            } finally {
+                setNotificationsLoaded(true);
+            }
         };
         fetchNotifications();
     }, [authState.loggedIn]);
@@ -306,7 +317,7 @@ export function NotificationProvider({ children }) {
     };
 
     return (
-        <NotificationContext.Provider value={{ showNotification, unreadCount, clearUnread, recentNotifs, socket: socketRef, socketInstance, onlineUsers }}>
+        <NotificationContext.Provider value={{ showNotification, unreadCount, clearUnread, recentNotifs, notificationsLoaded, socket: socketRef, socketInstance, onlineUsers }}>
             {children}
 
             {/* Floating notification popups */}
