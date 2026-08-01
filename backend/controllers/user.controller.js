@@ -27,7 +27,7 @@ import { authenticator } from "otplib";
 import QRCode from "qrcode";
 
 import { issueOtp } from "./otp.controller.js";
-import { issueSession, rotateSession, hashToken, refreshCookieName, refreshCookieOptions, signTwoFactorChallenge, verifyTwoFactorChallenge, describeDevice } from "../utils/session.js";
+import { issueSession, rotateSession, hashToken, refreshCookieName, refreshCookieOptions, signTwoFactorChallenge, verifyTwoFactorChallenge, describeDevice, signGoogleSessionCode, verifyGoogleSessionCode } from "../utils/session.js";
 import { sendPush } from "../utils/push.js";
 
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
@@ -388,11 +388,42 @@ export const googleLoginCallback = async (req, res) => {
     const failUrl = `${process.env.FRONTEND_URL}/login?googleError=1`;
     try {
         const user = await verifyAndUpsertGoogleUser(req.body.credential);
-        const accessToken = await issueSession(res, user, req);
-        return res.redirect(`${process.env.FRONTEND_URL}/login?googleToken=${accessToken}`);
+        // No issueSession/cookie here — this response is to a genuine
+        // cross-origin top-level navigation (see signGoogleSessionCode's
+        // comment for why), so any cookie set on it would be scoped to the
+        // wrong origin. The frontend exchanges this one-time code for a real
+        // session via completeGoogleLogin below, over a normal same-origin
+        // proxied request instead.
+        const code = signGoogleSessionCode(user._id);
+        return res.redirect(`${process.env.FRONTEND_URL}/login?googleSessionCode=${code}`);
     } catch (error) {
         console.error("Google login callback error:", error.message);
         return res.redirect(failUrl);
+    }
+};
+
+// Completes googleLoginCallback's redirect hop — called by the frontend as a
+// normal proxied POST (same-origin from the browser's point of view), so the
+// session cookie this issues actually lands on the frontend's own origin.
+export const completeGoogleLogin = async (req, res) => {
+    try {
+        const { code } = req.body || {};
+        if (!code) return res.status(400).json({ message: "Code is required" });
+
+        let userId;
+        try {
+            userId = verifyGoogleSessionCode(code);
+        } catch {
+            return res.status(401).json({ message: "Sign-in link expired, please try again" });
+        }
+
+        const user = await User.findById(userId);
+        if (!user || !user.active) return res.status(401).json({ message: "Account unavailable" });
+
+        const accessToken = await issueSession(res, user, req);
+        return res.json({ token: accessToken });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
     }
 };
 

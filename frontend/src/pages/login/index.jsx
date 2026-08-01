@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import React, { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import styles from './styles.module.css'
-import { loginUser, registerUser, verifyOtp, resendOtp, switchAccountAction, getAboutUser, verifyTwoFactorLogin } from '@/config/redux/action/authAction'
+import { loginUser, registerUser, verifyOtp, resendOtp, switchAccountAction, getAboutUser, verifyTwoFactorLogin, completeGoogleLogin } from '@/config/redux/action/authAction'
 import { emptyMessage } from '@/config/redux/reducer/authReducer'
 import { getSavedAccounts } from '@/config/savedAccounts'
 import Button from '@/Components/ui/Button'
@@ -56,20 +56,30 @@ function LoginComponent() {
 
   // Google sign-in now completes via a full-page redirect (see
   // GoogleLoginButton) rather than a popup, so the result lands here as
-  // query params instead of a JS callback.
+  // query params instead of a JS callback. That redirect is a genuine
+  // cross-origin hop straight to the backend, so it can't hand back a
+  // session cookie scoped to this frontend's own origin (see
+  // completeGoogleLogin's comment) — only a one-time code, exchanged here
+  // over a normal proxied request that DOES land the cookie correctly.
   const [googleAuthError, setGoogleAuthError] = useState(false);
   useEffect(() => {
     if (!router.isReady) return;
-    if (router.query.googleToken) {
-      localStorage.setItem("token", String(router.query.googleToken));
-      localStorage.removeItem("recentSearches");
-      dispatch(getAboutUser());
-      router.replace('/dashboard');
+    if (router.query.googleSessionCode) {
+      const code = String(router.query.googleSessionCode);
+      router.replace('/login', undefined, { shallow: true });
+      dispatch(completeGoogleLogin(code)).then((result) => {
+        if (completeGoogleLogin.fulfilled.match(result)) {
+          dispatch(getAboutUser());
+          router.push('/dashboard');
+        } else {
+          setGoogleAuthError(true);
+        }
+      });
     } else if (router.query.googleError) {
       setGoogleAuthError(true);
       router.replace('/login', undefined, { shallow: true });
     }
-  }, [router.isReady, router.query.googleToken, router.query.googleError]);
+  }, [router.isReady, router.query.googleSessionCode, router.query.googleError]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
