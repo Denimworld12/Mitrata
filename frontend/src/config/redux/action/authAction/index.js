@@ -210,6 +210,56 @@ export const updateUserProfile = createAsyncThunk(
     }
 )
 
+// Username/privacy/push-preference — User-model fields, separate from
+// updateUserProfile above which only ever touches the Profile document.
+export const updateAccountSettings = createAsyncThunk(
+    "user/updateAccountSettings",
+    async (payload, thunkApi) => {
+        try {
+            const response = await clientServer.post('/user/setting/account_update', payload);
+            return thunkApi.fulfillWithValue(response.data);
+        } catch (error) {
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Update failed" });
+        }
+    }
+);
+
+export const blockUser = createAsyncThunk(
+    "user/blockUser",
+    async (targetId, thunkApi) => {
+        try {
+            const response = await clientServer.post('/user/block', { targetId });
+            return thunkApi.fulfillWithValue({ targetId, ...response.data });
+        } catch (error) {
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Failed to block user" });
+        }
+    }
+);
+
+export const unblockUser = createAsyncThunk(
+    "user/unblockUser",
+    async (targetId, thunkApi) => {
+        try {
+            const response = await clientServer.post('/user/unblock', { targetId });
+            return thunkApi.fulfillWithValue({ targetId, ...response.data });
+        } catch (error) {
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Failed to unblock user" });
+        }
+    }
+);
+
+export const getBlockedUsers = createAsyncThunk(
+    "user/getBlockedUsers",
+    async (_arg, thunkApi) => {
+        try {
+            const response = await clientServer.get('/user/blocked');
+            return thunkApi.fulfillWithValue(response.data);
+        } catch (error) {
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Failed to load blocked accounts" });
+        }
+    }
+);
+
 
 
 export const getAllUser = createAsyncThunk(
