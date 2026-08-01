@@ -15,7 +15,6 @@ import {
     UsersRound,
     Bell,
     UserCog,
-    Mail,
     KeyRound,
     Lock,
     UserX,
@@ -35,9 +34,6 @@ export default function Settings() {
     const { user, twoFactorEnabled } = useSelector(state => state.auth);
     const { unreadCount } = useNotification();
     const [theme, setTheme] = useState('system'); // light, dark, system
-    const [showUsernameModal, setShowUsernameModal] = useState(false);
-    const [usernameInput, setUsernameInput] = useState('');
-    const [savingUsername, setSavingUsername] = useState(false);
     const [loaded2FA, setLoaded2FA] = useState(false);
     const [dismissedTwoFactorNudge, setDismissedTwoFactorNudge] = useState(true);
 
@@ -65,28 +61,6 @@ export default function Settings() {
         if (window.confirm("Are you sure you want to log out?")) {
             dispatch(logout());
             router.push('/login');
-        }
-    };
-
-    const openUsernameModal = () => {
-        setUsernameInput(user?.userId?.username || '');
-        setShowUsernameModal(true);
-    };
-
-    const handleSaveUsername = async () => {
-        const trimmed = usernameInput.trim();
-        if (!trimmed || trimmed === user?.userId?.username) {
-            setShowUsernameModal(false);
-            return;
-        }
-        setSavingUsername(true);
-        const result = await dispatch(updateAccountSettings({ username: trimmed }));
-        setSavingUsername(false);
-        if (updateAccountSettings.fulfilled.match(result)) {
-            toast.success('Username updated');
-            setShowUsernameModal(false);
-        } else {
-            toast.error(result.payload?.message || 'Failed to update username');
         }
     };
 
@@ -199,14 +173,9 @@ export default function Settings() {
                 <div className={`${styles.group} mt-enter`} style={{ animationDelay: '50ms' }}>
                     <SettingsItem
                         icon={UserCog}
-                        label="Username"
-                        sub={`@${user?.userId?.username || ''}`}
-                        onClick={openUsernameModal}
-                    />
-                    <SettingsItem
-                        icon={Mail}
-                        label="Email"
-                        sub={user?.userId?.email || ''}
+                        label="Edit profile"
+                        sub="Name, username, bio, experience, education"
+                        onClick={() => router.push('/profile')}
                     />
                     {!user?.userId?.googleId && (
                         <SettingsItem
@@ -399,38 +368,6 @@ export default function Settings() {
                     Log out, which is exactly the kind of thing a misclick
                     lands on. It's reachable only through Help & Support's
                     guide now, adding real deliberate steps in between. */}
-
-                {showUsernameModal && (
-                    <div className={styles.modalOverlay} onClick={() => !savingUsername && setShowUsernameModal(false)}>
-                        <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
-                            <h3 className={styles.modalTitle}>Change username</h3>
-                            <input
-                                type="text"
-                                value={usernameInput}
-                                onChange={(e) => setUsernameInput(e.target.value.replace(/\s/g, ''))}
-                                className={styles.modalInput}
-                                placeholder="username"
-                            />
-                            <div className={styles.modalActions}>
-                                <button
-                                    className={styles.modalCancelBtn}
-                                    onClick={() => setShowUsernameModal(false)}
-                                    disabled={savingUsername}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    className={styles.modalDeleteBtn}
-                                    onClick={handleSaveUsername}
-                                    disabled={savingUsername || !usernameInput.trim()}
-                                    style={{ background: 'var(--mt-grad)' }}
-                                >
-                                    {savingUsername ? 'Saving…' : 'Save'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
                 <div className={styles.footer}>
                     <p>Mitrata App v1.2.0</p>

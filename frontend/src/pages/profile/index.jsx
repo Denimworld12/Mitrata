@@ -2,7 +2,7 @@ import styles from "./index.module.css"
 import React, { useEffect, useState, useMemo } from 'react'
 import { Base_Url, clientServer } from '@/config'
 import { useDispatch, useSelector } from 'react-redux'
-import { getAboutUser, getConnectionRequest, updateUserProfile } from '@/config/redux/action/authAction'
+import { getAboutUser, getConnectionRequest, updateUserProfile, updateAccountSettings } from '@/config/redux/action/authAction'
 import { useRouter } from 'next/router'
 import { getPostsByUsername, getBookmarkedPosts, getLikedPosts } from '@/config/redux/action/postAction'
 import DashboardLayout from '@/layout/DashboardLayout' // Added for Tablet/Mobile logic
@@ -79,11 +79,13 @@ export default function Profile() {
 
   const [formData, setFormData] = useState({
     name: "",
+    username: "",
     bio: "",
     currentPost: "",
     pastWork: [],
     education: []
   });
+  const [usernameError, setUsernameError] = useState("");
 
   useEffect(() => {
     setMounted(true);
@@ -110,12 +112,14 @@ export default function Profile() {
     if (userProfile && userProfile.userId) { // Added userId check
       setFormData({
         name: userProfile.userId?.name || "",
+        username: userProfile.userId?.username || "",
         bio: userProfile.bio || "",
         currentPost: userProfile.currentPost || "",
         pastWork: userProfile.pastWork || [],
         education: userProfile.education || []
       });
       setIsDirty(false); // Reset dirty state on sync
+      setUsernameError("");
     }
   }, [userProfile, isEditModalOpen]);
 
@@ -188,13 +192,33 @@ export default function Profile() {
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
-    const result = await dispatch(updateUserProfile({
-      ...formData
-    }));
+    setUsernameError("");
+
+    // Username lives on the User doc, not the Profile doc — a separate
+    // endpoint (with its own uniqueness check) handles it, same one Settings
+    // used to call directly before this moved here.
+    const trimmedUsername = formData.username.trim();
+    if (trimmedUsername !== userProfile.userId?.username) {
+      const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/;
+      if (!usernameRegex.test(trimmedUsername)) {
+        setUsernameError("3-30 characters, letters/numbers/underscores only");
+        return;
+      }
+      const usernameResult = await dispatch(updateAccountSettings({ username: trimmedUsername }));
+      if (!updateAccountSettings.fulfilled.match(usernameResult)) {
+        setUsernameError(usernameResult.payload?.message || "Username already taken");
+        return;
+      }
+    }
+
+    const { username, ...profileFields } = formData;
+    const result = await dispatch(updateUserProfile(profileFields));
 
     if (updateUserProfile.fulfilled.match(result)) {
       setIsEditModalOpen(false);
       dispatch(getAboutUser());
+    } else {
+      toast.error(result.payload?.message || 'Failed to update profile');
     }
   };
 
@@ -540,6 +564,26 @@ export default function Profile() {
                 <div className={styles.formGroup}>
                   <label>Full Name</label>
                   <input type="text" value={formData.name} onChange={(e) => updateForm({ ...formData, name: e.target.value })} placeholder="Your full name" />
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Username</label>
+                  <input
+                    type="text"
+                    value={formData.username}
+                    onChange={(e) => {
+                      setUsernameError("");
+                      updateForm({ ...formData, username: e.target.value.replace(/\s/g, '') });
+                    }}
+                    placeholder="username"
+                  />
+                  {usernameError && <p className={styles.fieldError}>{usernameError}</p>}
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Email</label>
+                  <input type="email" value={userProfile?.userId?.email || ''} disabled />
+                  <p className={styles.fieldHint}>
+                    {userProfile?.userId?.googleId ? "Managed by your Google account" : "Contact support to change your email"}
+                  </p>
                 </div>
                 <div className={styles.formGroup}>
                   <label>Current Designation</label>

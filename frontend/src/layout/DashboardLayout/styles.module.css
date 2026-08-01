@@ -643,6 +643,19 @@
         /* keeps content clear of the bottom tab bar */
     }
 
+    /* Messaging still wants edge-to-edge left/right/top below this
+       breakpoint too — a two-class selector so it actually beats the
+       single-class .mainRow rule above regardless of source order (equal
+       specificity resolves by position in the file, not media-query
+       truthiness, which is what let this padding silently come back for
+       messaging specifically). Bottom stays: that's real space for the
+       fixed bottom tab bar, not layout slack. */
+    .mainRow.mainRowFlush {
+        padding-top: 0;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
     .sidebar {
         position: fixed;
         bottom: 0;
