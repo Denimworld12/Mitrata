@@ -91,12 +91,13 @@ export default function MyNetwork() {
         if (processingRequestId) return;
         setProcessingRequestId(requestId);
         try {
+            // The reducer patches state.connection/connectionRequest directly
+            // from this response — no need to refetch both full lists just
+            // to reflect one row's status change.
             await dispatch(acceptConnectionRequest({
                 connectionId: requestId,
                 action: action
             })).unwrap();
-
-            refreshData();
         } catch (error) {
             console.error("Failed to update connection:", error);
             toast.error(error.message || "Failed to update connection");
