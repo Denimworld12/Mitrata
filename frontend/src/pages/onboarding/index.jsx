@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useDispatch, useSelector } from 'react-redux';
-import { getAboutUser, updateUserProfile, updateAccountSettings } from '@/config/redux/action/authAction';
+import { getAboutUser, updateAccountSettings } from '@/config/redux/action/authAction';
 import { clientServer } from '@/config';
 import { compressImage } from '@/utils/imageProcessing';
 import { useToast } from '@/Components/Toast';
@@ -31,6 +31,7 @@ export default function OnboardingPage() {
     const [avatarFile, setAvatarFile] = useState(null);
     const [avatarPreview, setAvatarPreview] = useState(null);
     const [saving, setSaving] = useState(false);
+    const initializedRef = useRef(false);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -50,6 +51,10 @@ export default function OnboardingPage() {
             router.replace('/dashboard');
             return;
         }
+        // Only pre-fill once — later store updates (e.g. this page's own
+        // submit) shouldn't stomp over what the user has already typed.
+        if (initializedRef.current) return;
+        initializedRef.current = true;
         setName(user.name || '');
         setUsername(user.username || '');
         setAvatarPreview(user.profilePicture || null);
@@ -99,14 +104,7 @@ export default function OnboardingPage() {
                 });
             }
 
-            const profileResult = await dispatch(updateUserProfile({ name: name.trim() }));
-            if (!updateUserProfile.fulfilled.match(profileResult)) {
-                toast.error(profileResult.payload?.message || 'Failed to save your name');
-                setSaving(false);
-                return;
-            }
-
-            const settingsResult = await dispatch(updateAccountSettings({ username, onboarded: true }));
+            const settingsResult = await dispatch(updateAccountSettings({ name: name.trim(), username, onboarded: true }));
             if (!updateAccountSettings.fulfilled.match(settingsResult)) {
                 setUsernameError(settingsResult.payload?.message || 'Username already taken');
                 setSaving(false);
