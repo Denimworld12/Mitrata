@@ -27,7 +27,7 @@ import { authenticator } from "otplib";
 import QRCode from "qrcode";
 
 import { issueOtp } from "./otp.controller.js";
-import { issueSession, rotateSession, hashToken, refreshCookieName, refreshCookieOptions, signTwoFactorChallenge, verifyTwoFactorChallenge, describeDevice, signGoogleSessionCode, verifyGoogleSessionCode } from "../utils/session.js";
+import { issueSession, rotateSession, hashToken, refreshCookieName, refreshCookieOptions, signTwoFactorChallenge, verifyTwoFactorChallenge, describeDevice, signOAuthSessionCode, verifyOAuthSessionCode } from "../utils/session.js";
 import { sendPush } from "../utils/push.js";
 
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
@@ -416,12 +416,12 @@ export const googleLoginCallback = async (req, res) => {
     try {
         const user = await verifyAndUpsertGoogleUser(req.body.credential);
         // No issueSession/cookie here — this response is to a genuine
-        // cross-origin top-level navigation (see signGoogleSessionCode's
+        // cross-origin top-level navigation (see signOAuthSessionCode's
         // comment for why), so any cookie set on it would be scoped to the
         // wrong origin. The frontend exchanges this one-time code for a real
         // session via completeGoogleLogin below, over a normal same-origin
         // proxied request instead.
-        const code = signGoogleSessionCode(user._id);
+        const code = signOAuthSessionCode(user._id, "google");
         return res.redirect(`${process.env.FRONTEND_URL}/login?googleSessionCode=${code}`);
     } catch (error) {
         console.error("Google login callback error:", error.message);
@@ -439,7 +439,161 @@ export const completeGoogleLogin = async (req, res) => {
 
         let userId;
         try {
-            userId = verifyGoogleSessionCode(code);
+            userId = verifyOAuthSessionCode(code, "google");
+        } catch {
+            return res.status(401).json({ message: "Sign-in link expired, please try again" });
+        }
+
+        const user = await User.findById(userId);
+        if (!user || !user.active) return res.status(401).json({ message: "Account unavailable" });
+
+        const accessToken = await issueSession(res, user, req);
+        return res.json({ token: accessToken });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+// Apple's own JWKS (their public signing keys for Sign in with Apple) —
+// cached in-memory since keys rotate rarely; refetched at most once an hour
+// so a genuine rotation is picked up without hitting Apple on every login.
+let appleKeysCache = { keys: null, fetchedAt: 0 };
+const APPLE_KEYS_TTL_MS = 60 * 60 * 1000;
+
+// The Flutter iOS app's bundle identifier — not a secret, it's baked into
+// the shipped app. Native Sign in with Apple on iOS sets the id_token's
+// `aud` to this instead of the web Services ID (see verifyAndUpsertAppleUser).
+const IOS_BUNDLE_ID = "com.mitrata.mitrataMobile";
+
+const getApplePublicKey = async (kid) => {
+    if (!appleKeysCache.keys || Date.now() - appleKeysCache.fetchedAt > APPLE_KEYS_TTL_MS) {
+        const response = await fetch("https://appleid.apple.com/auth/keys");
+        const { keys } = await response.json();
+        appleKeysCache = { keys, fetchedAt: Date.now() };
+    }
+    const jwk = appleKeysCache.keys.find((k) => k.kid === kid);
+    if (!jwk) throw new Error("No matching Apple signing key found");
+    return crypto.createPublicKey({ key: jwk, format: "jwk" });
+};
+
+// Verifies Apple's identity token (a JWT Apple signs, RS256) against Apple's
+// own public keys — the same trust boundary Google's ID-token verification
+// gives us via google-auth-library, just done by hand since there's no
+// equivalent "apple-auth-library" dependency worth adding for one JWT
+// verification (Node's own crypto.createPublicKey already accepts JWK format
+// directly, so nothing extra to install).
+//
+// `appleUserJson` is Apple's separate `user` form field — a JSON string with
+// {name: {firstName, lastName}} that Apple sends ONLY on the very first
+// authorization (it never repeats the name on subsequent sign-ins), unlike
+// the id_token's `email` claim which is present every time.
+const verifyAndUpsertAppleUser = async (idToken, appleUserJson) => {
+    if (!process.env.APPLE_SERVICES_ID) {
+        const err = new Error("Apple login is not configured on this server");
+        err.status = 501;
+        throw err;
+    }
+    if (!idToken) {
+        const err = new Error("idToken is required");
+        err.status = 400;
+        throw err;
+    }
+
+    const [headerB64] = idToken.split(".");
+    const header = JSON.parse(Buffer.from(headerB64, "base64url").toString());
+    const publicKey = await getApplePublicKey(header.kid);
+
+    // Apple sets the token's `aud` claim to the Services ID for the web
+    // OAuth flow, but to the app's own Bundle ID for native iOS/macOS sign-in
+    // (Flutter's sign_in_with_apple on iOS) — accept either audience rather
+    // than only the web one, or every native mobile sign-in fails here.
+    const payload = jwt.verify(idToken, publicKey, {
+        algorithms: ["RS256"],
+        audience: [process.env.APPLE_SERVICES_ID, IOS_BUNDLE_ID].filter(Boolean),
+        issuer: "https://appleid.apple.com",
+    });
+
+    let name = null;
+    if (appleUserJson) {
+        try {
+            const parsed = JSON.parse(appleUserJson);
+            if (parsed.name) name = `${parsed.name.firstName || ""} ${parsed.name.lastName || ""}`.trim();
+        } catch {
+            // Malformed/missing — fall through to the email-derived name below.
+        }
+    }
+
+    let user = await User.findOne({ $or: [{ appleId: payload.sub }, { email: payload.email }] });
+    if (!user) {
+        const usernameBase = (payload.email || `apple${payload.sub}`).split("@")[0].replace(/[^a-zA-Z0-9_]/g, "");
+        let username = usernameBase;
+        let suffix = 0;
+        while (await User.findOne({ username })) {
+            suffix += 1;
+            username = `${usernameBase}${suffix}`;
+        }
+        user = new User({
+            name: name || usernameBase,
+            email: payload.email,
+            username,
+            appleId: payload.sub,
+            // Apple already verified this address — no OTP step needed.
+            emailVerified: true
+        });
+        await user.save();
+        await new Profile({ userId: user._id }).save();
+    } else if (!user.active) {
+        const err = new Error("This account has been suspended");
+        err.status = 403;
+        throw err;
+    } else {
+        let changed = false;
+        if (!user.appleId) { user.appleId = payload.sub; changed = true; }
+        if (!user.emailVerified) { user.emailVerified = true; changed = true; }
+        if (changed) await user.save();
+    }
+
+    return user;
+};
+
+// Native Sign in with Apple (Flutter's sign_in_with_apple package hands the
+// app an idToken directly — no browser, no redirect hop needed). Mirrors
+// googleLogin: verify once, issue our session, done in one round trip.
+export const appleLogin = async (req, res) => {
+    try {
+        const user = await verifyAndUpsertAppleUser(req.body.idToken, req.body.user);
+        const accessToken = await issueSession(res, user, req);
+        return res.json({ token: accessToken });
+    } catch (error) {
+        console.error("Apple login error:", error.message);
+        return res.status(error.status || 401).json({ message: error.status ? error.message : "Invalid Apple token" });
+    }
+};
+
+// Apple POSTs here as a real top-level navigation (response_mode=form_post),
+// exactly like Google's GSI redirect flow — same reasoning applies for why
+// this can't set a session cookie directly (see signOAuthSessionCode).
+export const appleLoginCallback = async (req, res) => {
+    const failUrl = `${process.env.FRONTEND_URL}/login?appleError=1`;
+    try {
+        const user = await verifyAndUpsertAppleUser(req.body.id_token, req.body.user);
+        const code = signOAuthSessionCode(user._id, "apple");
+        return res.redirect(`${process.env.FRONTEND_URL}/login?appleSessionCode=${code}`);
+    } catch (error) {
+        console.error("Apple login callback error:", error.message);
+        return res.redirect(failUrl);
+    }
+};
+
+// Completes appleLoginCallback's redirect hop — mirrors completeGoogleLogin.
+export const completeAppleLogin = async (req, res) => {
+    try {
+        const { code } = req.body || {};
+        if (!code) return res.status(400).json({ message: "Code is required" });
+
+        let userId;
+        try {
+            userId = verifyOAuthSessionCode(code, "apple");
         } catch {
             return res.status(401).json({ message: "Sign-in link expired, please try again" });
         }
@@ -778,7 +932,7 @@ export const getUserAndProfile = async (req, res) => {
         // req.userId is already a verified-to-exist user (see verifyToken) —
         // no need to re-fetch the User doc just to read its own id back.
         const userProfile = await Profile.findOne({ userId: req.userId })
-            .populate("userId", "name email username profilePicture coverPhoto createAt role googleId isPrivate pushEnabled quietHours");
+            .populate("userId", "name email username profilePicture coverPhoto createAt role googleId appleId isPrivate pushEnabled quietHours");
 
         if (!userProfile) {
             return res.status(404).json({ message: "profile not found" });

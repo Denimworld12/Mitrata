@@ -3,12 +3,13 @@ import { useRouter } from 'next/router'
 import React, { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import styles from './styles.module.css'
-import { loginUser, registerUser, verifyOtp, resendOtp, switchAccountAction, getAboutUser, verifyTwoFactorLogin, completeGoogleLogin } from '@/config/redux/action/authAction'
+import { loginUser, registerUser, verifyOtp, resendOtp, switchAccountAction, getAboutUser, verifyTwoFactorLogin, completeGoogleLogin, completeAppleLogin } from '@/config/redux/action/authAction'
 import { emptyMessage } from '@/config/redux/reducer/authReducer'
 import { getSavedAccounts } from '@/config/savedAccounts'
 import Button from '@/Components/ui/Button'
 import PasswordInput from '@/Components/ui/PasswordInput'
 import GoogleLoginButton from '@/Components/ui/GoogleLoginButton'
+import AppleLoginButton from '@/Components/ui/AppleLoginButton'
 import PageLoader from '@/Components/ui/PageLoader'
 
 const RESEND_COOLDOWN_S = 60;
@@ -32,7 +33,7 @@ function LoginComponent() {
   // that account has no password at all, so the normal email/password form
   // is a dead end for it; this instead surfaces just the Google button,
   // pre-aimed at the same account, one click instead of a form nobody can fill in.
-  const [googleReauthAccount, setGoogleReauthAccount] = useState(null);
+  const [oauthReauthAccount, setOauthReauthAccount] = useState(null);
 
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -62,6 +63,7 @@ function LoginComponent() {
   // completeGoogleLogin's comment) — only a one-time code, exchanged here
   // over a normal proxied request that DOES land the cookie correctly.
   const [googleAuthError, setGoogleAuthError] = useState(false);
+  const [appleAuthError, setAppleAuthError] = useState(false);
   useEffect(() => {
     if (!router.isReady) return;
     if (router.query.googleSessionCode) {
@@ -78,8 +80,25 @@ function LoginComponent() {
     } else if (router.query.googleError) {
       setGoogleAuthError(true);
       router.replace('/login', undefined, { shallow: true });
+    } else if (router.query.appleSessionCode) {
+      // Same exchange as Google's, just Apple's own redirect hop —
+      // see completeAppleLogin's comment for why this can't be a cookie
+      // set directly on that cross-origin response.
+      const code = String(router.query.appleSessionCode);
+      router.replace('/login', undefined, { shallow: true });
+      dispatch(completeAppleLogin(code)).then((result) => {
+        if (completeAppleLogin.fulfilled.match(result)) {
+          dispatch(getAboutUser());
+          router.push('/dashboard');
+        } else {
+          setAppleAuthError(true);
+        }
+      });
+    } else if (router.query.appleError) {
+      setAppleAuthError(true);
+      router.replace('/login', undefined, { shallow: true });
     }
-  }, [router.isReady, router.query.googleSessionCode, router.query.googleError]);
+  }, [router.isReady, router.query.googleSessionCode, router.query.googleError, router.query.appleSessionCode, router.query.appleError]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -116,12 +135,12 @@ function LoginComponent() {
       // Full reload, not a client-side push — see the identical note in
       // DashboardLayout's handleSwitchAccount for why.
       window.location.href = '/dashboard';
-    } else if (acc.googleId) {
+    } else if (acc.googleId || acc.appleId) {
       // No password exists for this account at all — dropping into the
       // email/password form here was a dead end that just looked like
       // "asking for a password" with nothing the user could type.
       setShowChooser(false);
-      setGoogleReauthAccount(acc);
+      setOauthReauthAccount(acc);
     } else {
       // That account's session actually expired — fall through to a normal,
       // prefilled sign-in instead of leaving them stuck.
@@ -217,7 +236,7 @@ function LoginComponent() {
         <div className={styles.cardContainer}>
           <div className={styles.cardContainer_left}>
             <p className={styles.cardHeading}>
-              {googleReauthAccount ? 'Sign in again' : authState.requires2FA ? 'Two-step verification' : verifyingEmail ? 'Verify your email' : showChooser ? 'Choose an account' : (userLoginMethod ? 'SignIn' : 'Signup')}
+              {oauthReauthAccount ? 'Sign in again' : authState.requires2FA ? 'Two-step verification' : verifyingEmail ? 'Verify your email' : showChooser ? 'Choose an account' : (userLoginMethod ? 'SignIn' : 'Signup')}
             </p>
 
             {/* General API Status Messages */}
@@ -231,6 +250,11 @@ function LoginComponent() {
                 Google sign-in failed. Please try again.
               </div>
             )}
+            {appleAuthError && (
+              <div className="text-sm mb-2.5 font-medium text-danger">
+                Apple sign-in failed. Please try again.
+              </div>
+            )}
 
             {/* Error specifically for Spaces */}
             {usernameError && !userLoginMethod && !verifyingEmail && (
@@ -239,23 +263,23 @@ function LoginComponent() {
                </div>
             )}
 
-            {googleReauthAccount ? (
+            {oauthReauthAccount ? (
               <div className={styles.inputContainer} style={{ textAlign: 'center' }}>
                 <img
-                  src={googleReauthAccount.profilePicture || '/default-avatar.svg'}
+                  src={oauthReauthAccount.profilePicture || '/default-avatar.svg'}
                   alt=""
                   style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', margin: '0 auto 12px' }}
                 />
                 <p className="text-sm mb-1" style={{ color: 'var(--mt-ink)', fontWeight: 600 }}>
-                  {googleReauthAccount.name}
+                  {oauthReauthAccount.name}
                 </p>
                 <p className="text-sm mb-4" style={{ color: 'var(--mt-ink2)' }}>
-                  Your saved session expired — sign in again with Google to continue as {googleReauthAccount.email}.
+                  Your saved session expired — sign in again with {oauthReauthAccount.appleId ? 'Apple' : 'Google'} to continue as {oauthReauthAccount.email}.
                 </p>
-                <GoogleLoginButton />
+                {oauthReauthAccount.appleId ? <AppleLoginButton /> : <GoogleLoginButton />}
                 <button
                   type="button"
-                  onClick={() => { setGoogleReauthAccount(null); setShowChooser(savedAccounts.length > 0); }}
+                  onClick={() => { setOauthReauthAccount(null); setShowChooser(savedAccounts.length > 0); }}
                   className="text-sm mt-3"
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mt-ink3)' }}
                 >
@@ -416,6 +440,9 @@ function LoginComponent() {
               </div>
 
               <GoogleLoginButton />
+              <div style={{ marginTop: 10 }}>
+                <AppleLoginButton />
+              </div>
             </div>
             )}
           </div>
@@ -424,7 +451,7 @@ function LoginComponent() {
             <img src="/brand/orb-violet.png" alt="" className={styles.rightOrb} />
             <div className={styles.rightContent}>
               <span className={styles.rightLogo} role="img" aria-label="Mitrata" />
-              {!showChooser && !verifyingEmail && !authState.requires2FA && !googleReauthAccount && (
+              {!showChooser && !verifyingEmail && !authState.requires2FA && !oauthReauthAccount && (
                 <>
                   <span>{userLoginMethod ? 'Create an account? ' : 'Already have an account? '}</span>
                   <span

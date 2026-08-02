@@ -78,6 +78,23 @@ export const completeGoogleLogin = createAsyncThunk(
     }
 )
 
+// Second half of the Apple redirect flow — mirrors completeGoogleLogin
+// exactly, see its comment for why a cookie can't be set on Apple's own
+// cross-origin redirect response either.
+export const completeAppleLogin = createAsyncThunk(
+    "user/completeAppleLogin",
+    async (code, thunkApi) => {
+        try {
+            const response = await clientServer.post('/auth/apple/complete', { code });
+            if (!response.data.token) return thunkApi.rejectWithValue({ message: "token not provided" });
+            startNewSession(response.data.token);
+            return thunkApi.fulfillWithValue(response.data.token)
+        } catch (error) {
+            return thunkApi.rejectWithValue(error.response?.data || { message: "Apple sign-in failed" })
+        }
+    }
+)
+
 export const getTwoFactorStatus = createAsyncThunk(
     "user/getTwoFactorStatus",
     async (_arg, thunkApi) => {

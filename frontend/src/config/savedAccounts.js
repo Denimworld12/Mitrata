@@ -24,11 +24,12 @@ export const rememberAccount = (user) => {
         name: user.name,
         username: user.username,
         profilePicture: user.profilePicture,
-        // Whether this account signed up/links via Google — a Google-only
-        // account has no password at all, so if the saved-session cookie
-        // ever needs re-auth, the fallback must not be a password field it's
-        // literally impossible to fill in.
+        // Whether this account signed up/links via Google or Apple — neither
+        // has a password at all, so if the saved-session cookie ever needs
+        // re-auth, the fallback must not be a password field it's literally
+        // impossible to fill in.
         googleId: user.googleId || null,
+        appleId: user.appleId || null,
     };
     const existing = getSavedAccounts().filter((a) => a.email !== entry.email);
     const next = [entry, ...existing].slice(0, MAX_ACCOUNTS);

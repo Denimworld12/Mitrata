@@ -1,6 +1,6 @@
 
 import multer from "multer";
-import { acceptConnectionRequest, downloadProfile, findSearchUser, getAllUserBasedOnUsername, getMyConnectionRequest, getUserAndProfile, login, logout, register, sendconnectionrequest, updateProfileData, updateUserProfile, updateAccountSettings, uploadCoverPhoto, uploadImage, uploadProfilePicture, whatAreMyConnection, searchUsers, getSuggestions, googleLogin, googleLoginCallback, refreshAccessToken, deleteMyAccount, switchAccount, registerFcmToken, unregisterFcmToken, blockUser, unblockUser, getBlockedUsers, verifyTwoFactorLogin, getTwoFactorStatus, setupTwoFactor, verifyTwoFactorSetup, disableTwoFactor, getSessions, revokeSession, revokeOtherSessions, completeGoogleLogin } from "../controllers/user.controller.js";
+import { acceptConnectionRequest, downloadProfile, findSearchUser, getAllUserBasedOnUsername, getMyConnectionRequest, getUserAndProfile, login, logout, register, sendconnectionrequest, updateProfileData, updateUserProfile, updateAccountSettings, uploadCoverPhoto, uploadImage, uploadProfilePicture, whatAreMyConnection, searchUsers, getSuggestions, googleLogin, googleLoginCallback, refreshAccessToken, deleteMyAccount, switchAccount, registerFcmToken, unregisterFcmToken, blockUser, unblockUser, getBlockedUsers, verifyTwoFactorLogin, getTwoFactorStatus, setupTwoFactor, verifyTwoFactorSetup, disableTwoFactor, getSessions, revokeSession, revokeOtherSessions, completeGoogleLogin, appleLoginCallback, completeAppleLogin, appleLogin } from "../controllers/user.controller.js";
 import { sendOtp, verifyOtp, resendOtp, resetPassword } from "../controllers/otp.controller.js";
 import { createReport } from "../controllers/admin.controller.js";
 import { Router } from "express"
@@ -18,6 +18,9 @@ router.route('/logout').post(logout);
 router.route('/auth/google').post(googleLogin);
 router.route('/auth/google/callback').post(googleLoginCallback);
 router.route('/auth/google/complete').post(completeGoogleLogin);
+router.route('/auth/apple').post(appleLogin);
+router.route('/auth/apple/callback').post(appleLoginCallback);
+router.route('/auth/apple/complete').post(completeAppleLogin);
 router.route('/auth/refresh').post(refreshAccessToken);
 router.route('/auth/send-otp').post(sendOtp);
 router.route('/auth/verify-otp').post(verifyOtp);

@@ -14,7 +14,7 @@ export default function TwoFactorPage() {
     const dispatch = useDispatch();
     const toast = useToast();
     const { user, twoFactorEnabled } = useSelector((state) => state.auth);
-    const hasPassword = !user?.userId?.googleId;
+    const hasPassword = !user?.userId?.googleId && !user?.userId?.appleId;
 
     const [loaded, setLoaded] = useState(false);
     const [setupData, setSetupData] = useState(null); // { secret, qrCodeDataUrl }
