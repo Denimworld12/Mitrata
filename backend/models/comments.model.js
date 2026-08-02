@@ -18,6 +18,10 @@ const commentSchema=new mongoose.Schema({
     body:{
         type:String,
         required:true
+    },
+    edited: {
+        type: Boolean,
+        default: false
     }
 
 // getComment_by_Post sorts by createdAt — without { timestamps: true } that

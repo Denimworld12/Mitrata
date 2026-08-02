@@ -7,14 +7,14 @@ import ReportMenu from '@/Components/ReportMenu';
 import EmptyState from '@/Components/ui/EmptyState';
 import PageLoader from '@/Components/ui/PageLoader';
 import BlastLoader from '@/Components/ui/BlastLoader';
-import { getPostsByUsername, deletePost, reactToPost, getAllComments, commentPost, toggleBookmark } from '@/config/redux/action/postAction';
+import { getPostsByUsername, deletePost, reactToPost, getAllComments, commentPost, editComment, deleteComment, toggleBookmark } from '@/config/redux/action/postAction';
 import { resetPostId } from '@/config/redux/reducer/postReducer';
 import { Base_Url } from '@/config';
 import { useToast } from '@/Components/Toast';
 import {
     ArrowLeft, Trash2, X, FileText,
     Heart, Flame, HandHeart, Lightbulb,
-    MessageCircle, Share2, Bookmark,
+    MessageCircle, Share2, Bookmark, Pencil, Check,
 } from 'lucide-react';
 
 // Same reaction set as the dashboard feed — this page shows the identical
@@ -92,13 +92,48 @@ export default function UserActivityPage() {
 
     const handleCommentSubmit = async () => {
         if (!commentText.trim()) return;
+        // commentPost's own thunk body already dispatches getAllComments to
+        // refresh the open modal, and its reducer case increments the post's
+        // commentCount directly — the extra getAllComments call and a full
+        // refreshData() (refetching this user's whole post list for one
+        // count) were both redundant on top of that.
         await dispatch(commentPost({
             postId: postState.postId,
             commentBody: commentText.trim()
         }));
         setCommentText("");
-        dispatch(getAllComments({ postId: postState.postId }));
-        refreshData();
+    };
+
+    const [editingCommentId, setEditingCommentId] = useState(null);
+    const [editCommentText, setEditCommentText] = useState("");
+
+    const handleStartEditComment = (comment) => {
+        setEditingCommentId(comment._id);
+        setEditCommentText(comment.body);
+    };
+
+    const handleCancelEditComment = () => {
+        setEditingCommentId(null);
+        setEditCommentText("");
+    };
+
+    const handleSaveEditComment = async () => {
+        if (!editCommentText.trim()) return;
+        const result = await dispatch(editComment({ commentId: editingCommentId, commentBody: editCommentText.trim() }));
+        if (editComment.fulfilled.match(result)) {
+            setEditingCommentId(null);
+            setEditCommentText("");
+        } else {
+            toast.error(result.payload?.message || "Failed to edit comment");
+        }
+    };
+
+    const handleDeleteComment = async (comment) => {
+        if (!window.confirm("Delete this comment?")) return;
+        const result = await dispatch(deleteComment({ commentId: comment._id, postId: postState.postId }));
+        if (!deleteComment.fulfilled.match(result)) {
+            toast.error(result.payload?.message || "Failed to delete comment");
+        }
     };
 
     const handleShare = (postId) => {
@@ -214,6 +249,7 @@ export default function UserActivityPage() {
                                     <div className={styles.actionGroup}>
                                         <div className={styles.actionBtn} onClick={() => dispatch(getAllComments({ postId: post._id }))}>
                                             <MessageCircle size={17} strokeWidth={1.8} />
+                                            {post.commentCount > 0 && <span>{post.commentCount}</span>}
                                         </div>
                                         <div className={styles.actionBtn} onClick={() => handleShare(post._id)}>
                                             <Share2 size={17} strokeWidth={1.8} />
@@ -245,19 +281,47 @@ export default function UserActivityPage() {
                             {postState.comments?.length === 0 ? (
                                 <p className={styles.noCommentsText}>No comments yet.</p>
                             ) : (
-                                [...postState.comments].reverse().map((item, i) => (
-                                    <div key={i} className={styles.singleCommentContainer}>
-                                        <img
-                                            className={styles.commentAvatar}
-                                            src={item?.userId?.profilePicture || "/default-avatar.svg"}
-                                            alt="avatar"
-                                        />
-                                        <div className={styles.singleComment}>
-                                            <span className={styles.commentUser}>{item?.userId?.username || "User"}</span>
-                                            <p className={styles.commentMsg}>{item.body}</p>
+                                [...postState.comments].reverse().map((item, i) => {
+                                    const isOwnComment = item?.userId?._id === authState.user?.userId?._id;
+                                    const isEditing = editingCommentId === item._id;
+                                    return (
+                                        <div key={i} className={styles.singleCommentContainer}>
+                                            <img
+                                                className={styles.commentAvatar}
+                                                src={item?.userId?.profilePicture || "/default-avatar.svg"}
+                                                alt="avatar"
+                                            />
+                                            <div className={styles.singleComment} style={{ flex: 1 }}>
+                                                <span className={styles.commentUser}>{item?.userId?.username || "User"}</span>
+                                                {isEditing ? (
+                                                    <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}>
+                                                        <input
+                                                            type="text"
+                                                            value={editCommentText}
+                                                            onChange={(e) => setEditCommentText(e.target.value)}
+                                                            onKeyDown={(e) => e.key === "Enter" && handleSaveEditComment()}
+                                                            autoFocus
+                                                            style={{ flex: 1, minWidth: 0 }}
+                                                        />
+                                                        <Check size={16} style={{ cursor: "pointer", flexShrink: 0 }} onClick={handleSaveEditComment} />
+                                                        <X size={16} style={{ cursor: "pointer", flexShrink: 0 }} onClick={handleCancelEditComment} />
+                                                    </div>
+                                                ) : (
+                                                    <p className={styles.commentMsg}>
+                                                        {item.body}
+                                                        {item.edited && <span style={{ fontSize: 11, opacity: 0.6, marginLeft: 6 }}>(edited)</span>}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            {isOwnComment && !isEditing && (
+                                                <div style={{ display: "flex", gap: 8, flexShrink: 0, alignSelf: "flex-start" }}>
+                                                    <Pencil size={14} style={{ cursor: "pointer", opacity: 0.7 }} onClick={() => handleStartEditComment(item)} />
+                                                    <Trash2 size={14} style={{ cursor: "pointer", opacity: 0.7 }} onClick={() => handleDeleteComment(item)} />
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-                                ))
+                                    );
+                                })
                             )}
                         </div>
                         <div className={styles.commentInputBar}>
