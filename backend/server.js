@@ -16,6 +16,7 @@ import adminRoutes from "./routes/admin.routes.js";
 import storyRoutes from "./routes/story.routes.js";
 import { Server } from "socket.io";
 import http from "http";
+import { sendVoipPush } from "./utils/voipPush.js";
 
 const app = express();
 // Render terminates TLS and proxies requests through, setting X-Forwarded-For.
@@ -165,6 +166,15 @@ app.use('/api', adminRoutes);
 const onlineUsers = new Map(); // userId -> Set of socketIds
 app.set("onlineUsers", onlineUsers); // shared reference so routes can read live presence count
 
+// A call placed while the callee's app is fully killed (no live socket) gets
+// a VoIP push instead — this holds the offer just long enough for that push
+// to wake the app and reconnect its socket, at which point it's redelivered
+// as a normal "incomingCall" below. Single-process in-memory map: fine for
+// this deployment's one instance, would need a shared store (Redis) behind
+// a load balancer.
+const pendingCalls = new Map(); // receiverId -> { callerId, callerInfo, offer, isVideo, timeout }
+const PENDING_CALL_TTL_MS = 25_000; // matches the mobile client's own ring timeout
+
 // REST endpoint to get online users list
 app.get("/api/online-users", (req, res) => {
   const onlineList = Array.from(onlineUsers.keys());
@@ -204,6 +214,21 @@ io.on("connection", (socket) => {
 
   // Send current online users list on connect
   socket.emit("onlineUsersList", Array.from(onlineUsers.keys()));
+
+  // A VoIP push woke this app up specifically to take a call — deliver the
+  // offer that was waiting for it, same event/shape as the live-socket path
+  // below, so the client needs no special handling for "woken from killed".
+  const pending = pendingCalls.get(userId);
+  if (pending) {
+    clearTimeout(pending.timeout);
+    pendingCalls.delete(userId);
+    socket.emit("incomingCall", {
+      callerId: pending.callerId,
+      callerInfo: pending.callerInfo,
+      offer: pending.offer,
+      isVideo: pending.isVideo
+    });
+  }
 
   socket.on("joinRoom", (roomUserId) => {
     // Users can only join their own room
@@ -273,7 +298,29 @@ io.on("connection", (socket) => {
         onlineUsers.delete(receiverId);
         io.emit("userOffline", { userId: receiverId });
       }
-      socket.emit("callFailed", { targetId: receiverId, reason: "offline" });
+
+      // No live socket doesn't necessarily mean unreachable — a VoIP push
+      // can still wake a killed iOS app. Hold the offer briefly so it can
+      // be redelivered the moment that reconnect happens (see the
+      // pendingCalls check right after socket.join(userId) above); if nothing
+      // reconnects in time this just expires, same net effect as the
+      // immediate callFailed this replaces.
+      const existing = pendingCalls.get(receiverId);
+      if (existing) clearTimeout(existing.timeout);
+      const timeout = setTimeout(() => pendingCalls.delete(receiverId), PENDING_CALL_TTL_MS);
+      pendingCalls.set(receiverId, {
+        callerId: userId,
+        callerInfo: data.callerInfo,
+        offer: data.offer,
+        isVideo: !!data.isVideo,
+        timeout
+      });
+      sendVoipPush(receiverId, {
+        callerId: userId,
+        callerInfo: data.callerInfo,
+        offer: data.offer,
+        isVideo: data.isVideo
+      }).catch((err) => console.error("sendVoipPush failed:", err.message));
       return;
     }
 

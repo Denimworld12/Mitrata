@@ -1603,3 +1603,27 @@ export const unregisterFcmToken = async (req, res) => {
         return res.status(500).json({ message: error.message });
     }
 };
+
+// PushKit token (iOS only) — see utils/voipPush.js for why this is separate
+// from the FCM tokens above.
+export const registerVoipToken = async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token) return res.status(400).json({ message: "token is required" });
+        await User.updateOne({ _id: req.userId }, { $addToSet: { voipTokens: token } });
+        return res.json({ message: "Token registered" });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+export const unregisterVoipToken = async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token) return res.status(400).json({ message: "token is required" });
+        await User.updateOne({ _id: req.userId }, { $pull: { voipTokens: token } });
+        return res.json({ message: "Token unregistered" });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
