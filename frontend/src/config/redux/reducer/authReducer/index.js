@@ -270,6 +270,7 @@ const authSlice = createSlice({
                     if (action.payload.isPrivate !== undefined) state.user.userId.isPrivate = action.payload.isPrivate;
                     if (action.payload.pushEnabled !== undefined) state.user.userId.pushEnabled = action.payload.pushEnabled;
                     if (action.payload.quietHours !== undefined) state.user.userId.quietHours = action.payload.quietHours;
+                    if (action.payload.onboarded !== undefined) state.user.userId.onboarded = action.payload.onboarded;
                 }
             })
             .addCase(getBlockedUsers.fulfilled, (state, action) => {
