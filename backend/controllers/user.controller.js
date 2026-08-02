@@ -57,13 +57,19 @@ export const register = async (req, res) => {
         if (!usernameRegex.test(username)) {
             return res.status(400).json({ message: "Username must be 3-30 characters, alphanumeric and underscores only" });
         }
+        // Lowercased before anything else touches it — otherwise "JohnDoe"
+        // and "johndoe" pass the uniqueness check below as two different
+        // values (Mongo string comparison is case-sensitive) and register as
+        // separate accounts, and whatever case someone happened to type
+        // becomes permanent everywhere it's displayed.
+        const normalizedUsername = username.toLowerCase();
 
         const user = await User.findOne({ email });
         if (user) {
             return res.status(400).json({ message: "User already exists" });
         }
 
-        const existingUsername = await User.findOne({ username });
+        const existingUsername = await User.findOne({ username: normalizedUsername });
         if (existingUsername) {
             return res.status(400).json({ message: "Username already taken" });
         }
@@ -73,7 +79,7 @@ export const register = async (req, res) => {
             name,
             email,
             password: HashedPassword,
-            username
+            username: normalizedUsername
         })
         await newUser.save();
         const profile = new Profile({
@@ -355,7 +361,7 @@ const verifyAndUpsertGoogleUser = async (idToken) => {
 
     let user = await User.findOne({ email: payload.email });
     if (!user) {
-        const usernameBase = payload.email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "");
+        const usernameBase = payload.email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase();
         let username = usernameBase;
         let suffix = 0;
         while (await User.findOne({ username })) {
@@ -525,7 +531,7 @@ const verifyAndUpsertAppleUser = async (idToken, appleUserJson) => {
 
     let user = await User.findOne({ $or: [{ appleId: payload.sub }, { email: payload.email }] });
     if (!user) {
-        const usernameBase = (payload.email || `apple${payload.sub}`).split("@")[0].replace(/[^a-zA-Z0-9_]/g, "");
+        const usernameBase = (payload.email || `apple${payload.sub}`).split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").toLowerCase();
         let username = usernameBase;
         let suffix = 0;
         while (await User.findOne({ username })) {
@@ -829,14 +835,19 @@ export const updateAccountSettings = async (req, res) => {
         const user = await User.findById(req.userId);
         if (!user) return res.status(404).json({ message: "User not found" });
 
-        if (username !== undefined && username !== user.username) {
+        if (username !== undefined) {
             const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/;
             if (!usernameRegex.test(username)) {
                 return res.status(400).json({ message: "Username must be 3-30 characters, alphanumeric and underscores only" });
             }
-            const taken = await User.findOne({ username, _id: { $ne: user._id } });
-            if (taken) return res.status(400).json({ message: "Username already taken" });
-            user.username = username;
+            // Lowercased before the "did it actually change" / uniqueness
+            // checks — same reasoning as register's normalizedUsername.
+            const normalizedUsername = username.toLowerCase();
+            if (normalizedUsername !== user.username) {
+                const taken = await User.findOne({ username: normalizedUsername, _id: { $ne: user._id } });
+                if (taken) return res.status(400).json({ message: "Username already taken" });
+                user.username = normalizedUsername;
+            }
         }
 
         if (isPrivate !== undefined) user.isPrivate = !!isPrivate;

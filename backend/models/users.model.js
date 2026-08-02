@@ -9,7 +9,14 @@ const userSchema = new mongoose.Schema({
     username: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
+        // Backstop, not the primary fix — the actual normalization happens
+        // in the controllers before the uniqueness check runs (this alone
+        // wouldn't stop "JohnDoe" and "johndoe" both getting through as
+        // "different" values right up until save). This just guarantees any
+        // future write path that forgets to normalize still ends up
+        // lowercase in the database.
+        lowercase: true
     },
     email: {
         type: String,
