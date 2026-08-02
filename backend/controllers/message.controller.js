@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Message from "../models/message.model.js";
 import Notification from "../models/notification.model.js";
 import ConnectionRequest from "../models/connection.model.js";
+import ConversationPref from "../models/conversationPref.model.js";
 import { v2 as cloudinary } from "cloudinary";
 import { sendPush } from "../utils/push.js";
 
@@ -406,6 +407,16 @@ export const getConversations = async (req, res) => {
             },
             { $unwind: "$user" },
             {
+                $lookup: {
+                    from: "conversationprefs",
+                    let: { peerId: "$_id" },
+                    pipeline: [
+                        { $match: { $expr: { $and: [{ $eq: ["$userId", myId] }, { $eq: ["$peerId", "$$peerId"] }] } } }
+                    ],
+                    as: "pref"
+                }
+            },
+            {
                 $project: {
                     userId: "$user._id",
                     name: "$user.name",
@@ -417,10 +428,14 @@ export const getConversations = async (req, res) => {
                         createdAt: "$lastMessage.createdAt",
                         isMine: { $eq: ["$lastMessage.sender", myId] }
                     },
-                    unreadCount: 1
+                    unreadCount: 1,
+                    pinned: { $ifNull: [{ $arrayElemAt: ["$pref.pinned", 0] }, false] },
+                    muted: { $ifNull: [{ $arrayElemAt: ["$pref.muted", 0] }, false] }
                 }
             },
-            { $sort: { "lastMessage.createdAt": -1 } }
+            // Pinned conversations float to the top, most-recent-first within
+            // each group — matches the "Pin" swipe action's whole point.
+            { $sort: { pinned: -1, "lastMessage.createdAt": -1 } }
         ]);
 
         res.status(200).json({ conversations });
@@ -453,5 +468,38 @@ export const markMessagesRead = async (req, res) => {
         res.status(200).json({ message: "Messages marked as read", modifiedCount: result.modifiedCount });
     } catch (error) {
         res.status(500).json({ message: "Error marking messages read", error: error.message });
+    }
+};
+// Toggles pin/mute for one conversation (identified by the other user's
+// id) — upserts since most peers won't have a pref doc yet.
+export const togglePinConversation = async (req, res) => {
+    try {
+        const { peerId } = req.params;
+        const existing = await ConversationPref.findOne({ userId: req.userId, peerId });
+        const pinned = !existing?.pinned;
+        await ConversationPref.findOneAndUpdate(
+            { userId: req.userId, peerId },
+            { $set: { pinned } },
+            { upsert: true }
+        );
+        res.status(200).json({ pinned });
+    } catch (error) {
+        res.status(500).json({ message: "Error toggling pin", error: error.message });
+    }
+};
+
+export const toggleMuteConversation = async (req, res) => {
+    try {
+        const { peerId } = req.params;
+        const existing = await ConversationPref.findOne({ userId: req.userId, peerId });
+        const muted = !existing?.muted;
+        await ConversationPref.findOneAndUpdate(
+            { userId: req.userId, peerId },
+            { $set: { muted } },
+            { upsert: true }
+        );
+        res.status(200).json({ muted });
+    } catch (error) {
+        res.status(500).json({ message: "Error toggling mute", error: error.message });
     }
 };
