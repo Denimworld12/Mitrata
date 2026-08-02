@@ -1,6 +1,6 @@
 
 import multer from "multer";
-import { acceptConnectionRequest, downloadProfile, findSearchUser, getAllUserBasedOnUsername, getMyConnectionRequest, getUserAndProfile, login, logout, register, sendconnectionrequest, updateProfileData, updateUserProfile, updateAccountSettings, uploadCoverPhoto, uploadImage, uploadProfilePicture, whatAreMyConnection, searchUsers, getSuggestions, googleLogin, googleLoginCallback, refreshAccessToken, deleteMyAccount, switchAccount, registerFcmToken, unregisterFcmToken, blockUser, unblockUser, getBlockedUsers, verifyTwoFactorLogin, getTwoFactorStatus, setupTwoFactor, verifyTwoFactorSetup, disableTwoFactor, getSessions, revokeSession, revokeOtherSessions, completeGoogleLogin, appleLoginCallback, completeAppleLogin, appleLogin, appleAndroidCallback } from "../controllers/user.controller.js";
+import { acceptConnectionRequest, downloadProfile, findSearchUser, getAllUserBasedOnUsername, getMyConnectionRequest, getUserAndProfile, login, logout, register, sendconnectionrequest, updateProfileData, updateUserProfile, updateAccountSettings, uploadCoverPhoto, uploadImage, uploadProfilePicture, whatAreMyConnection, searchUsers, getSuggestions, googleLogin, googleLoginCallback, refreshAccessToken, deleteMyAccount, switchAccount, registerFcmToken, unregisterFcmToken, registerVoipToken, unregisterVoipToken, blockUser, unblockUser, getBlockedUsers, verifyTwoFactorLogin, getTwoFactorStatus, setupTwoFactor, verifyTwoFactorSetup, disableTwoFactor, getSessions, revokeSession, revokeOtherSessions, completeGoogleLogin, appleLoginCallback, completeAppleLogin, appleLogin, appleAndroidCallback } from "../controllers/user.controller.js";
 import { sendOtp, verifyOtp, resendOtp, resetPassword } from "../controllers/otp.controller.js";
 import { createReport } from "../controllers/admin.controller.js";
 import { Router } from "express"
@@ -115,5 +115,7 @@ router.route('/user/delete_account').post(verifyToken, deleteMyAccount);
 // Push notifications (FCM)
 router.route('/user/fcm-token').post(verifyToken, registerFcmToken);
 router.route('/user/fcm-token').delete(verifyToken, unregisterFcmToken);
+router.route('/user/voip-token').post(verifyToken, registerVoipToken);
+router.route('/user/voip-token').delete(verifyToken, unregisterVoipToken);
 
 export default router;

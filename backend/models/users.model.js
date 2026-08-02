@@ -79,6 +79,13 @@ const userSchema = new mongoose.Schema({
         type: [String],
         default: []
     },
+    // PushKit device tokens (iOS only) — separate from fcmTokens because
+    // VoIP pushes go through a dedicated cert-based APNs connection, not
+    // Firebase, and are how an incoming call wakes a fully-killed app.
+    voipTokens: {
+        type: [String],
+        default: []
+    },
     // Private account: profile/posts are only visible to accepted
     // connections; everyone else sees a limited "this account is private"
     // card. Doesn't affect search visibility (same as Instagram/X — you can

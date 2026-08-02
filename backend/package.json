@@ -4,6 +4,7 @@
   "main": "server.js",
   "type": "module",
   "dependencies": {
+    "@parse/node-apn": "^8.1.0",
     "accepts": "^2.0.0",
     "ajv": "^6.12.6",
     "append-field": "^1.0.0",
