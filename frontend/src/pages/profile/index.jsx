@@ -582,7 +582,11 @@ export default function Profile() {
                   <label>Email</label>
                   <input type="email" value={userProfile?.userId?.email || ''} disabled />
                   <p className={styles.fieldHint}>
-                    {userProfile?.userId?.googleId ? "Managed by your Google account" : "Contact support to change your email"}
+                    {userProfile?.userId?.googleId
+                      ? "Managed by your Google account"
+                      : userProfile?.userId?.appleId
+                        ? "Managed by your Apple ID"
+                        : "Contact support to change your email"}
                   </p>
                 </div>
                 <div className={styles.formGroup}>

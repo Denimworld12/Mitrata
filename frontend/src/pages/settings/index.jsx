@@ -177,7 +177,7 @@ export default function Settings() {
                         sub="Name, username, bio, experience, education"
                         onClick={() => router.push('/profile')}
                     />
-                    {!user?.userId?.googleId && (
+                    {!user?.userId?.googleId && !user?.userId?.appleId && (
                         <SettingsItem
                             icon={KeyRound}
                             label="Password"

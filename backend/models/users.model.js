@@ -26,9 +26,13 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: function () { return !this.googleId; }
+        required: function () { return !this.googleId && !this.appleId; }
     },
     googleId: {
+        type: String,
+        default: null
+    },
+    appleId: {
         type: String,
         default: null
     },

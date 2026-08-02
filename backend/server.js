@@ -67,14 +67,15 @@ app.use(helmet({
   // back to this origin — the default "same-origin" COOP silently blocks that.
   crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
 }));
-// Google's redirect-mode sign-in POSTs here as a real top-level browser
-// navigation, not a JS fetch/XHR — browsers send a literal Origin: "null"
-// for that kind of cross-site form submission, which the origin check above
-// (correctly) rejects for everything else. CORS was never relevant to this
-// route in the first place: nothing reads the response via JS, so there's
-// nothing for a CORS header to protect here.
+// Google's and Apple's redirect-mode sign-in both POST here as a real
+// top-level browser navigation, not a JS fetch/XHR — browsers send a literal
+// Origin: "null" for that kind of cross-site form submission, which the
+// origin check above (correctly) rejects for everything else. CORS was
+// never relevant to either route in the first place: nothing reads the
+// response via JS, so there's nothing for a CORS header to protect here.
+const CORS_EXEMPT_PATHS = new Set(["/api/auth/google/callback", "/api/auth/apple/callback"]);
 app.use((req, res, next) => {
-  if (req.path === "/api/auth/google/callback") return next();
+  if (CORS_EXEMPT_PATHS.has(req.path)) return next();
   return cors(corsOptions)(req, res, next);
 });
 app.use(cookieParser());
@@ -104,6 +105,7 @@ const authLimiter = rateLimit({
 app.use("/api/login", authLimiter);
 app.use("/api/register", authLimiter);
 app.use("/api/auth/google", authLimiter);
+app.use("/api/auth/apple", authLimiter);
 app.use("/api/auth/2fa/verify-login", authLimiter); // guesses a 6-digit code — same budget as password guessing
 
 // Session upkeep, not credential guessing — generous ceiling just to blunt

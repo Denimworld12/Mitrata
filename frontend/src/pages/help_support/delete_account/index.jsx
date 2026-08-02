@@ -25,7 +25,7 @@ export default function DeleteAccountPage() {
     const [confirmText, setConfirmText] = useState('');
     const [deleting, setDeleting] = useState(false);
 
-    const hasPassword = !user?.userId?.googleId;
+    const hasPassword = !user?.userId?.googleId && !user?.userId?.appleId;
 
     const handleDelete = async () => {
         if (confirmText !== DELETE_CONFIRM_WORD) return;
