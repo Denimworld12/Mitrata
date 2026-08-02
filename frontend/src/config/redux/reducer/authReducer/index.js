@@ -249,8 +249,11 @@ const authSlice = createSlice({
             .addCase(updateUserProfile.fulfilled, (state, action) => {
                 state.isLoading = false;
                 state.isSuccess = true;
-                // Update the local user object with the new Cloudinary path
-                if (state.user && state.user.userId) {
+                // Update the local user object with the new Cloudinary path —
+                // guarded because this endpoint is also used for
+                // bio/work/education updates that don't return a
+                // profilePicture, which would otherwise wipe out the real one.
+                if (state.user && state.user.userId && action.payload.profilePicture !== undefined) {
                     state.user.userId.profilePicture = action.payload.profilePicture;
                 }
                 state.message = "Profile picture updated!";
@@ -266,6 +269,7 @@ const authSlice = createSlice({
             })
             .addCase(updateAccountSettings.fulfilled, (state, action) => {
                 if (state.user?.userId) {
+                    if (action.payload.name !== undefined) state.user.userId.name = action.payload.name;
                     if (action.payload.username !== undefined) state.user.userId.username = action.payload.username;
                     if (action.payload.isPrivate !== undefined) state.user.userId.isPrivate = action.payload.isPrivate;
                     if (action.payload.pushEnabled !== undefined) state.user.userId.pushEnabled = action.payload.pushEnabled;
