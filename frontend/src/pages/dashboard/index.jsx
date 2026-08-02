@@ -3,7 +3,9 @@ import { useToast } from "@/Components/Toast";
 import {
   commentPost,
   createPost,
+  deleteComment,
   deletePost,
+  editComment,
   getAllComments,
   getAllPosts,
   reactToPost,
@@ -41,6 +43,8 @@ import {
   Bookmark,
   X,
   Plus,
+  Pencil,
+  Check,
 } from "lucide-react";
 
 const REACTIONS = [
@@ -253,6 +257,11 @@ export default function Dashboard() {
     if (!commentText.trim()) return;
     setIsCommenting(true);
     try {
+      // commentPost's own thunk body already dispatches getAllComments to
+      // refresh the open modal, and its reducer case increments the post's
+      // commentCount directly — a second getAllComments call and a full
+      // handleRefresh() (refetching the entire feed just to reflect one
+      // post's new count) were both redundant on top of that.
       await dispatch(
         commentPost({
           postId: postState.postId,
@@ -260,10 +269,40 @@ export default function Dashboard() {
         })
       );
       setCommentText("");
-      await dispatch(getAllComments({ postId: postState.postId }));
-      handleRefresh(); // Updates the comment count on the main card
     } finally {
       setIsCommenting(false);
+    }
+  };
+
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editCommentText, setEditCommentText] = useState("");
+
+  const handleStartEditComment = (comment) => {
+    setEditingCommentId(comment._id);
+    setEditCommentText(comment.body);
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditCommentText("");
+  };
+
+  const handleSaveEditComment = async () => {
+    if (!editCommentText.trim()) return;
+    const result = await dispatch(editComment({ commentId: editingCommentId, commentBody: editCommentText.trim() }));
+    if (editComment.fulfilled.match(result)) {
+      setEditingCommentId(null);
+      setEditCommentText("");
+    } else {
+      toast.error(result.payload?.message || "Failed to edit comment");
+    }
+  };
+
+  const handleDeleteComment = async (comment) => {
+    if (!window.confirm("Delete this comment?")) return;
+    const result = await dispatch(deleteComment({ commentId: comment._id, postId: postState.postId }));
+    if (!deleteComment.fulfilled.match(result)) {
+      toast.error(result.payload?.message || "Failed to delete comment");
     }
   };
 
@@ -672,6 +711,7 @@ export default function Dashboard() {
                           className={styles.actionBtn}
                         >
                           <MessageCircle />
+                          {post.commentCount > 0 && <span>{post.commentCount}</span>}
                         </div>
 
                         {/* SHARE */}
@@ -743,6 +783,8 @@ export default function Dashboard() {
                   {/* Reverse comments list for newest first display (if API doesn't do it) */}
                   {postState.comments?.length > 0 &&
                     [...postState.comments].reverse().map((item, i) => {
+                      const isOwnComment = item?.userId?._id === authState.user?.userId?._id;
+                      const isEditing = editingCommentId === item._id;
                       return (
                         <div key={i} className={styles.singleCommentContainer}>
                           {" "}
@@ -754,12 +796,39 @@ export default function Dashboard() {
                             alt={`${item?.userId?.username}'s profile`}
                           />
                           {/* 2. Comment Content */}
-                          <div className={styles.singleComment}>
+                          <div className={styles.singleComment} style={{ flex: 1 }}>
                             <span className={styles.commentUser}>
                               {item?.userId?.username || "User"}
                             </span>
-                            <p className={styles.commentMsg}>{item.body}</p>
+                            {isEditing ? (
+                              <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}>
+                                <input
+                                  type="text"
+                                  value={editCommentText}
+                                  onChange={(e) => setEditCommentText(e.target.value)}
+                                  onKeyDown={(e) => e.key === "Enter" && handleSaveEditComment()}
+                                  autoFocus
+                                  style={{ flex: 1, minWidth: 0 }}
+                                />
+                                <Check size={16} style={{ cursor: "pointer", flexShrink: 0 }} onClick={handleSaveEditComment} />
+                                <X size={16} style={{ cursor: "pointer", flexShrink: 0 }} onClick={handleCancelEditComment} />
+                              </div>
+                            ) : (
+                              <p className={styles.commentMsg}>
+                                {item.body}
+                                {item.edited && (
+                                  <span style={{ fontSize: 11, opacity: 0.6, marginLeft: 6 }}>(edited)</span>
+                                )}
+                              </p>
+                            )}
                           </div>
+                          {/* Own comments only — edit/delete */}
+                          {isOwnComment && !isEditing && (
+                            <div style={{ display: "flex", gap: 8, flexShrink: 0, alignSelf: "flex-start" }}>
+                              <Pencil size={14} style={{ cursor: "pointer", opacity: 0.7 }} onClick={() => handleStartEditComment(item)} />
+                              <Trash2 size={14} style={{ cursor: "pointer", opacity: 0.7 }} onClick={() => handleDeleteComment(item)} />
+                            </div>
+                          )}
                         </div>
                       );
                     })}

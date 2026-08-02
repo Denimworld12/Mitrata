@@ -184,8 +184,11 @@ function LoginComponent() {
       setUsernameError("");
     }
 
-    // Strictly remove all spaces immediately
-    const sanitizedValue = val.replace(/\s/g, "");
+    // Strictly remove all spaces immediately, and lowercase as you type —
+    // the backend normalizes anyway (see register's normalizedUsername), but
+    // showing "JohnDoe" for a moment then having it become "johndoe" only
+    // after submit reads as a bug. This way what you see is what gets saved.
+    const sanitizedValue = val.replace(/\s/g, "").toLowerCase();
     setUsername(sanitizedValue);
   };
 

@@ -58,6 +58,25 @@ const summarise = (reactions, userId) => {
   };
 };
 
+// One aggregate query for however many posts are being returned, not one
+// countDocuments per post — the feed/profile-posts endpoints return a whole
+// page at once, and N+1 comment-count queries would be the same mistake the
+// N+1 audit already caught elsewhere in this codebase (see connection
+// requests). Only ever called on an already-paginated slice (~20 posts),
+// never the full ranking pool.
+const attachCommentCounts = async (posts) => {
+  if (posts.length === 0) return posts;
+  const counts = await Comment.aggregate([
+    { $match: { post_Id: { $in: posts.map((p) => p._id) } } },
+    { $group: { _id: "$post_Id", count: { $sum: 1 } } },
+  ]);
+  const countByPostId = new Map(counts.map((c) => [c._id.toString(), c.count]));
+  return posts.map((post) => ({
+    ...post,
+    commentCount: countByPostId.get(post._id.toString()) || 0,
+  }));
+};
+
 export const activecheck = async (req, res) => {
   return res.status(200).json({ message: "Running route post" });
 };
@@ -190,7 +209,7 @@ export const getAllPosts = async (req, res) => {
     const paginatedPosts = scoredPosts.slice(skip, skip + limit);
 
     // Remove internal score from response
-    const formattedPosts = paginatedPosts.map(({ _score, ...post }) => post);
+    const formattedPosts = await attachCommentCounts(paginatedPosts.map(({ _score, ...post }) => post));
 
     const effectiveTotal = Math.min(totalMatching, RANKING_POOL_SIZE);
 
@@ -256,10 +275,10 @@ export const getPostsByUsername = async (req, res) => {
       Post.countDocuments(query)
     ]);
 
-    const formattedPosts = posts.map((post) => ({
+    const formattedPosts = await attachCommentCounts(posts.map((post) => ({
       ...post,
       ...summarise(post.reactions, requesterId),
-    }));
+    })));
 
     return res.status(200).json({
       posts: formattedPosts,
@@ -353,6 +372,33 @@ export const getComment_by_Post = async (req, res) => {
       .lean();
 
     return res.status(200).json({ comments });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const editComment = async (req, res) => {
+  const { comment_id, commentBody } = req.body;
+  try {
+    if (!commentBody || !commentBody.trim()) {
+      return res.status(400).json({ message: "Comment body is required" });
+    }
+
+    const comment = await Comment.findOne({ _id: comment_id });
+    if (!comment) return res.status(400).json({ message: "Comment not found" });
+
+    // Same ownership rule as delete — only the author can edit their own
+    // comment, checked the same way.
+    if (comment.userId.toString() !== req.userId.toString()) {
+      return res.status(403).json({ message: "Unauthorized — not your comment" });
+    }
+
+    comment.body = commentBody.trim();
+    comment.edited = true;
+    await comment.save();
+    await comment.populate("userId", "username name profilePicture");
+
+    return res.status(200).json({ message: "comment updated", comment });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -567,11 +613,11 @@ export const getBookmarkedPosts = async (req, res) => {
       .limit(300)
       .lean();
 
-    const formatted = posts.map((post) => ({
+    const formatted = await attachCommentCounts(posts.map((post) => ({
       ...post,
       ...summarise(post.reactions, req.userId),
       bookmarked: true,
-    }));
+    })));
 
     return res.status(200).json({ posts: formatted });
   } catch (error) {
@@ -635,10 +681,10 @@ export const getLikedPosts = async (req, res) => {
       .limit(300)
       .lean();
 
-    const formatted = posts.map((post) => ({
+    const formatted = await attachCommentCounts(posts.map((post) => ({
       ...post,
       ...summarise(post.reactions, userId),
-    }));
+    })));
 
     return res.status(200).json({ posts: formatted });
   } catch (error) {

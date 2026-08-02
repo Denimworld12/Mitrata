@@ -572,7 +572,11 @@ export default function Profile() {
                     value={formData.username}
                     onChange={(e) => {
                       setUsernameError("");
-                      updateForm({ ...formData, username: e.target.value.replace(/\s/g, '') });
+                      // Lowercased as you type — the backend normalizes
+                      // regardless (see updateAccountSettings), but showing
+                      // "JohnDoe" only to have it silently become "johndoe"
+                      // after save reads as a bug, not a feature.
+                      updateForm({ ...formData, username: e.target.value.replace(/\s/g, '').toLowerCase() });
                     }}
                     placeholder="username"
                   />

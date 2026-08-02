@@ -170,12 +170,39 @@ export const commentPost = createAsyncThunk(
             })
             thunkapi.dispatch(getAllComments({ postId }));
             if (response.status === 200) {
-                return thunkapi.fulfillWithValue("Comment added successfully")
+                return thunkapi.fulfillWithValue({ postId })
             } else {
                 return thunkapi.rejectWithValue("Comment not added")
             }
         } catch (error) {
             return thunkapi.rejectWithValue(error.response?.data || { message: "Comment failed" })
+        }
+    }
+)
+
+export const editComment = createAsyncThunk(
+    'post/editComment',
+    async ({ commentId, commentBody }, thunkapi) => {
+        try {
+            const response = await clientServer.patch('/edit_comment', {
+                comment_id: commentId,
+                commentBody
+            })
+            return thunkapi.fulfillWithValue(response.data.comment)
+        } catch (error) {
+            return thunkapi.rejectWithValue(error.response?.data || { message: "Failed to edit comment" })
+        }
+    }
+)
+
+export const deleteComment = createAsyncThunk(
+    'post/deleteComment',
+    async ({ commentId, postId }, thunkapi) => {
+        try {
+            await clientServer.delete('/delete_comments', { data: { comment_id: commentId } })
+            return thunkapi.fulfillWithValue({ commentId, postId })
+        } catch (error) {
+            return thunkapi.rejectWithValue(error.response?.data || { message: "Failed to delete comment" })
         }
     }
 )

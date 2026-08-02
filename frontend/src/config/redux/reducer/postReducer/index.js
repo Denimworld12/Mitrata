@@ -1,5 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { commentPost, createPost, getAllComments, getAllPosts, getBookmarkedPosts, getLikedPosts, getPostsByUsername, reactToPost, toggleBookmark } from '../../action/postAction';
+import { commentPost, createPost, deleteComment, editComment, getAllComments, getAllPosts, getBookmarkedPosts, getLikedPosts, getPostsByUsername, reactToPost, toggleBookmark } from '../../action/postAction';
 
 
 
@@ -90,9 +90,17 @@ const postSlice = createSlice({
                 // Keep postId until fulfillment/rejection to prevent modal flicker
             })
             .addCase(commentPost.fulfilled, (state, action) => {
-                state.message = action.payload
                 state.isLoading = false
                 state.isError = false
+                // The count badge next to the comment icon (post.commentCount)
+                // — getAllComments (also dispatched by this thunk) refreshes
+                // the open modal's list, but that's a different array and
+                // wouldn't touch the count sitting on the post itself.
+                const { postId } = action.payload;
+                for (const list of [state.posts, state.userPosts]) {
+                    const post = list.find((p) => p._id === postId);
+                    if (post) post.commentCount = (post.commentCount || 0) + 1;
+                }
             })
             .addCase(commentPost.rejected, (state, action) => {
                 state.message = action.payload
@@ -100,6 +108,27 @@ const postSlice = createSlice({
                 state.isError = true
             }
             )
+            .addCase(editComment.fulfilled, (state, action) => {
+                const updated = action.payload;
+                const idx = state.comments.findIndex((c) => c._id === updated._id);
+                if (idx !== -1) state.comments[idx] = updated;
+            })
+            .addCase(editComment.rejected, (state, action) => {
+                state.message = action.payload?.message
+                state.isError = true
+            })
+            .addCase(deleteComment.fulfilled, (state, action) => {
+                const { commentId, postId } = action.payload;
+                state.comments = state.comments.filter((c) => c._id !== commentId);
+                for (const list of [state.posts, state.userPosts]) {
+                    const post = list.find((p) => p._id === postId);
+                    if (post) post.commentCount = Math.max(0, (post.commentCount || 1) - 1);
+                }
+            })
+            .addCase(deleteComment.rejected, (state, action) => {
+                state.message = action.payload?.message
+                state.isError = true
+            })
             .addCase(reactToPost.fulfilled, (state, action) => {
                 // Patch the single post in place — no full refetch needed,
                 // this is the same data getAllPosts already returns per-post.

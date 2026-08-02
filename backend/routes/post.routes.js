@@ -1,6 +1,6 @@
 
 import { Router } from "express";
-import { activecheck, commentPost, createPost, delete_Comments, deletePost, getAllPosts, getBookmarkedPosts, getComment_by_Post, getLikedPosts, getPostAnalytics, getPostById, getPostsByUsername, getPublicStats, getTrendingTags, reactToComplaint, toggleBookmark } from "../controllers/post.controller.js";
+import { activecheck, commentPost, createPost, delete_Comments, deletePost, editComment, getAllPosts, getBookmarkedPosts, getComment_by_Post, getLikedPosts, getPostAnalytics, getPostById, getPostsByUsername, getPublicStats, getTrendingTags, reactToComplaint, toggleBookmark } from "../controllers/post.controller.js";
 import { verifyToken } from "../middleware/auth.middleware.js";
 import multer from "multer";
 import { Storage } from "../config/cloudinary.js";
@@ -26,6 +26,7 @@ router.route('/delete_post').post(verifyToken, deletePost);
 router.route('/comment_post').post(verifyToken, commentPost);
 router.route('/getcomment_by_post').get(verifyToken, getComment_by_Post);
 router.route('/delete_comments').delete(verifyToken, delete_Comments);
+router.route('/edit_comment').patch(verifyToken, editComment);
 router.route('/react/:id').post(verifyToken, reactToComplaint);
 
 // Analytics route
