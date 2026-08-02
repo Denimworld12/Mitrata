@@ -63,6 +63,17 @@ export default function DashboardLayout({ children, fullWidth = false }) {
         }
     }, []);
 
+    // A brand new account (see users.model.js's `onboarded` field) hasn't
+    // picked a real name/username/photo yet — every page using this layout
+    // routes through here, so this is the one place that needs to know
+    // about it rather than every page checking individually.
+    useEffect(() => {
+        const user = authState.user?.userId;
+        if (user && user.onboarded === false && router.pathname !== '/onboarding') {
+            router.push('/onboarding');
+        }
+    }, [authState.user, router.pathname]);
+
     useEffect(() => {
         clientServer.get('/trending/tags', { params: { limit: 5 } })
             .then(({ data }) => setTrendingTags(data.tags || []))

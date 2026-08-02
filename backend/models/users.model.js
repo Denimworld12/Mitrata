@@ -105,6 +105,17 @@ const userSchema = new mongoose.Schema({
         end: { type: String, default: "07:00" },
         timezone: { type: String, default: "UTC" },
     },
+    // Whether the one-time "add your name/username/photo" onboarding page
+    // has been completed. Defaults true — Mongoose applies schema defaults
+    // during hydration even for documents that predate this field, so
+    // defaulting false here would retroactively force onboarding onto every
+    // existing account. Only user-creation code paths (register,
+    // verifyAndUpsertGoogleUser, verifyAndUpsertAppleUser) explicitly set
+    // this to false for genuinely brand-new accounts.
+    onboarded: {
+        type: Boolean,
+        default: true
+    },
     // TOTP two-step verification. `secret` holds a pending (unconfirmed)
     // secret while the user is mid-setup, and the confirmed one once
     // `enabled`. `select: false` keeps these out of any query that doesn't

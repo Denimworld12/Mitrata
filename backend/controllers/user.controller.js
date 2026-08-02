@@ -79,7 +79,13 @@ export const register = async (req, res) => {
             name,
             email,
             password: HashedPassword,
-            username: normalizedUsername
+            username: normalizedUsername,
+            // Regular signup already collects name/username explicitly, unlike
+            // Google/Apple's auto-generated values — but nobody gets asked for
+            // a profile photo at signup either way, and the onboarding page
+            // covers that for every account the same way rather than only
+            // the OAuth ones.
+            onboarded: false
         })
         await newUser.save();
         const profile = new Profile({
@@ -375,7 +381,11 @@ const verifyAndUpsertGoogleUser = async (idToken) => {
             googleId: payload.sub,
             profilePicture: (await rehostGoogleAvatar(payload.picture)) || undefined,
             // Google already verified this address — no OTP step needed.
-            emailVerified: true
+            emailVerified: true,
+            // name/username are auto-generated from the Google profile, not
+            // chosen by the user — send them through the mobile onboarding
+            // page to actually pick both (and a photo) before their first feed load.
+            onboarded: false
         });
         await user.save();
         await new Profile({ userId: user._id }).save();
@@ -544,7 +554,12 @@ const verifyAndUpsertAppleUser = async (idToken, appleUserJson) => {
             username,
             appleId: payload.sub,
             // Apple already verified this address — no OTP step needed.
-            emailVerified: true
+            emailVerified: true,
+            // name/username are auto-generated (Apple only sends a real name
+            // on the very first authorization, and even then not always) —
+            // send them through the mobile onboarding page to actually pick
+            // both (and a photo) before their first feed load.
+            onboarded: false
         });
         await user.save();
         await new Profile({ userId: user._id }).save();
@@ -831,9 +846,15 @@ export const updateUserProfile = async (req, res) => {
 // Profile document's fields.
 export const updateAccountSettings = async (req, res) => {
     try {
-        const { username, isPrivate, pushEnabled, quietHours } = req.body;
+        const { name, username, isPrivate, pushEnabled, quietHours, onboarded } = req.body;
         const user = await User.findById(req.userId);
         if (!user) return res.status(404).json({ message: "User not found" });
+
+        if (name !== undefined) {
+            const trimmed = String(name).trim();
+            if (!trimmed) return res.status(400).json({ message: "Name cannot be empty" });
+            user.name = trimmed.slice(0, 60);
+        }
 
         if (username !== undefined) {
             const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/;
@@ -852,6 +873,7 @@ export const updateAccountSettings = async (req, res) => {
 
         if (isPrivate !== undefined) user.isPrivate = !!isPrivate;
         if (pushEnabled !== undefined) user.pushEnabled = !!pushEnabled;
+        if (onboarded !== undefined) user.onboarded = !!onboarded;
 
         if (quietHours !== undefined) {
             const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -870,10 +892,12 @@ export const updateAccountSettings = async (req, res) => {
         await user.save();
         return res.json({
             message: "Updated successfully!",
+            name: user.name,
             isPrivate: user.isPrivate,
             pushEnabled: user.pushEnabled,
             username: user.username,
-            quietHours: user.quietHours
+            quietHours: user.quietHours,
+            onboarded: user.onboarded
         });
     } catch (error) {
         if (error.code === 11000) {
@@ -943,7 +967,7 @@ export const getUserAndProfile = async (req, res) => {
         // req.userId is already a verified-to-exist user (see verifyToken) —
         // no need to re-fetch the User doc just to read its own id back.
         const userProfile = await Profile.findOne({ userId: req.userId })
-            .populate("userId", "name email username profilePicture coverPhoto createAt role googleId appleId isPrivate pushEnabled quietHours");
+            .populate("userId", "name email username profilePicture coverPhoto createAt role googleId appleId isPrivate pushEnabled quietHours onboarded");
 
         if (!userProfile) {
             return res.status(404).json({ message: "profile not found" });
