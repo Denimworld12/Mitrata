@@ -6,7 +6,7 @@ import { createReport } from "../controllers/admin.controller.js";
 import { Router } from "express"
 import { verifyToken } from "../middleware/auth.middleware.js";
 import { Storage } from "../config/cloudinary.js";
-import { deleteChat, deleteMessageForEveryone, deleteMessages, getConversations, getMessages, markMessagesRead, sendMessage } from "../controllers/message.controller.js";
+import { deleteChat, deleteMessageForEveryone, deleteMessages, getConversations, getMessages, markMessagesRead, sendMessage, togglePinConversation, toggleMuteConversation } from "../controllers/message.controller.js";
 const router = Router();
 
 const upload = multer({ storage: Storage, limits: { fileSize: 25 * 1024 * 1024 } })
@@ -107,6 +107,8 @@ router.route('/user/delete_message_for_everyone').post(
 
 router.route('/user/conversations').get(verifyToken, getConversations);
 router.route('/user/mark_read').post(verifyToken, markMessagesRead);
+router.route('/user/conversations/:peerId/pin').post(verifyToken, togglePinConversation);
+router.route('/user/conversations/:peerId/mute').post(verifyToken, toggleMuteConversation);
 
 router.route('/user/delete_account').post(verifyToken, deleteMyAccount);
 
