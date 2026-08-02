@@ -606,6 +606,19 @@ export const appleLoginCallback = async (req, res) => {
     }
 };
 
+// sign_in_with_apple's Android path shows Apple's page in a Chrome Custom
+// Tab, which needs a WebAuthenticationOptions.redirectUri to land on —
+// unlike the web flow above, the app itself still verifies the id_token
+// (via the existing native /auth/apple endpoint) once it's back in the
+// foreground, so this route's only job is bouncing the browser back into
+// the app with whatever Apple posted, per the plugin's documented contract.
+export const appleAndroidCallback = (req, res) => {
+    const params = new URLSearchParams(req.body).toString();
+    res.send(`<!DOCTYPE html><html><body><script>
+        window.location = "intent://callback?${params}#Intent;package=com.mitrata.mitrata_mobile;scheme=signinwithapple;end";
+    </script></body></html>`);
+};
+
 // Completes appleLoginCallback's redirect hop — mirrors completeGoogleLogin.
 export const completeAppleLogin = async (req, res) => {
     try {
