@@ -284,6 +284,7 @@ io.on("connection", (socket) => {
     // data: { receiverId, offer, callerInfo: { name, avatar }, isVideo }
     const receiverId = data.receiverId?.toString();
     const receiverRoom = io.sockets.adapter.rooms.get(receiverId);
+    console.log(`callUser: ${userId} -> ${receiverId}, receiverRoom size: ${receiverRoom?.size || 0}`);
 
     // onlineUsers can say "online" for a socket that's actually already
     // dead (see the pingTimeout comment above) — the room membership check
@@ -315,6 +316,7 @@ io.on("connection", (socket) => {
         isVideo: !!data.isVideo,
         timeout
       });
+      console.log(`callUser: ${receiverId} has no live socket — holding as pending + sending VoIP/data push`);
       sendVoipPush(receiverId, {
         callerId: userId,
         callerInfo: data.callerInfo,
@@ -324,6 +326,7 @@ io.on("connection", (socket) => {
       return;
     }
 
+    console.log(`callUser: emitting incomingCall to ${receiverId} (live socket)`);
     io.to(receiverId).emit("incomingCall", {
       callerId: userId,
       callerInfo: data.callerInfo,
