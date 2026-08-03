@@ -20,6 +20,17 @@ const storySchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "user"
     }],
+    // Optional background track picked from the Spotify search proxy
+    // (see music.controller.js) — just the metadata needed to play/show it,
+    // not a re-hosted copy of the audio itself.
+    music: {
+        spotifyId: String,
+        title: String,
+        artist: String,
+        albumArt: String,
+        previewUrl: String,
+        durationMs: Number
+    },
     createdAt: {
         type: Date,
         default: Date.now
