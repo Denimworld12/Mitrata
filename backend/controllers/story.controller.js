@@ -6,10 +6,19 @@ export const createStory = async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ message: "Media is required" });
 
+        // multer parses non-file multipart fields as plain strings — the
+        // client sends the picked track's metadata as a JSON string
+        // alongside the media file.
+        let music;
+        if (req.body.music) {
+            try { music = JSON.parse(req.body.music); } catch { /* ignore malformed input */ }
+        }
+
         const story = await Story.create({
             userId: req.userId,
             media: req.file.path,
             mediaType: req.file.mimetype.startsWith("video") ? "video" : "image",
+            music,
         });
 
         return res.status(201).json({ message: "Story posted", story });
@@ -61,6 +70,7 @@ export const getStories = async (req, res) => {
                 _id: story._id,
                 media: story.media,
                 mediaType: story.mediaType,
+                music: story.music,
                 createdAt: story.createdAt,
                 expiresAt: story.expiresAt,
                 viewed,

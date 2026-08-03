@@ -14,6 +14,7 @@ import userRoute from "./routes/user.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import storyRoutes from "./routes/story.routes.js";
+import musicRoutes from "./routes/music.routes.js";
 import { Server } from "socket.io";
 import http from "http";
 import { sendVoipPush } from "./utils/voipPush.js";
@@ -160,6 +161,7 @@ app.use('/api', notificationRoutes);
 // swallows any request that fell through unmatched from the routers above it
 // with "Admin access required", never letting it reach a later router.
 app.use('/api', storyRoutes);
+app.use('/api', musicRoutes);
 app.use('/api', adminRoutes);
 
 // ============ ONLINE PRESENCE TRACKING ============

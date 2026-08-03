@@ -52,6 +52,17 @@ const postSchema = new mongoose.Schema({
     default: [],
     index: true,
   },
+  // Optional background track picked from the Spotify search proxy (see
+  // music.controller.js) — just the metadata needed to play/show it, not a
+  // re-hosted copy of the audio itself.
+  music: {
+    spotifyId: String,
+    title: String,
+    artist: String,
+    albumArt: String,
+    previewUrl: String,
+    durationMs: Number,
+  },
 });
 
 postSchema.index({ "reactions.userId": 1 }); // GET /user/liked_posts

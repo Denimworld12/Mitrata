@@ -92,12 +92,21 @@ export const createPost = async (req, res) => {
       return res.status(400).json({ message: "Post body is required" });
     }
 
+    // multer parses non-file multipart fields as plain strings — the
+    // client sends the picked track's metadata as a JSON string alongside
+    // the rest of the post.
+    let music;
+    if (req.body.music) {
+      try { music = JSON.parse(req.body.music); } catch { /* ignore malformed input */ }
+    }
+
     const post = new Post({
       userId: user._id,
       body: body.trim(),
       media: req.file ? req.file.path : "",
       fileType: req.file ? req.file.mimetype.split("/")[1] : "",
       tags: extractTags(body),
+      music,
     });
 
     await post.save();
