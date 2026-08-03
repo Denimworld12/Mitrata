@@ -115,7 +115,17 @@ export const sendMessage = async (req, res) => {
             sendPush(receiverId, {
                 title: populatedMessage.sender.name,
                 body: content ? content.slice(0, 100) : "Sent you media",
-                data: { type: "message", username: populatedMessage.sender.username }
+                data: {
+                    type: "message",
+                    username: populatedMessage.sender.username,
+                    // peerId (not a separate conversation doc) is how this app
+                    // already models a "conversation" (see conversationPref) —
+                    // reused here so a notification's reply/mark-as-read action
+                    // knows who to send to / which thread to mark read.
+                    conversationId: senderId.toString(),
+                    senderId: senderId.toString(),
+                    messageId: populatedMessage._id.toString()
+                }
             }).catch((err) => console.error("sendPush failed:", err.message));
         }
 
