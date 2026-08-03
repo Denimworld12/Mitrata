@@ -1,33 +1,36 @@
-import { getSpotifyToken } from "../config/spotify.js";
+// Audius (audius.co) instead of Spotify — Spotify requires the developer
+// account itself to have an active Premium subscription just to call
+// search, and killed preview_url for any app without extended quota
+// (250k+ MAU) back in Nov 2024. Audius is free with no login/API-key/OAuth
+// at all, and — unlike Deezer/iTunes/YouTube/SoundCloud — its terms are
+// actually written to allow embedding a track as background audio in
+// another app's user-generated content. Tradeoff: independent/underground
+// catalog, not major-label chart music.
+const AUDIUS_APP_NAME = "Mitrata";
+const AUDIUS_API_BASE = "https://api.audius.co";
 
-// Proxies Spotify's track search so the client never sees the client
-// secret. Returns just what a "pick a song for your post/story" UI needs —
-// not Spotify's full track object.
 export const searchTracks = async (req, res) => {
     try {
         const q = req.query.q?.trim();
         if (!q) return res.json({ tracks: [] });
 
-        const token = await getSpotifyToken();
-        if (!token) return res.json({ tracks: [] }); // not configured — no-op, same as sendPush without Firebase
-
-        const url = `https://api.spotify.com/v1/search?type=track&limit=20&q=${encodeURIComponent(q)}`;
-        const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        if (!response.ok) throw new Error(`Spotify search failed: ${response.status}`);
+        const url = `${AUDIUS_API_BASE}/v1/tracks/search?query=${encodeURIComponent(q)}&app_name=${AUDIUS_APP_NAME}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Audius search failed: ${response.status}`);
 
         const data = await response.json();
-        const tracks = (data.tracks?.items || [])
-            // A track with no preview_url has nothing to actually play as
-            // background audio — filtering here means the UI never has to.
-            .filter((t) => t.preview_url)
-            .map((t) => ({
-                id: t.id,
-                title: t.name,
-                artist: t.artists.map((a) => a.name).join(", "),
-                albumArt: t.album?.images?.[1]?.url || t.album?.images?.[0]?.url || null,
-                previewUrl: t.preview_url,
-                durationMs: t.duration_ms,
-            }));
+        const tracks = (data.data || []).map((t) => ({
+            id: t.id,
+            title: t.title,
+            artist: t.user?.name || t.user?.handle || "Unknown",
+            albumArt: t.artwork?.["480x480"] || t.artwork?.["150x150"] || null,
+            // A stable endpoint, not a resolved URL — Audius signs/redirects
+            // to short-lived storage URLs (expire in minutes), so this must
+            // be re-requested fresh at play time, not resolved once and
+            // stored. Playback follows the redirect chain automatically.
+            previewUrl: `${AUDIUS_API_BASE}/v1/tracks/${t.id}/stream?app_name=${AUDIUS_APP_NAME}`,
+            durationMs: (t.duration || 30) * 1000,
+        }));
 
         return res.json({ tracks });
     } catch (error) {

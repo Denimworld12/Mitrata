@@ -52,11 +52,11 @@ const postSchema = new mongoose.Schema({
     default: [],
     index: true,
   },
-  // Optional background track picked from the Spotify search proxy (see
+  // Optional background track picked from the Audius search proxy (see
   // music.controller.js) — just the metadata needed to play/show it, not a
   // re-hosted copy of the audio itself.
   music: {
-    spotifyId: String,
+    trackId: String,
     title: String,
     artist: String,
     albumArt: String,
