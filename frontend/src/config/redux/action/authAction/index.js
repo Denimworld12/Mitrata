@@ -327,7 +327,13 @@ export const getAboutUser = createAsyncThunk(
             const response = await clientServer.get('/get_user_and_profile')
             return thunkApi.fulfillWithValue(response.data)
         } catch (error) {
-            return thunkApi.rejectWithValue(error.response?.data || { message: "Failed to get user info" })
+            // status travels with the rejection so the reducer can tell a real
+            // "session is gone" 401/403 apart from a network blip/timeout/5xx
+            // (e.g. Render cold start) — see getAboutUser.rejected.
+            return thunkApi.rejectWithValue({
+                ...(error.response?.data || { message: "Failed to get user info" }),
+                status: error.response?.status,
+            })
         }
     }
 )
