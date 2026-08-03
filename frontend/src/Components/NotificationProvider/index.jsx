@@ -290,6 +290,20 @@ export function NotificationProvider({ children }) {
         }).catch(() => { });
     }, [authState.loggedIn]);
 
+    // "Mark as read" clicked on a background push notification — the
+    // service worker (firebase-messaging-sw.js) has no access to the app's
+    // auth token, so it posts back to whichever tab is open instead of
+    // calling the API itself.
+    useEffect(() => {
+        if (typeof navigator === 'undefined' || !navigator.serviceWorker) return;
+        const onMessage = (event) => {
+            if (event.data?.type !== 'mark_read' || !event.data.senderId) return;
+            clientServer.post('/user/mark_read', { senderId: event.data.senderId }).catch(() => { });
+        };
+        navigator.serviceWorker.addEventListener('message', onMessage);
+        return () => navigator.serviceWorker.removeEventListener('message', onMessage);
+    }, []);
+
     // Fallback for anyone who hasn't granted (or whose browser doesn't
     // support) native notifications: the tab title itself carries the
     // unread count while you're away, and reverts the moment you're back.
