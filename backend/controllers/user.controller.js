@@ -1579,11 +1579,18 @@ export const deleteMyAccount = async (req, res) => {
 // Called once after login (web) / app start (Flutter) with whatever token
 // Firebase handed that device — $addToSet so logging in from the same
 // device repeatedly doesn't pile up duplicate entries.
+// api_client.dart sets this exact User-Agent on every request (see its
+// InterceptorsWrapper) — the only way this endpoint, shared with the web
+// app's fetch calls, can tell which caller just registered a token.
+const isMobileRequest = (req) => /MitrataMobile/.test(req.headers["user-agent"] || "");
+
 export const registerFcmToken = async (req, res) => {
     try {
         const { token } = req.body;
         if (!token) return res.status(400).json({ message: "token is required" });
-        await User.updateOne({ _id: req.userId }, { $addToSet: { fcmTokens: token } });
+        const update = { $addToSet: { fcmTokens: token } };
+        if (isMobileRequest(req)) update.$addToSet.mobileFcmTokens = token;
+        await User.updateOne({ _id: req.userId }, update);
         return res.json({ message: "Token registered" });
     } catch (error) {
         return res.status(500).json({ message: error.message });
@@ -1597,7 +1604,7 @@ export const unregisterFcmToken = async (req, res) => {
     try {
         const { token } = req.body;
         if (!token) return res.status(400).json({ message: "token is required" });
-        await User.updateOne({ _id: req.userId }, { $pull: { fcmTokens: token } });
+        await User.updateOne({ _id: req.userId }, { $pull: { fcmTokens: token, mobileFcmTokens: token } });
         return res.json({ message: "Token unregistered" });
     } catch (error) {
         return res.status(500).json({ message: error.message });

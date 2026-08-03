@@ -4,7 +4,7 @@ import Notification from "../models/notification.model.js";
 import ConnectionRequest from "../models/connection.model.js";
 import ConversationPref from "../models/conversationPref.model.js";
 import { v2 as cloudinary } from "cloudinary";
-import { sendPush } from "../utils/push.js";
+import { sendMessagePush } from "../utils/push.js";
 
 export const sendMessage = async (req, res) => {
     try {
@@ -112,7 +112,7 @@ export const sendMessage = async (req, res) => {
             // Reaches a closed tab / the phone app — the socket emit above
             // only reaches an open one. Same hourly dedupe as the persisted
             // notification so an active chat burst doesn't spam pushes.
-            sendPush(receiverId, {
+            sendMessagePush(receiverId, {
                 title: populatedMessage.sender.name,
                 body: content ? content.slice(0, 100) : "Sent you media",
                 data: {
@@ -126,7 +126,7 @@ export const sendMessage = async (req, res) => {
                     senderId: senderId.toString(),
                     messageId: populatedMessage._id.toString()
                 }
-            }).catch((err) => console.error("sendPush failed:", err.message));
+            }).catch((err) => console.error("sendMessagePush failed:", err.message));
         }
 
         res.status(201).json(populatedMessage);
