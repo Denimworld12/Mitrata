@@ -1020,7 +1020,7 @@ export const findSearchUser = async (req, res) => {
         // deleted, in case something external still hits it, since returning
         // literally every profile in the database on one call doesn't scale.
         const profiles = await Profile.find()
-            .populate('userId', 'name username email profilePicture')
+            .populate('userId', 'name username profilePicture')
             .limit(200)
             .lean();
         return res.json({ profiles });
@@ -1038,7 +1038,7 @@ export const downloadProfile = async (req, res) => {
         }
 
         const userProfile = await Profile.findOne({ userId: new mongoose.Types.ObjectId(user_id) })
-            .populate('userId', 'name username email profilePicture');
+            .populate('userId', 'name username profilePicture');
 
         if (!userProfile) {
             return res.status(404).json({ message: "Profile not found" });
@@ -1170,17 +1170,26 @@ export const getMyConnectionRequest = async (req, res) => {
         // there, so re-fetching the User doc here just to read its own _id
         // back was a wasted round trip on every call.
         const userId = req.userId;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 1000;
+        const skip = (page - 1) * limit;
 
-        const connections = await ConnectionRequest.find({
+        const query = {
             $or: [
                 { userId },
                 { connectionId: userId }
             ]
-        })
-            .populate('userId', 'name username email profilePicture')
-            .populate('connectionId', 'name username email profilePicture')
-            .limit(1000)
-            .lean();
+        };
+
+        const [connections, total] = await Promise.all([
+            ConnectionRequest.find(query)
+                .populate('userId', 'name username profilePicture')
+                .populate('connectionId', 'name username profilePicture')
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            ConnectionRequest.countDocuments(query)
+        ]);
 
         const result = connections.map(conn => {
             const iAmSender = conn.userId._id.toString() === userId.toString();
@@ -1194,7 +1203,7 @@ export const getMyConnectionRequest = async (req, res) => {
             };
         });
 
-        return res.json({ connections: result });
+        return res.json({ connections: result, hasMore: skip + limit < total, total, page, limit });
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
@@ -1204,17 +1213,26 @@ export const whatAreMyConnection = async (req, res) => {
     try {
         // Same redundant-fetch note as getMyConnectionRequest above.
         const userId = req.userId;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 1000;
+        const skip = (page - 1) * limit;
 
-        const myConnections = await ConnectionRequest.find({
+        const query = {
             $or: [
                 { userId, status_accepted: true },
                 { connectionId: userId, status_accepted: true }
             ]
-        })
-            .populate('userId', 'name username email profilePicture')
-            .populate('connectionId', 'name username email profilePicture')
-            .limit(1000)
-            .lean();
+        };
+
+        const [myConnections, total] = await Promise.all([
+            ConnectionRequest.find(query)
+                .populate('userId', 'name username profilePicture')
+                .populate('connectionId', 'name username profilePicture')
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            ConnectionRequest.countDocuments(query)
+        ]);
 
         const result = myConnections.map(conn => {
             const iAmSender = conn.userId._id.toString() === userId.toString();
@@ -1227,7 +1245,7 @@ export const whatAreMyConnection = async (req, res) => {
             };
         });
 
-        return res.json({ myConnections: result });
+        return res.json({ myConnections: result, hasMore: skip + limit < total, total, page, limit });
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
@@ -1242,7 +1260,7 @@ export const acceptConnectionRequest = async (req, res) => {
         if (!user) return res.status(404).json({ message: "User not found" });
 
         const connection = await ConnectionRequest.findOne({ _id: requestId })
-            .populate('userId', 'name username email profilePicture');
+            .populate('userId', 'name username profilePicture');
         if (!connection) {
             return res.status(400).json({ message: "Connection request not found" });
         }
@@ -1316,9 +1334,12 @@ export const acceptConnectionRequest = async (req, res) => {
 }
 
 export const getAllUserBasedOnUsername = async (req, res) => {
-    const { username } = req.query
+    const { username, userId: lookupUserId } = req.query
     try {
-        const targetUser = await User.findOne({ username })
+        // Chat/connection rows only carry the other user's id, not their
+        // username — accept either so mobile's "view profile" tap doesn't
+        // need a second endpoint.
+        const targetUser = username ? await User.findOne({ username }) : await User.findById(lookupUserId)
         if (!targetUser) return res.status(404).json({ message: 'user not found' })
 
         const viewerId = req.userId;
@@ -1357,7 +1378,7 @@ export const getAllUserBasedOnUsername = async (req, res) => {
         }
 
         const userProfile = await Profile.findOne({ userId: targetUser._id })
-            .populate('userId', 'name username email profilePicture coverPhoto');
+            .populate('userId', 'name username profilePicture coverPhoto');
         return res.json({ "profile": userProfile })
     } catch (error) {
         return res.status(500).json({ message: error.message })

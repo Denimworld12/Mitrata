@@ -180,7 +180,7 @@ export const getAllPosts = async (req, res) => {
       Post.find(query)
         .sort({ createId: -1 })
         .limit(RANKING_POOL_SIZE)
-        .populate("userId", "name username email profilePicture createdAt")
+        .populate("userId", "name username profilePicture createdAt")
         .lean(),
       Post.countDocuments(query)
     ]);
@@ -279,7 +279,7 @@ export const getPostsByUsername = async (req, res) => {
         .sort({ createId: -1 })
         .skip(skip)
         .limit(limit)
-        .populate("userId", "name username email profilePicture createdAt")
+        .populate("userId", "name username profilePicture createdAt")
         .lean(),
       Post.countDocuments(query)
     ]);
@@ -374,13 +374,22 @@ export const getComment_by_Post = async (req, res) => {
     const post = await Post.findById({ _id: post_id });
     if (!post) return res.status(400).json({ message: "post not found" });
 
-    const comments = await Comment.find({ post_Id: post_id })
-      .populate("userId", "username name profilePicture")
-      .sort({ createdAt: -1 })
-      .limit(500)
-      .lean();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 500;
+    const skip = (page - 1) * limit;
+    const query = { post_Id: post_id };
 
-    return res.status(200).json({ comments });
+    const [comments, total] = await Promise.all([
+      Comment.find(query)
+        .populate("userId", "username name profilePicture")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Comment.countDocuments(query)
+    ]);
+
+    return res.status(200).json({ comments, hasMore: skip + limit < total, total, page, limit });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -616,11 +625,20 @@ export const getBookmarkedPosts = async (req, res) => {
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const posts = await Post.find({ _id: { $in: user.bookmarks } })
-      .populate("userId", "name username email profilePicture createdAt")
-      .sort({ createId: -1 })
-      .limit(300)
-      .lean();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    const query = { _id: { $in: user.bookmarks } };
+
+    const [posts, total] = await Promise.all([
+      Post.find(query)
+        .populate("userId", "name username profilePicture createdAt")
+        .sort({ createId: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Post.countDocuments(query)
+    ]);
 
     const formatted = await attachCommentCounts(posts.map((post) => ({
       ...post,
@@ -628,7 +646,7 @@ export const getBookmarkedPosts = async (req, res) => {
       bookmarked: true,
     })));
 
-    return res.status(200).json({ posts: formatted });
+    return res.status(200).json({ posts: formatted, hasMore: skip + limit < total, total, page, limit });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -682,20 +700,27 @@ export const getPublicStats = async (req, res) => {
 export const getLikedPosts = async (req, res) => {
   try {
     const userId = req.userId;
-    const posts = await Post.find({
-      reactions: { $elemMatch: { userId, type: { $ne: "dislike" } } },
-    })
-      .populate("userId", "name username email profilePicture createdAt")
-      .sort({ createId: -1 })
-      .limit(300)
-      .lean();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    const query = { reactions: { $elemMatch: { userId, type: { $ne: "dislike" } } } };
+
+    const [posts, total] = await Promise.all([
+      Post.find(query)
+        .populate("userId", "name username profilePicture createdAt")
+        .sort({ createId: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Post.countDocuments(query)
+    ]);
 
     const formatted = await attachCommentCounts(posts.map((post) => ({
       ...post,
       ...summarise(post.reactions, userId),
     })));
 
-    return res.status(200).json({ posts: formatted });
+    return res.status(200).json({ posts: formatted, hasMore: skip + limit < total, total, page, limit });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

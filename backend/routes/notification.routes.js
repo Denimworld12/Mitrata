@@ -7,14 +7,21 @@ const router = express.Router();
 // Get all notifications for the logged-in user
 router.get("/notification/all", verifyToken, async (req, res) => {
     try {
-        const notifications = await Notification.find({ userId: req.userId })
-            .populate("fromUser", "name username profilePicture")
-            .sort({ createdAt: -1 })
-            .limit(50);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const skip = (page - 1) * limit;
 
-        const unreadCount = await Notification.countDocuments({ userId: req.userId, read: false });
+        const [notifications, totalNotifications, unreadCount] = await Promise.all([
+            Notification.find({ userId: req.userId })
+                .populate("fromUser", "name username profilePicture")
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Notification.countDocuments({ userId: req.userId }),
+            Notification.countDocuments({ userId: req.userId, read: false })
+        ]);
 
-        res.json({ notifications, unreadCount });
+        res.json({ notifications, unreadCount, hasMore: skip + limit < totalNotifications, page, limit });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
