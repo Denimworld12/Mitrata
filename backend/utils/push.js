@@ -66,3 +66,62 @@ export const sendPush = async (userId, { title, body, data = {} }) => {
         await User.updateOne({ _id: userId }, { $pull: { fcmTokens: { $in: deadTokens } } });
     }
 };
+
+// Message notifications specifically: web tokens get the same notification+
+// data payload as sendPush above (unchanged, still relies on the OS to
+// auto-display it), but mobile tokens get a data-only payload instead —
+// that's what makes FCM invoke the app's background handler instead of just
+// showing a plain system notification, which is what lets the mobile app
+// build its own notification with Reply/Mark-as-read actions even while
+// backgrounded or fully killed. `content-available` is iOS's equivalent
+// signal for the same thing.
+export const sendMessagePush = async (userId, { title, body, data = {} }) => {
+    if (!messaging) return;
+
+    const user = await User.findById(userId).select("fcmTokens mobileFcmTokens pushEnabled quietHours").lean();
+    if (user?.pushEnabled === false) return;
+    if (user?.quietHours?.enabled && isWithinQuietHours(user.quietHours)) return;
+
+    const mobileTokens = user?.mobileFcmTokens || [];
+    const webTokens = (user?.fcmTokens || []).filter((t) => !mobileTokens.includes(t));
+    const stringData = Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)]));
+
+    const responses = await Promise.all([
+        webTokens.length > 0
+            ? messaging.sendEachForMulticast({ tokens: webTokens, notification: { title, body }, data: stringData })
+            : null,
+        mobileTokens.length > 0
+            ? messaging.sendEachForMulticast({
+                tokens: mobileTokens,
+                data: { ...stringData, title, body },
+                android: { priority: "high" },
+                apns: {
+                    headers: { "apns-push-type": "background", "apns-priority": "5" },
+                    payload: { aps: { "content-available": 1 } },
+                },
+            })
+            : null,
+    ]);
+
+    const deadTokens = [];
+    if (responses[0]) {
+        responses[0].responses.forEach((r, i) => {
+            if (!r.success && isDeadTokenError(r.error)) deadTokens.push(webTokens[i]);
+        });
+    }
+    if (responses[1]) {
+        responses[1].responses.forEach((r, i) => {
+            if (!r.success && isDeadTokenError(r.error)) deadTokens.push(mobileTokens[i]);
+        });
+    }
+    if (deadTokens.length > 0) {
+        await User.updateOne(
+            { _id: userId },
+            { $pull: { fcmTokens: { $in: deadTokens }, mobileFcmTokens: { $in: deadTokens } } }
+        );
+    }
+};
+
+const isDeadTokenError = (error) =>
+    error?.code === "messaging/registration-token-not-registered" ||
+    error?.code === "messaging/invalid-registration-token";

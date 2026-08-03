@@ -79,6 +79,15 @@ const userSchema = new mongoose.Schema({
         type: [String],
         default: []
     },
+    // Subset of fcmTokens registered from the Flutter app (detected via its
+    // custom User-Agent) — kept separate so message notifications can be
+    // sent data-only to just these (needed for reply/mark-as-read action
+    // buttons to work while the app is backgrounded/killed) while web
+    // tokens keep the plain notification+data payload they already rely on.
+    mobileFcmTokens: {
+        type: [String],
+        default: []
+    },
     // PushKit device tokens (iOS only) — separate from fcmTokens because
     // VoIP pushes go through a dedicated cert-based APNs connection, not
     // Firebase, and are how an incoming call wakes a fully-killed app.
