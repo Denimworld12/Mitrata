@@ -62,6 +62,8 @@ const sendAndroidVoipPush = async (userId, tokens, payload) => {
                 isVideo: String(!!payload.isVideo),
             },
         });
+        console.log(`sendAndroidVoipPush: ${response.successCount} succeeded, ${response.failureCount} failed`,
+            response.responses.map((r) => r.success ? "ok" : r.error?.code).join(", "));
 
         const dead = response.responses
             .map((r, i) => (!r.success && (
@@ -84,6 +86,7 @@ const sendAndroidVoipPush = async (userId, tokens, payload) => {
 export const sendVoipPush = async (userId, { callerId, callerInfo, offer, isVideo }) => {
     const user = await User.findById(userId).select("voipTokens fcmTokens").lean();
     if (!user) return;
+    console.log(`sendVoipPush: user ${userId} has ${(user.voipTokens || []).length} voipTokens, ${(user.fcmTokens || []).length} fcmTokens`);
 
     const payload = { callerId, callerInfo, offer, isVideo: !!isVideo };
     await Promise.all([
