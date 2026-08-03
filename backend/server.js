@@ -361,8 +361,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("rejectCall", (data) => {
-    // data: { callerId }
-    io.to(data.callerId).emit("callRejected", { rejectedBy: userId });
+    // data: { callerId, reason? } — reason is e.g. "busy" when the callee's
+    // own client auto-rejected because they're already on another call.
+    io.to(data.callerId).emit("callRejected", { rejectedBy: userId, reason: data.reason });
   });
 });
 
