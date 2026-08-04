@@ -23,7 +23,7 @@ export default function Messaging() {
 
     /* -------------------- REDUX -------------------- */
     const authState = useSelector(state => state.auth);
-    const { messages, conversations } = useSelector(state => state.message);
+    const { messages, conversations, messagesHasMore, messagesPage } = useSelector(state => state.message);
 
     /* -------------------- LOCAL STATE -------------------- */
     const [mounted, setMounted] = useState(false);
@@ -48,12 +48,16 @@ export default function Messaging() {
     // that here would blank the whole conversation every time you send a
     // message, not just while the initial history is loading.
     const [chatLoading, setChatLoading] = useState(false);
+    const [loadingOlder, setLoadingOlder] = useState(false);
     const deleteMenuRef = useRef(null);
     const longPressTimer = useRef(null);
     const fileInputRef = useRef(null);
     const messagesEndRef = useRef(null);
+    const messagesAreaRef = useRef(null);
     const menuRef = useRef(null);
     const typingTimeoutRef = useRef(null);
+    const isLoadingOlderRef = useRef(false);
+    const prevScrollHeightRef = useRef(0);
     const toast = useToast();
     /* -------------------- SHARED SOCKET & CONTEXT -------------------- */
     const { socket, onlineUsers } = useNotification();
@@ -264,8 +268,31 @@ export default function Messaging() {
 
     /* -------------------- AUTO SCROLL -------------------- */
     useEffect(() => {
+        if (isLoadingOlderRef.current) {
+            // Older history was just prepended — keep the viewport pinned to
+            // what the user was already looking at instead of jumping to the
+            // bottom, and restore the scrollbar position it had before the
+            // prepend grew the content above it.
+            const el = messagesAreaRef.current;
+            if (el) el.scrollTop += el.scrollHeight - prevScrollHeightRef.current;
+            isLoadingOlderRef.current = false;
+            return;
+        }
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
+
+    /* -------------------- LOAD OLDER MESSAGES ON SCROLL-TO-TOP -------------------- */
+    const handleMessagesScroll = useCallback(() => {
+        const el = messagesAreaRef.current;
+        if (!el || loadingOlder || chatLoading || !messagesHasMore || !activeChatUser?.userId?._id) return;
+        if (el.scrollTop > 80) return;
+
+        setLoadingOlder(true);
+        prevScrollHeightRef.current = el.scrollHeight;
+        isLoadingOlderRef.current = true;
+        dispatch(getMessages({ receiverId: activeChatUser.userId._id, page: messagesPage + 1 }))
+            .finally(() => setLoadingOlder(false));
+    }, [dispatch, activeChatUser, loadingOlder, chatLoading, messagesHasMore, messagesPage]);
 
     /* -------------------- CLOSE MENU ON OUTSIDE CLICK -------------------- */
     useEffect(() => {
@@ -527,7 +554,7 @@ export default function Messaging() {
     }, [selectedMessages, messages, authState.user]);
 
     /* -------------------- PREVENT FLASH -------------------- */
-    if (!mounted) return <PageLoader />;
+    if (!mounted) return <DashboardLayout fullWidth><PageLoader /></DashboardLayout>;
 
     /* -------------------- UI -------------------- */
     return (
@@ -653,7 +680,11 @@ export default function Messaging() {
                                         </button>
 
                                         <div className={styles.headerUserInfo}>
-                                            <div className={styles.headerAvatarWrapper}>
+                                            <div
+                                                className={styles.headerAvatarWrapper}
+                                                onClick={() => router.push(`/view_profile/${activeChatUser.userId.username}`)}
+                                                style={{ cursor: "pointer" }}
+                                            >
                                                 <img
                                                     src={activeChatUser.userId.profilePicture || "/default-avatar.svg"}
                                                     alt={activeChatUser.userId.name}
@@ -733,7 +764,12 @@ export default function Messaging() {
                             </div>
 
                             {/* MESSAGES AREA */}
-                            <div className={styles.messagesArea}>
+                            <div className={styles.messagesArea} ref={messagesAreaRef} onScroll={handleMessagesScroll}>
+                                {loadingOlder && (
+                                    <div className="w-full flex items-center justify-center py-2">
+                                        <BlastLoader size={24} />
+                                    </div>
+                                )}
                                 {chatLoading ? (
                                     <div className="w-full flex items-center justify-center py-16">
                                         <BlastLoader size={48} />

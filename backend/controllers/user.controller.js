@@ -122,7 +122,7 @@ export const login = async (req, res) => {
 
         const user = await User.findOne({ email }).select("+twoFactor.enabled");
         if (!user) return res.status(404).json({ message: "User does not exist" });
-        if (!user.active) return res.status(403).json({ message: "This account has been suspended" });
+        if (user.active === false) return res.status(403).json({ message: "This account has been suspended" });
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
@@ -165,7 +165,7 @@ export const verifyTwoFactorLogin = async (req, res) => {
         }
 
         const user = await User.findById(userId).select("+twoFactor.enabled +twoFactor.secret +twoFactor.backupCodeHashes");
-        if (!user || !user.active || !user.twoFactor?.enabled) {
+        if (!user || user.active === false || !user.twoFactor?.enabled) {
             return res.status(401).json({ message: "Two-step verification is not active for this account" });
         }
 
@@ -389,7 +389,7 @@ const verifyAndUpsertGoogleUser = async (idToken) => {
         });
         await user.save();
         await new Profile({ userId: user._id }).save();
-    } else if (!user.active) {
+    } else if (user.active === false) {
         const err = new Error("This account has been suspended");
         err.status = 403;
         throw err;
@@ -461,7 +461,7 @@ export const completeGoogleLogin = async (req, res) => {
         }
 
         const user = await User.findById(userId);
-        if (!user || !user.active) return res.status(401).json({ message: "Account unavailable" });
+        if (!user || user.active === false) return res.status(401).json({ message: "Account unavailable" });
 
         const accessToken = await issueSession(res, user, req);
         return res.json({ token: accessToken });
@@ -563,7 +563,7 @@ const verifyAndUpsertAppleUser = async (idToken, appleUserJson) => {
         });
         await user.save();
         await new Profile({ userId: user._id }).save();
-    } else if (!user.active) {
+    } else if (user.active === false) {
         const err = new Error("This account has been suspended");
         err.status = 403;
         throw err;
@@ -633,7 +633,7 @@ export const completeAppleLogin = async (req, res) => {
         }
 
         const user = await User.findById(userId);
-        if (!user || !user.active) return res.status(401).json({ message: "Account unavailable" });
+        if (!user || user.active === false) return res.status(401).json({ message: "Account unavailable" });
 
         const accessToken = await issueSession(res, user, req);
         return res.json({ token: accessToken });
@@ -654,7 +654,7 @@ export const refreshAccessToken = async (req, res) => {
 
         const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
         const user = await User.findById(decoded.userId);
-        if (!user || !user.active) return res.status(401).json({ message: "User no longer exists" });
+        if (!user || user.active === false) return res.status(401).json({ message: "User no longer exists" });
 
         const accessToken = await rotateSession(res, user, hashToken(token), req);
         if (!accessToken) return res.status(401).json({ message: "Refresh token has been revoked" });
@@ -704,7 +704,7 @@ export const switchAccount = async (req, res) => {
         }
 
         const user = await User.findById(decoded.userId);
-        if (!user || !user.active) {
+        if (!user || user.active === false) {
             res.clearCookie(cookieName, refreshCookieOptions());
             return res.status(401).json({ message: "Account unavailable", needsLogin: true });
         }
@@ -1020,7 +1020,7 @@ export const findSearchUser = async (req, res) => {
         // deleted, in case something external still hits it, since returning
         // literally every profile in the database on one call doesn't scale.
         const profiles = await Profile.find()
-            .populate('userId', 'name username email profilePicture')
+            .populate('userId', 'name username profilePicture')
             .limit(200)
             .lean();
         return res.json({ profiles });
@@ -1038,7 +1038,7 @@ export const downloadProfile = async (req, res) => {
         }
 
         const userProfile = await Profile.findOne({ userId: new mongoose.Types.ObjectId(user_id) })
-            .populate('userId', 'name username email profilePicture');
+            .populate('userId', 'name username profilePicture');
 
         if (!userProfile) {
             return res.status(404).json({ message: "Profile not found" });
@@ -1170,17 +1170,26 @@ export const getMyConnectionRequest = async (req, res) => {
         // there, so re-fetching the User doc here just to read its own _id
         // back was a wasted round trip on every call.
         const userId = req.userId;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 1000;
+        const skip = (page - 1) * limit;
 
-        const connections = await ConnectionRequest.find({
+        const query = {
             $or: [
                 { userId },
                 { connectionId: userId }
             ]
-        })
-            .populate('userId', 'name username email profilePicture')
-            .populate('connectionId', 'name username email profilePicture')
-            .limit(1000)
-            .lean();
+        };
+
+        const [connections, total] = await Promise.all([
+            ConnectionRequest.find(query)
+                .populate('userId', 'name username profilePicture')
+                .populate('connectionId', 'name username profilePicture')
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            ConnectionRequest.countDocuments(query)
+        ]);
 
         const result = connections.map(conn => {
             const iAmSender = conn.userId._id.toString() === userId.toString();
@@ -1194,7 +1203,7 @@ export const getMyConnectionRequest = async (req, res) => {
             };
         });
 
-        return res.json({ connections: result });
+        return res.json({ connections: result, hasMore: skip + limit < total, total, page, limit });
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
@@ -1204,17 +1213,26 @@ export const whatAreMyConnection = async (req, res) => {
     try {
         // Same redundant-fetch note as getMyConnectionRequest above.
         const userId = req.userId;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 1000;
+        const skip = (page - 1) * limit;
 
-        const myConnections = await ConnectionRequest.find({
+        const query = {
             $or: [
                 { userId, status_accepted: true },
                 { connectionId: userId, status_accepted: true }
             ]
-        })
-            .populate('userId', 'name username email profilePicture')
-            .populate('connectionId', 'name username email profilePicture')
-            .limit(1000)
-            .lean();
+        };
+
+        const [myConnections, total] = await Promise.all([
+            ConnectionRequest.find(query)
+                .populate('userId', 'name username profilePicture')
+                .populate('connectionId', 'name username profilePicture')
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            ConnectionRequest.countDocuments(query)
+        ]);
 
         const result = myConnections.map(conn => {
             const iAmSender = conn.userId._id.toString() === userId.toString();
@@ -1227,7 +1245,7 @@ export const whatAreMyConnection = async (req, res) => {
             };
         });
 
-        return res.json({ myConnections: result });
+        return res.json({ myConnections: result, hasMore: skip + limit < total, total, page, limit });
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
@@ -1242,7 +1260,7 @@ export const acceptConnectionRequest = async (req, res) => {
         if (!user) return res.status(404).json({ message: "User not found" });
 
         const connection = await ConnectionRequest.findOne({ _id: requestId })
-            .populate('userId', 'name username email profilePicture');
+            .populate('userId', 'name username profilePicture');
         if (!connection) {
             return res.status(400).json({ message: "Connection request not found" });
         }
@@ -1316,9 +1334,12 @@ export const acceptConnectionRequest = async (req, res) => {
 }
 
 export const getAllUserBasedOnUsername = async (req, res) => {
-    const { username } = req.query
+    const { username, userId: lookupUserId } = req.query
     try {
-        const targetUser = await User.findOne({ username })
+        // Chat/connection rows only carry the other user's id, not their
+        // username — accept either so mobile's "view profile" tap doesn't
+        // need a second endpoint.
+        const targetUser = username ? await User.findOne({ username }) : await User.findById(lookupUserId)
         if (!targetUser) return res.status(404).json({ message: 'user not found' })
 
         const viewerId = req.userId;
@@ -1357,7 +1378,7 @@ export const getAllUserBasedOnUsername = async (req, res) => {
         }
 
         const userProfile = await Profile.findOne({ userId: targetUser._id })
-            .populate('userId', 'name username email profilePicture coverPhoto');
+            .populate('userId', 'name username profilePicture coverPhoto');
         return res.json({ "profile": userProfile })
     } catch (error) {
         return res.status(500).json({ message: error.message })

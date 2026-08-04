@@ -352,7 +352,7 @@ export default function Dashboard() {
   }, [postState.postId]);
 
   // Prevent Hydration error
-  if (!isMounted) return <PageLoader />;
+  if (!isMounted) return <DashboardLayout><PageLoader /></DashboardLayout>;
 
   // ... your return JSX remains exactly the same
 
@@ -794,10 +794,16 @@ export default function Dashboard() {
                             className={styles.commentUserProfile} // NEW CLASS
                             src={item?.userId?.profilePicture}
                             alt={`${item?.userId?.username}'s profile`}
+                            style={{ cursor: item?.userId?.username ? "pointer" : undefined }}
+                            onClick={() => item?.userId?.username && router.push(`/view_profile/${item.userId.username}`)}
                           />
                           {/* 2. Comment Content */}
                           <div className={styles.singleComment} style={{ flex: 1 }}>
-                            <span className={styles.commentUser}>
+                            <span
+                              className={styles.commentUser}
+                              style={{ cursor: item?.userId?.username ? "pointer" : undefined }}
+                              onClick={() => item?.userId?.username && router.push(`/view_profile/${item.userId.username}`)}
+                            >
                               {item?.userId?.username || "User"}
                             </span>
                             {isEditing ? (

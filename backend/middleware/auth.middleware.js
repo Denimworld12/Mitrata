@@ -24,10 +24,13 @@ export const verifyToken = async (req, res, next) => {
         // 3. Verify JWT
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-        // 4. Verify user still exists
-        const user = await User.findById(decoded.userId).select("_id");
+        // 4. Verify user still exists and is active
+        const user = await User.findById(decoded.userId).select("_id active");
         if (!user) {
             return res.status(401).json({ message: "User no longer exists" });
+        }
+        if (user.active === false) {
+            return res.status(401).json({ message: "Account suspended" });
         }
 
         // 5. Attach user ID to request

@@ -102,7 +102,7 @@ export default function viewProfilePage() {
     // the same component instance with fewer hooks called on the next
     // render, which React throws on ("Rendered fewer hooks than expected").
     if (!profileLoaded) {
-        return <PageLoader />;
+        return <DashboardLayout><PageLoader /></DashboardLayout>;
     }
 
     if (!userProfile) {

@@ -157,12 +157,20 @@ const authSlice = createSlice({
                 // state.connectionRequest = action.payload.connectionRequest
                 if (action.payload?.userId) rememberAccount(action.payload.userId);
             })
-            .addCase(getAboutUser.rejected, (state) => {
+            .addCase(getAboutUser.rejected, (state, action) => {
                 state.isLoading = false;
-                state.isTokenThere = false;
-                state.loggedIn = false;
-                state.user = null;
-                if (typeof window !== "undefined") localStorage.removeItem("token");
+                // Only treat this as "logged out" on a genuine 401/403 — a
+                // network error, timeout, or 5xx (e.g. a cold-starting Render
+                // backend) means the request never got a real answer, so the
+                // token stays put and the next mount just retries instead of
+                // wiping localStorage and bouncing to the account chooser.
+                const status = action.payload?.status;
+                if (status === 401 || status === 403) {
+                    state.isTokenThere = false;
+                    state.loggedIn = false;
+                    state.user = null;
+                    if (typeof window !== "undefined") localStorage.removeItem("token");
+                }
             })
             .addCase(getAllUser.fulfilled, (state, action) => {
                 state.isError = false,

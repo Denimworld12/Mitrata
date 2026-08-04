@@ -7,6 +7,8 @@ const initialState = {
     isLoading: false,
     isError: false,
     errorMessage: null,
+    messagesHasMore: false,
+    messagesPage: 1,
 };
 
 const messageSlice = createSlice({
@@ -24,6 +26,8 @@ const messageSlice = createSlice({
             state.isLoading = false;
             state.isError = false;
             state.errorMessage = null;
+            state.messagesHasMore = false;
+            state.messagesPage = 1;
         },
         removeDeletedMessages: (state, action) => {
             const { messageIds } = action.payload;
@@ -72,15 +76,17 @@ const messageSlice = createSlice({
             })
             .addCase(getMessages.fulfilled, (state, action) => {
                 state.isLoading = false;
-                // Handle paginated response format
                 const payload = action.payload;
-                if (payload && payload.messages) {
-                    state.messages = payload.messages;
-                } else if (Array.isArray(payload)) {
-                    state.messages = payload;
-                } else {
-                    state.messages = [];
-                }
+                const page = payload?.page || 1;
+                const newMessages = payload?.messages || (Array.isArray(payload) ? payload : []);
+
+                // Page 1 (opening/reconnecting a thread) replaces the thread;
+                // page>1 (scrolling up for older history) is returned oldest-
+                // to-newest per page by the backend, so it's prepended ahead
+                // of what's already loaded.
+                state.messages = page > 1 ? [...newMessages, ...state.messages] : newMessages;
+                state.messagesHasMore = !!payload?.hasMore;
+                state.messagesPage = page;
             })
             .addCase(getMessages.rejected, (state, action) => {
                 state.isLoading = false;

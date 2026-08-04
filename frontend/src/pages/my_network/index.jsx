@@ -106,7 +106,7 @@ export default function MyNetwork() {
         }
     };
 
-    if (!isMounted) return <PageLoader />;
+    if (!isMounted) return <DashboardLayout><PageLoader /></DashboardLayout>;
 
     return (
                     <DashboardLayout>

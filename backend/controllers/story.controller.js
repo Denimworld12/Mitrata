@@ -101,6 +101,22 @@ export const viewStory = async (req, res) => {
     }
 };
 
+// Owner-only "who's seen this" list — Instagram-style story insights.
+// $addToSet appends in first-seen order, so reversing gives most-recent-viewer-first
+// without needing a separate viewedAt timestamp per viewer.
+export const getStoryViewers = async (req, res) => {
+    try {
+        const story = await Story.findById(req.params.id).populate("viewers", "name username profilePicture");
+        if (!story) return res.status(404).json({ message: "Story not found" });
+        if (story.userId.toString() !== req.userId.toString()) {
+            return res.status(403).json({ message: "Unauthorized — not your story" });
+        }
+        return res.status(200).json({ viewers: [...story.viewers].reverse() });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
 export const deleteStory = async (req, res) => {
     try {
         const story = await Story.findById(req.params.id);
