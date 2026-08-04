@@ -554,7 +554,7 @@ export default function Messaging() {
     }, [selectedMessages, messages, authState.user]);
 
     /* -------------------- PREVENT FLASH -------------------- */
-    if (!mounted) return <PageLoader />;
+    if (!mounted) return <DashboardLayout fullWidth><PageLoader /></DashboardLayout>;
 
     /* -------------------- UI -------------------- */
     return (

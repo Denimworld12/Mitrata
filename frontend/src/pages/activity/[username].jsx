@@ -340,6 +340,6 @@ export default function UserActivityPage() {
         </div>
     );
 
-    if (!mounted) return <PageLoader />;
+    if (!mounted) return <DashboardLayout><PageLoader /></DashboardLayout>;
     return <DashboardLayout>{ActivityContent}</DashboardLayout>;
 }

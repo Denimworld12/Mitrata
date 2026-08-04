@@ -699,7 +699,7 @@ export default function Profile() {
   );
 
   // FIXED: Replaced standard return with null if not mounted to solve SSR hydration errors
-  if (!mounted) return <PageLoader />;
+  if (!mounted) return <DashboardLayout><PageLoader /></DashboardLayout>;
 
   return <DashboardLayout>{MainContent}</DashboardLayout>;
 }

@@ -352,7 +352,7 @@ export default function Dashboard() {
   }, [postState.postId]);
 
   // Prevent Hydration error
-  if (!isMounted) return <PageLoader />;
+  if (!isMounted) return <DashboardLayout><PageLoader /></DashboardLayout>;
 
   // ... your return JSX remains exactly the same
 
