@@ -122,7 +122,7 @@ export const login = async (req, res) => {
 
         const user = await User.findOne({ email }).select("+twoFactor.enabled");
         if (!user) return res.status(404).json({ message: "User does not exist" });
-        if (!user.active) return res.status(403).json({ message: "This account has been suspended" });
+        if (user.active === false) return res.status(403).json({ message: "This account has been suspended" });
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
@@ -165,7 +165,7 @@ export const verifyTwoFactorLogin = async (req, res) => {
         }
 
         const user = await User.findById(userId).select("+twoFactor.enabled +twoFactor.secret +twoFactor.backupCodeHashes");
-        if (!user || !user.active || !user.twoFactor?.enabled) {
+        if (!user || user.active === false || !user.twoFactor?.enabled) {
             return res.status(401).json({ message: "Two-step verification is not active for this account" });
         }
 
@@ -389,7 +389,7 @@ const verifyAndUpsertGoogleUser = async (idToken) => {
         });
         await user.save();
         await new Profile({ userId: user._id }).save();
-    } else if (!user.active) {
+    } else if (user.active === false) {
         const err = new Error("This account has been suspended");
         err.status = 403;
         throw err;
@@ -461,7 +461,7 @@ export const completeGoogleLogin = async (req, res) => {
         }
 
         const user = await User.findById(userId);
-        if (!user || !user.active) return res.status(401).json({ message: "Account unavailable" });
+        if (!user || user.active === false) return res.status(401).json({ message: "Account unavailable" });
 
         const accessToken = await issueSession(res, user, req);
         return res.json({ token: accessToken });
@@ -563,7 +563,7 @@ const verifyAndUpsertAppleUser = async (idToken, appleUserJson) => {
         });
         await user.save();
         await new Profile({ userId: user._id }).save();
-    } else if (!user.active) {
+    } else if (user.active === false) {
         const err = new Error("This account has been suspended");
         err.status = 403;
         throw err;
@@ -633,7 +633,7 @@ export const completeAppleLogin = async (req, res) => {
         }
 
         const user = await User.findById(userId);
-        if (!user || !user.active) return res.status(401).json({ message: "Account unavailable" });
+        if (!user || user.active === false) return res.status(401).json({ message: "Account unavailable" });
 
         const accessToken = await issueSession(res, user, req);
         return res.json({ token: accessToken });
@@ -654,7 +654,7 @@ export const refreshAccessToken = async (req, res) => {
 
         const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
         const user = await User.findById(decoded.userId);
-        if (!user || !user.active) return res.status(401).json({ message: "User no longer exists" });
+        if (!user || user.active === false) return res.status(401).json({ message: "User no longer exists" });
 
         const accessToken = await rotateSession(res, user, hashToken(token), req);
         if (!accessToken) return res.status(401).json({ message: "Refresh token has been revoked" });
@@ -704,7 +704,7 @@ export const switchAccount = async (req, res) => {
         }
 
         const user = await User.findById(decoded.userId);
-        if (!user || !user.active) {
+        if (!user || user.active === false) {
             res.clearCookie(cookieName, refreshCookieOptions());
             return res.status(401).json({ message: "Account unavailable", needsLogin: true });
         }
