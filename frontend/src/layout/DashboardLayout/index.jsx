@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setTokenThere } from '@/config/redux/reducer/authReducer';
 import { getAboutUser, switchAccountAction, clearLocalSession } from '@/config/redux/action/authAction';
 import { getSavedAccounts } from '@/config/savedAccounts';
+import posthog from '@/config/posthog';
 import { useNotification } from '@/Components/NotificationProvider';
 import { clientServer } from '@/config';
 import Navbar from '@/Components/Navbar';
@@ -73,6 +74,14 @@ export default function DashboardLayout({ children, fullWidth = false }) {
             router.push('/onboarding');
         }
     }, [authState.user, router.pathname]);
+
+    // Ties subsequent events to the real user instead of an anonymous
+    // per-browser id — posthog.identify no-ops safely if init() was skipped
+    // (no NEXT_PUBLIC_POSTHOG_KEY set).
+    useEffect(() => {
+        const user = authState.user?.userId;
+        if (user?._id) posthog.identify(user._id, { email: user.email, name: user.name });
+    }, [authState.user]);
 
     useEffect(() => {
         clientServer.get('/trending/tags', { params: { limit: 5 } })
