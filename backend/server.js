@@ -2,6 +2,13 @@ import express from "express";
 import dotenv from "dotenv"; // Import first
 dotenv.config();           // Load variables IMMEDIATELY
 
+// Sentry needs to init before anything else so it can auto-instrument what
+// follows. Leave SENTRY_DSN unset in .env to keep error tracking disabled.
+import * as Sentry from "@sentry/node";
+if (process.env.SENTRY_DSN) {
+  Sentry.init({ dsn: process.env.SENTRY_DSN });
+}
+
 // NOW import everything else
 import cors from "cors";
 import helmet from "helmet";
@@ -163,6 +170,14 @@ app.use('/api', notificationRoutes);
 app.use('/api', storyRoutes);
 app.use('/api', musicRoutes);
 app.use('/api', adminRoutes);
+
+// Catches anything that escapes a route handler uncaught (most controllers
+// already try/catch and respond with their own res.status(500), so those
+// never reach here — this is a safety net for what isn't already handled,
+// not full error-reporting coverage. Must be registered after all routes.
+if (process.env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
 
 // ============ ONLINE PRESENCE TRACKING ============
 const onlineUsers = new Map(); // userId -> Set of socketIds

@@ -66,6 +66,11 @@ const postSchema = new mongoose.Schema({
 });
 
 postSchema.index({ "reactions.userId": 1 }); // GET /user/liked_posts
+// getAllPosts' "following" feed filters by userId then sorts by createId —
+// the single-field indexes on each covered one or the other, not both, so
+// Mongo had to sort in memory after filtering. This lets it use one index
+// for both.
+postSchema.index({ userId: 1, createId: -1 });
 
 const Post = mongoose.model("posts", postSchema);
 export default Post;
