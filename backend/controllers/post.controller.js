@@ -8,6 +8,7 @@ import { v2 as cloudinary } from "cloudinary";
 import ConnectionRequest from "../models/connection.model.js";
 import Notification from "../models/notification.model.js";
 import { sendPush } from "../utils/push.js";
+import { track } from "../utils/analytics.js";
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
@@ -111,6 +112,7 @@ export const createPost = async (req, res) => {
     });
 
     await post.save();
+    track(user._id, "post_created", { hasMedia: !!post.media, hasMusic: !!music });
     return res.status(200).json({ message: "post created" });
   } catch (error) {
     Sentry.captureException(error);

@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/node";
 import Story from "../models/story.model.js";
 import ConnectionRequest from "../models/connection.model.js";
 import { v2 as cloudinary } from "cloudinary";
+import { track } from "../utils/analytics.js";
 
 export const createStory = async (req, res) => {
     try {
@@ -22,6 +23,7 @@ export const createStory = async (req, res) => {
             music,
         });
 
+        track(req.userId, "story_created", { mediaType: story.mediaType, hasMusic: !!music });
         return res.status(201).json({ message: "Story posted", story });
     } catch (error) {
         Sentry.captureException(error);

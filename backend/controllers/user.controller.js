@@ -30,6 +30,7 @@ import QRCode from "qrcode";
 import { issueOtp } from "./otp.controller.js";
 import { issueSession, rotateSession, hashToken, refreshCookieName, refreshCookieOptions, signTwoFactorChallenge, verifyTwoFactorChallenge, describeDevice, signOAuthSessionCode, verifyOAuthSessionCode } from "../utils/session.js";
 import { sendPush } from "../utils/push.js";
+import { track } from "../utils/analytics.js";
 
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
 
@@ -93,6 +94,7 @@ export const register = async (req, res) => {
             userId: newUser._id
         });
         await profile.save();
+        track(newUser._id, "user_signed_up", { method: "password" });
 
         // Account exists but is unusable until the OTP sent here is verified
         // (see login's emailVerified gate below) — matches Play Store's
@@ -145,6 +147,7 @@ export const login = async (req, res) => {
         }
 
         const accessToken = await issueSession(res, user, req);
+        track(user._id, "user_logged_in", { method: "password" });
         return res.json({ token: accessToken });
 
     } catch (error) {
@@ -477,6 +480,7 @@ export const completeGoogleLogin = async (req, res) => {
         if (!user || user.active === false) return res.status(401).json({ message: "Account unavailable" });
 
         const accessToken = await issueSession(res, user, req);
+        track(user._id, "user_logged_in", { method: "google" });
         return res.json({ token: accessToken });
     } catch (error) {
         Sentry.captureException(error);
@@ -719,20 +723,24 @@ export const switchAccount = async (req, res) => {
             decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
         } catch {
             res.clearCookie(cookieName, refreshCookieOptions());
+            track(userId, "switch_account_failed", { reason: "invalid_or_expired_cookie" });
             return res.status(401).json({ message: "Session expired, please log in again", needsLogin: true });
         }
 
         const user = await User.findById(decoded.userId);
         if (!user || user.active === false) {
             res.clearCookie(cookieName, refreshCookieOptions());
+            track(userId, "switch_account_failed", { reason: "account_unavailable" });
             return res.status(401).json({ message: "Account unavailable", needsLogin: true });
         }
 
         const accessToken = await rotateSession(res, user, hashToken(token), req);
         if (!accessToken) {
             res.clearCookie(cookieName, refreshCookieOptions());
+            track(userId, "switch_account_failed", { reason: "session_evicted_or_not_found" });
             return res.status(401).json({ message: "Session expired, please log in again", needsLogin: true });
         }
+        track(userId, "switch_account_success");
         return res.json({ token: accessToken });
     } catch (error) {
         Sentry.captureException(error);
