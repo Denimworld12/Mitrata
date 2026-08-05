@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/node";
+
 // Audius (audius.co) instead of Spotify — Spotify requires the developer
 // account itself to have an active Premium subscription just to call
 // search, and killed preview_url for any app without extended quota
@@ -34,6 +36,7 @@ export const searchTracks = async (req, res) => {
 
         return res.json({ tracks });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };

@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
@@ -74,6 +75,7 @@ export const sendOtp = async (req, res) => {
         await issueOtp(email, purpose);
         return res.json({ message: "Verification code sent" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(error.status || 500).json({ message: error.message });
     }
 };
@@ -121,6 +123,7 @@ export const verifyOtp = async (req, res) => {
         );
         return res.json({ resetToken });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -134,6 +137,7 @@ export const resendOtp = async (req, res) => {
         await issueOtp(email, purpose);
         return res.json({ message: "Verification code resent" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(error.status || 500).json({ message: error.message });
     }
 };
@@ -170,6 +174,7 @@ export const resetPassword = async (req, res) => {
 
         return res.json({ message: "Password reset successfully" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };

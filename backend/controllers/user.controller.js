@@ -1,5 +1,6 @@
 
 
+import * as Sentry from "@sentry/node";
 import User from "../models/users.model.js";
 
 import Profile from "../models/profile.model.js";
@@ -102,6 +103,7 @@ export const register = async (req, res) => {
     }
 
     catch (error) {
+        Sentry.captureException(error);
         // Two signups for the same email/username landing within the same
         // findOne-then-save window both pass the checks above and race to
         // insert — the unique index (see users.model.js) is what actually
@@ -146,6 +148,7 @@ export const login = async (req, res) => {
         return res.json({ token: accessToken });
 
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 }
@@ -188,6 +191,7 @@ export const verifyTwoFactorLogin = async (req, res) => {
         const accessToken = await issueSession(res, user, req);
         return res.json({ token: accessToken, usedBackupCode });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -197,6 +201,7 @@ export const getTwoFactorStatus = async (req, res) => {
         const user = await User.findById(req.userId).select("+twoFactor.enabled");
         return res.json({ enabled: !!user?.twoFactor?.enabled });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -218,6 +223,7 @@ export const setupTwoFactor = async (req, res) => {
         const qrCodeDataUrl = await QRCode.toDataURL(otpauth);
         return res.json({ secret, qrCodeDataUrl });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -242,6 +248,7 @@ export const verifyTwoFactorSetup = async (req, res) => {
 
         return res.json({ message: "Two-step verification enabled", backupCodes });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -266,6 +273,7 @@ export const disableTwoFactor = async (req, res) => {
 
         return res.json({ message: "Two-step verification disabled" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -293,6 +301,7 @@ export const getSessions = async (req, res) => {
 
         return res.json({ sessions });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -303,6 +312,7 @@ export const revokeSession = async (req, res) => {
         await User.findByIdAndUpdate(req.userId, { $pull: { sessions: { _id: id } } });
         return res.json({ message: "Signed out of that device" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -319,6 +329,7 @@ export const revokeOtherSessions = async (req, res) => {
 
         return res.json({ message: "Signed out of all other devices" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -416,6 +427,7 @@ export const googleLogin = async (req, res) => {
         const accessToken = await issueSession(res, user, req);
         return res.json({ token: accessToken });
     } catch (error) {
+        Sentry.captureException(error);
         console.error("Google login error:", error.message);
         return res.status(error.status || 401).json({ message: error.status ? error.message : "Invalid Google token" });
     }
@@ -440,6 +452,7 @@ export const googleLoginCallback = async (req, res) => {
         const code = signOAuthSessionCode(user._id, "google");
         return res.redirect(`${process.env.FRONTEND_URL}/login?googleSessionCode=${code}`);
     } catch (error) {
+        Sentry.captureException(error);
         console.error("Google login callback error:", error.message);
         return res.redirect(failUrl);
     }
@@ -466,6 +479,7 @@ export const completeGoogleLogin = async (req, res) => {
         const accessToken = await issueSession(res, user, req);
         return res.json({ token: accessToken });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -586,6 +600,7 @@ export const appleLogin = async (req, res) => {
         const accessToken = await issueSession(res, user, req);
         return res.json({ token: accessToken });
     } catch (error) {
+        Sentry.captureException(error);
         console.error("Apple login error:", error.message);
         return res.status(error.status || 401).json({ message: error.status ? error.message : "Invalid Apple token" });
     }
@@ -601,6 +616,7 @@ export const appleLoginCallback = async (req, res) => {
         const code = signOAuthSessionCode(user._id, "apple");
         return res.redirect(`${process.env.FRONTEND_URL}/login?appleSessionCode=${code}`);
     } catch (error) {
+        Sentry.captureException(error);
         console.error("Apple login callback error:", error.message);
         return res.redirect(failUrl);
     }
@@ -638,6 +654,7 @@ export const completeAppleLogin = async (req, res) => {
         const accessToken = await issueSession(res, user, req);
         return res.json({ token: accessToken });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -660,6 +677,7 @@ export const refreshAccessToken = async (req, res) => {
         if (!accessToken) return res.status(401).json({ message: "Refresh token has been revoked" });
         return res.json({ token: accessToken });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(401).json({ message: "Refresh token invalid or expired, please login again" });
     }
 };
@@ -678,6 +696,7 @@ export const logout = async (req, res) => {
         }
         return res.json({ message: "Logged out successfully" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -716,6 +735,7 @@ export const switchAccount = async (req, res) => {
         }
         return res.json({ token: accessToken });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -751,6 +771,7 @@ export const uploadProfilePicture = async (req, res) => {
         });
 
     } catch (error) {
+        Sentry.captureException(error);
         console.error(error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
@@ -787,6 +808,7 @@ export const uploadCoverPhoto = async (req, res) => {
             coverPhoto: user.coverPhoto
         });
     } catch (error) {
+        Sentry.captureException(error);
         console.error(error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
@@ -800,6 +822,7 @@ export const uploadImage = async (req, res) => {
         if (!req.file) return res.status(400).json({ message: "No image provided" });
         return res.json({ url: req.file.path });
     } catch (error) {
+        Sentry.captureException(error);
         console.error(error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
@@ -849,6 +872,7 @@ export const updateUserProfile = async (req, res) => {
         return res.json({ message: "Updated successfully!" });
 
     } catch (error) {
+        Sentry.captureException(error);
         console.error(error);
         return res.status(500).json({ message: error.message });
     }
@@ -913,6 +937,7 @@ export const updateAccountSettings = async (req, res) => {
             onboarded: user.onboarded
         });
     } catch (error) {
+        Sentry.captureException(error);
         if (error.code === 11000) {
             return res.status(400).json({ message: "Username already taken" });
         }
@@ -944,6 +969,7 @@ export const blockUser = async (req, res) => {
 
         return res.json({ message: "User blocked" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -957,6 +983,7 @@ export const unblockUser = async (req, res) => {
         await User.updateOne({ _id: req.userId }, { $pull: { blockedUsers: targetId } });
         return res.json({ message: "User unblocked" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -968,6 +995,7 @@ export const getBlockedUsers = async (req, res) => {
             .select('blockedUsers');
         return res.json({ blockedUsers: user?.blockedUsers || [] });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -988,6 +1016,7 @@ export const getUserAndProfile = async (req, res) => {
 
         return res.json(userProfile);
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -1009,6 +1038,7 @@ export const updateProfileData = async (req, res) => {
         await profile_to_update.save();
         return res.json({ message: "profile updated successfully" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 }
@@ -1025,6 +1055,7 @@ export const findSearchUser = async (req, res) => {
             .lean();
         return res.json({ profiles });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 }
@@ -1048,6 +1079,7 @@ export const downloadProfile = async (req, res) => {
         return res.json({ message: "PDF generated", file: OutputPath });
 
     } catch (error) {
+        Sentry.captureException(error);
         console.error("Error generating PDF:", error);
         return res.status(500).json({ message: error.message });
     }
@@ -1160,6 +1192,7 @@ export const sendconnectionrequest = async (req, res) => {
             }
         });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 }
@@ -1205,6 +1238,7 @@ export const getMyConnectionRequest = async (req, res) => {
 
         return res.json({ connections: result, hasMore: skip + limit < total, total, page, limit });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 }
@@ -1247,6 +1281,7 @@ export const whatAreMyConnection = async (req, res) => {
 
         return res.json({ myConnections: result, hasMore: skip + limit < total, total, page, limit });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 }
@@ -1329,6 +1364,7 @@ export const acceptConnectionRequest = async (req, res) => {
             }
         });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 }
@@ -1381,6 +1417,7 @@ export const getAllUserBasedOnUsername = async (req, res) => {
             .populate('userId', 'name username profilePicture coverPhoto');
         return res.json({ "profile": userProfile })
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message })
     }
 }
@@ -1459,6 +1496,7 @@ export const searchUsers = async (req, res) => {
 
         return res.json(results);
     } catch (error) {
+        Sentry.captureException(error);
         console.error("Search Error:", error);
         return res.status(500).json({ message: "Search failed" });
     }
@@ -1506,6 +1544,7 @@ export const getSuggestions = async (req, res) => {
         ]);
         return res.json(suggestions);
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 }
@@ -1592,6 +1631,7 @@ export const deleteMyAccount = async (req, res) => {
         res.clearCookie(refreshCookieName(userId), refreshCookieOptions());
         return res.json({ message: "Account permanently deleted" });
     } catch (error) {
+        Sentry.captureException(error);
         console.error("Delete account error:", error);
         return res.status(500).json({ message: error.message });
     }
@@ -1614,6 +1654,7 @@ export const registerFcmToken = async (req, res) => {
         await User.updateOne({ _id: req.userId }, update);
         return res.json({ message: "Token registered" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -1628,6 +1669,7 @@ export const unregisterFcmToken = async (req, res) => {
         await User.updateOne({ _id: req.userId }, { $pull: { fcmTokens: token, mobileFcmTokens: token } });
         return res.json({ message: "Token unregistered" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -1641,6 +1683,7 @@ export const registerVoipToken = async (req, res) => {
         await User.updateOne({ _id: req.userId }, { $addToSet: { voipTokens: token } });
         return res.json({ message: "Token registered" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -1652,6 +1695,7 @@ export const unregisterVoipToken = async (req, res) => {
         await User.updateOne({ _id: req.userId }, { $pull: { voipTokens: token } });
         return res.json({ message: "Token unregistered" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };

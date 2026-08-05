@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import mongoose from "mongoose";
 import User from "../models/users.model.js";
 import Post from "../models/posts.model.js";
@@ -32,6 +33,7 @@ export const getAllUsers = async (req, res) => {
 
         return res.json({ users, total, page, pages: Math.ceil(total / limit) });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -49,6 +51,7 @@ export const setUserActive = async (req, res) => {
 
         return res.json({ message: active ? "User reactivated" : "User suspended", active: user.active });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -77,6 +80,7 @@ export const adminDeletePost = async (req, res) => {
 
         return res.json({ message: "Post removed by admin" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -102,6 +106,7 @@ export const createReport = async (req, res) => {
         const report = await Report.create({ reporterId: req.userId, targetType, targetId, reason });
         return res.json({ message: "Report submitted", report });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -116,6 +121,7 @@ export const getAllReports = async (req, res) => {
             .limit(200);
         return res.json({ reports });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -130,6 +136,7 @@ export const resolveReport = async (req, res) => {
         if (!report) return res.status(404).json({ message: "Report not found" });
         return res.json({ message: "Report updated", report });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -173,6 +180,7 @@ export const getAnalyticsOverview = async (req, res) => {
             signupTrend
         });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -204,6 +212,7 @@ export const getTrendingPosts = async (req, res) => {
 
         return res.json({ posts });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -242,6 +251,7 @@ export const getTrendingPeople = async (req, res) => {
 
         return res.json({ people });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
