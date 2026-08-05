@@ -257,31 +257,6 @@ export default function StoryViewer({ groups, startIndex, onClose, onDeleted }) 
                     )}
                 </div>
 
-                {/* Viewers list */}
-                {viewersOpen && (
-                    <div
-                        className="absolute inset-x-0 bottom-0 rounded-t-2xl p-4 max-h-[50%] overflow-y-auto"
-                        style={{ background: '#1c1c1e' }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-white font-semibold text-sm">
-                                {viewersError || (viewers ? `${viewers.length} ${viewers.length === 1 ? 'view' : 'views'}` : 'Loading…')}
-                            </span>
-                            <button onClick={() => setViewersOpen(false)} className="text-white/70">
-                                <X size={18} />
-                            </button>
-                        </div>
-                        {viewers?.length === 0 && <p className="text-white/60 text-sm py-4">No views yet</p>}
-                        {viewers?.map((v) => (
-                            <div key={v._id} className="flex items-center gap-3 py-2">
-                                <img src={v.profilePicture || '/default-avatar.svg'} alt="" className="size-8 rounded-full object-cover" />
-                                <span className="text-white text-sm">{v.username}</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
                 {/* Desktop chevrons */}
                 {(groupIndex > 0 || storyIndex > 0) && (
                     <button
@@ -300,6 +275,33 @@ export default function StoryViewer({ groups, startIndex, onClose, onDeleted }) 
                     <ChevronRight size={20} />
                 </button>
             </div>
+
+            {/* Viewers list — a sibling of the (width-capped) story card, not
+                nested inside it, so it spans the full screen width instead of
+                being squeezed to the card's 400px max-width. */}
+            {viewersOpen && (
+                <div
+                    className="fixed inset-x-0 bottom-0 z-10 rounded-t-2xl p-4 max-h-[50%] overflow-y-auto"
+                    style={{ background: '#1c1c1e' }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-white font-semibold text-sm">
+                            {viewersError || (viewers ? `${viewers.length} ${viewers.length === 1 ? 'view' : 'views'}` : 'Loading…')}
+                        </span>
+                        <button onClick={() => setViewersOpen(false)} className="text-white/70">
+                            <X size={18} />
+                        </button>
+                    </div>
+                    {viewers?.length === 0 && <p className="text-white/60 text-sm py-4">No views yet</p>}
+                    {viewers?.map((v) => (
+                        <div key={v._id} className="flex items-center gap-3 py-2">
+                            <img src={v.profilePicture || '/default-avatar.svg'} alt="" className="size-8 rounded-full object-cover" />
+                            <span className="text-white text-sm">{v.username}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
