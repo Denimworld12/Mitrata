@@ -160,15 +160,6 @@ app.use("/api", apiLimiter);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', msg: 'Backend is running with /api prefix' });
 });
-// TEMP: verifying Sentry actually sends from this deployed instance, not
-// just from a local test script. Remove after confirming in the dashboard.
-app.get('/api/_sentry_test', async (req, res) => {
-  if (process.env.SENTRY_DSN) {
-    Sentry.captureMessage('Mitrata LIVE Render server Sentry test — safe to ignore');
-    await Sentry.flush(3000);
-  }
-  res.json({ sent: !!process.env.SENTRY_DSN });
-});
 app.use('/api', postRoutes);
 app.use('/api', userRoute);
 app.use('/api', notificationRoutes);
