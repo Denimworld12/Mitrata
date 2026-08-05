@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import mongoose from "mongoose";
 import Message from "../models/message.model.js";
 import Notification from "../models/notification.model.js";
@@ -131,6 +132,7 @@ export const sendMessage = async (req, res) => {
 
         res.status(201).json(populatedMessage);
     } catch (error) {
+        Sentry.captureException(error);
         console.error("Error in sendMessage:", error);
         res.status(500).json({
             message: "Internal Server Error",
@@ -192,6 +194,7 @@ export const getMessages = async (req, res) => {
             limit
         });
     } catch (error) {
+        Sentry.captureException(error);
         console.error("Error in getMessages:", error);
         res.status(500).json({
             message: "Error fetching messages",
@@ -234,6 +237,7 @@ export const deleteChat = async (req, res) => {
             deletedCount: result.modifiedCount
         });
     } catch (error) {
+        Sentry.captureException(error);
         console.error("Error in deleteChat:", error);
         res.status(500).json({
             message: "Error deleting chat",
@@ -293,6 +297,7 @@ export const deleteMessages = async (req, res) => {
             deletedCount: result.modifiedCount
         });
     } catch (error) {
+        Sentry.captureException(error);
         console.error("Error in deleteMessages:", error);
         res.status(500).json({
             message: "Error deleting messages",
@@ -366,6 +371,7 @@ export const deleteMessageForEveryone = async (req, res) => {
             message: "Message deleted for everyone successfully"
         });
     } catch (error) {
+        Sentry.captureException(error);
         console.error("Error in deleteMessageForEveryone:", error);
         res.status(500).json({
             message: "Error deleting message",
@@ -450,6 +456,7 @@ export const getConversations = async (req, res) => {
 
         res.status(200).json({ conversations });
     } catch (error) {
+        Sentry.captureException(error);
         console.error("Error in getConversations:", error);
         res.status(500).json({ message: "Error fetching conversations", error: error.message });
     }
@@ -477,6 +484,7 @@ export const markMessagesRead = async (req, res) => {
 
         res.status(200).json({ message: "Messages marked as read", modifiedCount: result.modifiedCount });
     } catch (error) {
+        Sentry.captureException(error);
         res.status(500).json({ message: "Error marking messages read", error: error.message });
     }
 };
@@ -494,6 +502,7 @@ export const togglePinConversation = async (req, res) => {
         );
         res.status(200).json({ pinned });
     } catch (error) {
+        Sentry.captureException(error);
         res.status(500).json({ message: "Error toggling pin", error: error.message });
     }
 };
@@ -510,6 +519,7 @@ export const toggleMuteConversation = async (req, res) => {
         );
         res.status(200).json({ muted });
     } catch (error) {
+        Sentry.captureException(error);
         res.status(500).json({ message: "Error toggling mute", error: error.message });
     }
 };

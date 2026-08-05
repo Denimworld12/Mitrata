@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import Story from "../models/story.model.js";
 import ConnectionRequest from "../models/connection.model.js";
 import { v2 as cloudinary } from "cloudinary";
@@ -23,6 +24,7 @@ export const createStory = async (req, res) => {
 
         return res.status(201).json({ message: "Story posted", story });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -88,6 +90,7 @@ export const getStories = async (req, res) => {
 
         return res.status(200).json({ groups: result });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -97,6 +100,7 @@ export const viewStory = async (req, res) => {
         await Story.findByIdAndUpdate(req.params.id, { $addToSet: { viewers: req.userId } });
         return res.status(200).json({ message: "Marked as viewed" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -113,6 +117,7 @@ export const getStoryViewers = async (req, res) => {
         }
         return res.status(200).json({ viewers: [...story.viewers].reverse() });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -142,6 +147,7 @@ export const deleteStory = async (req, res) => {
         await Story.deleteOne({ _id: story._id });
         return res.status(200).json({ message: "Story deleted" });
     } catch (error) {
+        Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
     }
 };

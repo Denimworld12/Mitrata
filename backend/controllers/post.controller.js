@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import User from "../models/users.model.js";
 
 import Profile from "../models/profile.model.js";
@@ -112,6 +113,7 @@ export const createPost = async (req, res) => {
     await post.save();
     return res.status(200).json({ message: "post created" });
   } catch (error) {
+    Sentry.captureException(error);
     console.error("DETAILED SERVER ERROR:   ", error);
     return res.status(500).json({ message: error.message });
   }
@@ -138,6 +140,7 @@ export const getPostById = async (req, res) => {
 
     return res.json({ post: { ...post._doc, ...summary }, comments });
   } catch (error) {
+    Sentry.captureException(error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -238,6 +241,7 @@ export const getAllPosts = async (req, res) => {
     });
 
   } catch (error) {
+    Sentry.captureException(error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -304,6 +308,7 @@ export const getPostsByUsername = async (req, res) => {
       limit
     });
   } catch (error) {
+    Sentry.captureException(error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -338,6 +343,7 @@ export const deletePost = async (req, res) => {
 
     return res.json({ message: "Post and associated media Deleted" });
   } catch (error) {
+    Sentry.captureException(error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -371,6 +377,7 @@ export const commentPost = async (req, res) => {
 
     return res.status(200).json({ message: "comment added" });
   } catch (error) {
+    Sentry.captureException(error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -398,6 +405,7 @@ export const getComment_by_Post = async (req, res) => {
 
     return res.status(200).json({ comments, hasMore: skip + limit < total, total, page, limit });
   } catch (error) {
+    Sentry.captureException(error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -425,6 +433,7 @@ export const editComment = async (req, res) => {
 
     return res.status(200).json({ message: "comment updated", comment });
   } catch (error) {
+    Sentry.captureException(error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -444,6 +453,7 @@ export const delete_Comments = async (req, res) => {
     await Comment.deleteOne({ _id: comment_id });
     return res.status(200).json({ message: "comment deleted" });
   } catch (error) {
+    Sentry.captureException(error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -509,6 +519,7 @@ export const reactToComplaint = async (req, res) => {
       ...summary,
     });
   } catch (error) {
+    Sentry.captureException(error);
     res.status(500).json({
       message: "Server error",
       error: error.message,
@@ -599,6 +610,7 @@ export const getPostAnalytics = async (req, res) => {
     });
 
   } catch (error) {
+    Sentry.captureException(error);
     console.error("Analytics error:", error);
     return res.status(500).json({ message: error.message });
   }
@@ -628,6 +640,7 @@ export const toggleBookmark = async (req, res) => {
 
     return res.status(200).json({ bookmarked: true });
   } catch (error) {
+    Sentry.captureException(error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -660,6 +673,7 @@ export const getBookmarkedPosts = async (req, res) => {
 
     return res.status(200).json({ posts: formatted, hasMore: skip + limit < total, total, page, limit });
   } catch (error) {
+    Sentry.captureException(error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -683,6 +697,7 @@ export const getTrendingTags = async (req, res) => {
 
     return res.status(200).json({ tags: trending });
   } catch (error) {
+    Sentry.captureException(error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -703,6 +718,7 @@ export const getPublicStats = async (req, res) => {
       onlineNow: onlineUsers?.size || 0,
     });
   } catch (error) {
+    Sentry.captureException(error);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -734,6 +750,7 @@ export const getLikedPosts = async (req, res) => {
 
     return res.status(200).json({ posts: formatted, hasMore: skip + limit < total, total, page, limit });
   } catch (error) {
+    Sentry.captureException(error);
     return res.status(500).json({ message: error.message });
   }
 };
