@@ -131,7 +131,11 @@ export default function Dashboard() {
     });
   };
 
-  const myStoryGroupIndex = storyGroups.findIndex((g) => g.user._id === authState.user?.userId?._id);
+  // Server-computed per story (story.controller.js sets isMine against the
+  // authenticated requester's own id) — more reliable than comparing
+  // authState.user's id client-side, which depends on auth state having
+  // already loaded/matching format by the time this runs.
+  const myStoryGroupIndex = storyGroups.findIndex((g) => g.stories.some((s) => s.isMine));
 
   const handleStoryFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -414,7 +418,7 @@ export default function Dashboard() {
               </div>
 
               {storyGroups
-                .filter((g) => g.user._id !== authState.user?.userId?._id)
+                .filter((g) => !g.stories.some((s) => s.isMine))
                 .map((g, i) => (
                   <div
                     key={g.user._id}
