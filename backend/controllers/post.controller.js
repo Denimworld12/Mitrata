@@ -127,9 +127,14 @@ export const getPostById = async (req, res) => {
     // Public route (shared post links) — req.userId only exists when the
     // viewer is also logged in, in which case they still see their own reaction.
     const summary = summarise(post.reactions, req.userId);
+    // Public, unauthenticated route — an old/popular post can carry
+    // thousands of comments, and this had no cap at all (unlike the
+    // paginated getComment_by_Post), so a shared link could pull the whole
+    // history in one unbounded query on every open.
     const comments = await Comment.find({ post_Id: post._id })
       .populate("userId", "name username profilePicture")
-      .sort({ _id: -1 });
+      .sort({ _id: -1 })
+      .limit(100);
 
     return res.json({ post: { ...post._doc, ...summary }, comments });
   } catch (error) {
@@ -156,15 +161,17 @@ export const getAllPosts = async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    // Get user's connections for feed ranking
-    const myConnections = await ConnectionRequest.find({
-      $or: [
-        { userId: userId, status_accepted: true },
-        { connectionId: userId, status_accepted: true }
-      ]
-    }).lean();
-
-    const me = await User.findById(userId).select("bookmarks").lean();
+    // Independent lookups — were sequential awaits (two round trips back to
+    // back) even though neither depends on the other's result.
+    const [myConnections, me] = await Promise.all([
+      ConnectionRequest.find({
+        $or: [
+          { userId: userId, status_accepted: true },
+          { connectionId: userId, status_accepted: true }
+        ]
+      }).lean(),
+      User.findById(userId).select("bookmarks").lean()
+    ]);
     const bookmarkedIds = new Set((me?.bookmarks || []).map((id) => id.toString()));
 
     const connectedUserIds = myConnections.map(conn => {
@@ -603,18 +610,23 @@ export const getPostAnalytics = async (req, res) => {
 export const toggleBookmark = async (req, res) => {
   try {
     const { postId } = req.body;
-    const user = await User.findById(req.userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    // Atomic conditional pull instead of fetch + mutate + save — two
+    // near-simultaneous toggles (double-tap, client retry) both loading the
+    // same bookmarks array would have one overwrite the other on save, the
+    // same lost-update race reactToComplaint below was fixed for.
+    const removed = await User.findOneAndUpdate(
+      { _id: req.userId, bookmarks: postId },
+      { $pull: { bookmarks: postId } }
+    );
+    if (removed) return res.status(200).json({ bookmarked: false });
 
-    const isBookmarked = user.bookmarks.some((id) => id.toString() === postId);
-    if (isBookmarked) {
-      user.bookmarks.pull(postId);
-    } else {
-      user.bookmarks.addToSet(postId);
-    }
-    await user.save();
+    const added = await User.findOneAndUpdate(
+      { _id: req.userId },
+      { $addToSet: { bookmarks: postId } }
+    );
+    if (!added) return res.status(404).json({ message: "User not found" });
 
-    return res.status(200).json({ bookmarked: !isBookmarked });
+    return res.status(200).json({ bookmarked: true });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
