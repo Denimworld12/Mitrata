@@ -148,6 +148,7 @@
     "pinkie": "^2.0.4",
     "pinkie-promise": "^2.0.1",
     "png-js": "^1.0.0",
+    "posthog-node": "^5.47.11",
     "process-nextick-args": "^2.0.1",
     "progress": "^1.1.8",
     "proxy-addr": "^2.0.7",
