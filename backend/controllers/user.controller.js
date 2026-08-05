@@ -1538,14 +1538,14 @@ export const deleteMyAccount = async (req, res) => {
 
         const userId = user._id;
 
-        const myPosts = await Post.find({ userId }).select("_id media").lean();
+        // Three independent lookups — were sequential round trips even though
+        // none depends on another's result.
+        const [myPosts, myMessages, myStories] = await Promise.all([
+            Post.find({ userId }).select("_id media").lean(),
+            Message.find({ $or: [{ sender: userId }, { receiver: userId }] }).select("media").lean(),
+            Story.find({ userId }).select("media mediaType").lean()
+        ]);
         const postIds = myPosts.map((p) => p._id);
-
-        const myMessages = await Message.find({ $or: [{ sender: userId }, { receiver: userId }] })
-            .select("media")
-            .lean();
-
-        const myStories = await Story.find({ userId }).select("media mediaType").lean();
 
         // Cloudinary cleanup — best-effort, same pattern as every other
         // delete path in this app (a failed remote delete shouldn't block
