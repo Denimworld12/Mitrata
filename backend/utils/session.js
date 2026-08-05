@@ -100,7 +100,23 @@ export const issueSession = async (res, user, req = null) => {
         lastActiveAt: new Date(),
     });
     if (user.sessions.length > MAX_SESSIONS_PER_USER) {
-        user.sessions = user.sessions.slice(user.sessions.length - MAX_SESSIONS_PER_USER);
+        // Trim by lastActiveAt, not array position. rotateSession updates a
+        // session's lastActiveAt in place via the positional operator — it
+        // never moves that entry within the array, so array order stays
+        // frozen at original creation order forever. Slicing by position
+        // therefore evicted whichever session happened to be logged in
+        // FIRST, even if it was rotated an hour ago (e.g. this browser's
+        // saved account-switcher session, refreshed every 15m); meanwhile a
+        // one-off login from some other device sat untouched near the end of
+        // the array and survived. This is what made switchAccount's
+        // "your saved session expired" fire well before the real 30-day
+        // expiry for accounts logged in from several places (Google login's
+        // no-password convenience makes that common). Sorting by actual
+        // recency-of-use before trimming evicts truly stale sessions first.
+        user.sessions = user.sessions
+            .slice()
+            .sort((a, b) => new Date(a.lastActiveAt) - new Date(b.lastActiveAt))
+            .slice(user.sessions.length - MAX_SESSIONS_PER_USER);
     }
     await user.save();
     setRefreshCookie(res, refreshToken, user._id);
