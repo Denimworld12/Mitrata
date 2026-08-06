@@ -17,30 +17,26 @@ export const decodeJwtUserId = (token) => {
     }
 };
 
+// The Render free-tier backend spins down after inactivity and can take
+// 30-90s to cold-start back up. This used to only be a special-cased
+// timeout on /auth/refresh and /auth/switch-account (the two calls that
+// rotate a single-use refresh cookie server-side regardless of whether the
+// client is still listening — a short client timeout there guarantees a
+// self-inflicted "session expired" on the very next attempt), but ANY call
+// hitting a cold instance was still vulnerable to the same 15s default
+// timing out and reading as a dead session for no real reason. Every call
+// through this client now gets the same cold-start-tolerant budget instead
+// of requiring each call site to opt in individually.
+export const REFRESH_TIMEOUT_MS = 60000;
+
 export const clientServer = axios.create({
     // Relative, not `${Base_Url}/api` — proxied same-origin via the rewrite
     // in next.config.mjs so the refresh cookie is first-party (see that file
     // for why: cross-site cookies get purged by browser ITP within days).
     baseURL: `/api`,
-    timeout: 15000,
+    timeout: REFRESH_TIMEOUT_MS,
     withCredentials: true, // send/receive the httpOnly refresh-token cookie
 });
-
-// The Render free-tier backend spins down after inactivity and can take
-// 30-90s to cold-start back up — well past the normal 15s timeout above.
-// Someone closing the browser and returning later is exactly the case that
-// hits a cold start on their very first request. The refresh call gets its
-// own longer timeout so that's survivable instead of reading as a dead
-// session (see the 401-interceptor below for why the timeout length alone
-// isn't the whole fix).
-// Exported: any call that rotates a single-use refresh cookie (switch-account
-// is the other one — see authAction) needs the same long timeout. Rotation
-// happens server-side regardless of whether the client is still listening —
-// if the client gives up first, the Set-Cookie with the new token never
-// arrives, but the old cookie in the browser is already invalid. A short
-// client timeout on a cold-starting backend turns every such call into a
-// guaranteed self-inflicted "session expired" on the very next attempt.
-export const REFRESH_TIMEOUT_MS = 60000;
 
 // Auto-attach JWT token to all requests
 clientServer.interceptors.request.use((config) => {
@@ -89,7 +85,7 @@ clientServer.interceptors.response.use(
                     const expiringToken = localStorage.getItem("token");
                     const userId = expiringToken ? decodeJwtUserId(expiringToken) : null;
                     refreshPromise = clientServer
-                        .post('/auth/refresh', { userId }, { timeout: REFRESH_TIMEOUT_MS })
+                        .post('/auth/refresh', { userId })
                         .finally(() => { refreshPromise = null; });
                 }
                 const { data } = await refreshPromise;

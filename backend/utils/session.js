@@ -18,8 +18,15 @@ const hashToken = (token) => crypto.createHash("sha256").update(token).digest("h
 
 // One user account can have several concurrent sessions now (phone + laptop
 // + a future Flutter app) — capped so a compromised/scripted account can't
-// grow this array without bound; oldest dropped first.
-const MAX_SESSIONS_PER_USER = 10;
+// grow this array without bound; least-recently-used dropped first (see
+// issueSession below). 10 turned out too tight for real usage: mobile app
+// reinstalls during testing each force a fresh login (old stored session
+// wiped locally), and a real account switching between a few devices can
+// genuinely accumulate this many valid, still-wanted sessions — a legitimate
+// one was getting evicted for real, not just via the timeout bug fixed
+// alongside this. 20 gives real multi-device use actual headroom while
+// still bounding runaway growth.
+const MAX_SESSIONS_PER_USER = 20;
 
 // Rough device label parsed out of User-Agent for the login-activity list —
 // deliberately not a full UA-parsing dependency, just enough to tell "Chrome
