@@ -716,7 +716,16 @@ export const switchAccount = async (req, res) => {
 
         const cookieName = refreshCookieName(userId);
         const token = req.cookies?.[cookieName];
-        if (!token) return res.status(401).json({ message: "Please log in to this account", needsLogin: true });
+        if (!token) {
+            // Previously untracked — this branch firing right after a prior
+            // failure would confirm clearCookie() actually took effect;
+            // seeing session_evicted_or_not_found fire twice in a row
+            // instead would mean the SAME stale cookie survived and this
+            // branch is the one that's NOT being hit, narrowing down where
+            // the real bug is if this recurs.
+            track(userId, "switch_account_failed", { reason: "no_cookie_present" });
+            return res.status(401).json({ message: "Please log in to this account", needsLogin: true });
+        }
 
         let decoded;
         try {
@@ -737,7 +746,14 @@ export const switchAccount = async (req, res) => {
         const accessToken = await rotateSession(res, user, hashToken(token), req);
         if (!accessToken) {
             res.clearCookie(cookieName, refreshCookieOptions());
-            track(userId, "switch_account_failed", { reason: "session_evicted_or_not_found" });
+            // sessionCount + tokenHashPrefix (safe, non-reversible) let us
+            // correlate a real recurrence against the actual sessions array
+            // instead of guessing blind again next time this fires.
+            track(userId, "switch_account_failed", {
+                reason: "session_evicted_or_not_found",
+                sessionCount: user.sessions.length,
+                tokenHashPrefix: hashToken(token).slice(0, 12),
+            });
             return res.status(401).json({ message: "Session expired, please log in again", needsLogin: true });
         }
         track(userId, "switch_account_success");
