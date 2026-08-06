@@ -17,6 +17,7 @@ import rateLimit from "express-rate-limit";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import postRoutes from "./routes/post.routes.js";
+import { refreshTrendingTagsCache } from "./controllers/post.controller.js";
 import userRoute from "./routes/user.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
@@ -159,6 +160,22 @@ app.use("/api", apiLimiter);
 // Simple health check to verify API prefix is working
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', msg: 'Backend is running with /api prefix' });
+});
+// Hit on a schedule (see .github/workflows/keep-warm.yml) to keep Render's
+// free tier from spinning down on idle — but it does real work each time
+// (refreshing the trending-tags cache) rather than being a no-op ping.
+// CRON_SECRET gates it so this isn't just an open "please do DB work" route.
+app.get('/api/cron/keep-warm', async (req, res) => {
+  if (!process.env.CRON_SECRET || req.query.secret !== process.env.CRON_SECRET) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  try {
+    await refreshTrendingTagsCache();
+    res.json({ status: 'ok' });
+  } catch (error) {
+    Sentry.captureException(error);
+    res.status(500).json({ message: error.message });
+  }
 });
 app.use('/api', postRoutes);
 app.use('/api', userRoute);

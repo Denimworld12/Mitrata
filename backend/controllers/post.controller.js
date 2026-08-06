@@ -682,21 +682,41 @@ export const getBookmarkedPosts = async (req, res) => {
 
 // Public — top hashtags used in the last `hours`. Backs the landing page's
 // marquee and the dashboard's "Trending now" rail, both previously fabricated.
+const runTrendingTagsAggregate = (hours, limit) => {
+  const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+  return Post.aggregate([
+    { $match: { createId: { $gte: since }, tags: { $exists: true, $ne: [] } } },
+    { $unwind: "$tags" },
+    { $group: { _id: "$tags", count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+    { $limit: limit },
+    { $project: { _id: 0, tag: "$_id", count: 1 } },
+  ]);
+};
+
+// Only the sidebar widget's exact params (48h/top-8) are cached — that's
+// the frequent, identical-every-time call. The composer's #tag-autocomplete
+// asks for a wider top-50 slice while the user is actively typing, which is
+// rare enough per-user and needs fresher granularity than a cache refreshed
+// every ~10 minutes would give, so it still computes live.
+const DEFAULT_HOURS = 48;
+const DEFAULT_LIMIT = 8;
+let trendingCache = { tags: [], updatedAt: 0 };
+
+export const refreshTrendingTagsCache = async () => {
+  trendingCache = { tags: await runTrendingTagsAggregate(DEFAULT_HOURS, DEFAULT_LIMIT), updatedAt: Date.now() };
+};
+
 export const getTrendingTags = async (req, res) => {
   try {
-    const hours = Math.min(parseInt(req.query.hours) || 48, 24 * 30);
-    const limit = Math.min(parseInt(req.query.limit) || 8, 20);
-    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+    const hours = Math.min(parseInt(req.query.hours) || DEFAULT_HOURS, 24 * 30);
+    const limit = Math.min(parseInt(req.query.limit) || DEFAULT_LIMIT, 20);
 
-    const trending = await Post.aggregate([
-      { $match: { createId: { $gte: since }, tags: { $exists: true, $ne: [] } } },
-      { $unwind: "$tags" },
-      { $group: { _id: "$tags", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: limit },
-      { $project: { _id: 0, tag: "$_id", count: 1 } },
-    ]);
+    if (hours === DEFAULT_HOURS && limit === DEFAULT_LIMIT && trendingCache.updatedAt) {
+      return res.status(200).json({ tags: trendingCache.tags });
+    }
 
+    const trending = await runTrendingTagsAggregate(hours, limit);
     return res.status(200).json({ tags: trending });
   } catch (error) {
     Sentry.captureException(error);
