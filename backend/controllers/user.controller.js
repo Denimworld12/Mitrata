@@ -32,7 +32,14 @@ import { issueSession, rotateSession, hashToken, refreshCookieName, refreshCooki
 import { sendPush } from "../utils/push.js";
 import { track } from "../utils/analytics.js";
 
-const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
+// Web (NEXT_PUBLIC_GOOGLE_CLIENT_ID's backend counterpart) and mobile
+// (login_screen.dart's serverClientId) are two DIFFERENT Google Cloud OAuth
+// clients under different project numbers — a web-issued credential's `aud`
+// claim will never match mobile's client ID or vice versa. Both need to
+// verify here since verifyAndUpsertGoogleUser is shared by both platforms'
+// login paths (googleLogin for mobile, googleLoginCallback for web).
+const GOOGLE_AUDIENCES = [process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_ID_MOBILE].filter(Boolean);
+const googleClient = GOOGLE_AUDIENCES.length ? new OAuth2Client() : null;
 
 
 export const register = async (req, res) => {
@@ -375,7 +382,7 @@ const verifyAndUpsertGoogleUser = async (idToken) => {
 
     const ticket = await googleClient.verifyIdToken({
         idToken,
-        audience: process.env.GOOGLE_CLIENT_ID
+        audience: GOOGLE_AUDIENCES
     });
     const payload = ticket.getPayload();
 
