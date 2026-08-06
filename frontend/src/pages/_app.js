@@ -14,6 +14,11 @@ export default function App({ Component, pageProps }) {
 
   useEffect(() => {
     initPosthog();
+    // capture_pageview is off (autocapture can't see client-side route
+    // changes), but routeChangeComplete only fires on navigations AFTER
+    // this mount — the very first page load never sent anything without
+    // this explicit call.
+    posthog.capture("$pageview");
     const handleRouteChange = () => posthog.capture("$pageview");
     router.events.on("routeChangeComplete", handleRouteChange);
     return () => router.events.off("routeChangeComplete", handleRouteChange);
