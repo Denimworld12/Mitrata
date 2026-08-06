@@ -1,4 +1,4 @@
-import { clientServer, decodeJwtUserId } from "@/config";
+import { clientServer, decodeJwtUserId, REFRESH_TIMEOUT_MS } from "@/config";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
 // Anything stored per-browser rather than per-account (recentSearches is the
@@ -271,7 +271,19 @@ export const switchAccountAction = createAsyncThunk(
     "user/switchAccount",
     async ({ userId }, thunkApi) => {
         try {
-            const response = await clientServer.post('/auth/switch-account', { userId })
+            // Same cold-start-survivable timeout as /auth/refresh (see
+            // REFRESH_TIMEOUT_MS) — this also single-use-rotates a refresh
+            // cookie server-side regardless of whether the client is still
+            // waiting. The default 15s client timeout was shorter than a
+            // cold Render backend's response time, so the request would
+            // abort client-side after the backend had already rotated the
+            // cookie and sent a Set-Cookie the browser never received —
+            // leaving the OLD cookie in the browser permanently stale and
+            // every retry failing with "Session expired" until the account
+            // was re-logged-in. Confirmed via backend track() logs showing
+            // session_evicted_or_not_found with a sessionCount well under
+            // the 10-session cap, ruling out eviction.
+            const response = await clientServer.post('/auth/switch-account', { userId }, { timeout: REFRESH_TIMEOUT_MS })
             if (response.data.token) {
                 startNewSession(response.data.token);
             }

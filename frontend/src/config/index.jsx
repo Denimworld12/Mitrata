@@ -33,7 +33,14 @@ export const clientServer = axios.create({
 // own longer timeout so that's survivable instead of reading as a dead
 // session (see the 401-interceptor below for why the timeout length alone
 // isn't the whole fix).
-const REFRESH_TIMEOUT_MS = 60000;
+// Exported: any call that rotates a single-use refresh cookie (switch-account
+// is the other one — see authAction) needs the same long timeout. Rotation
+// happens server-side regardless of whether the client is still listening —
+// if the client gives up first, the Set-Cookie with the new token never
+// arrives, but the old cookie in the browser is already invalid. A short
+// client timeout on a cold-starting backend turns every such call into a
+// guaranteed self-inflicted "session expired" on the very next attempt.
+export const REFRESH_TIMEOUT_MS = 60000;
 
 // Auto-attach JWT token to all requests
 clientServer.interceptors.request.use((config) => {
