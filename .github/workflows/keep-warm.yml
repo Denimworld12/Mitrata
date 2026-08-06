@@ -1,0 +1,19 @@
+name: Keep backend warm
+
+# Render's free tier spins the backend down after ~15 minutes idle, and the
+# next request pays a 30-90s cold-start penalty (see backend/utils/session.js
+# and the switch-account timeout fix — a chunk of this session's debugging
+# traced back to exactly that). Pinging on a schedule keeps it warm, and the
+# endpoint being hit does real work (refreshing the trending-tags cache)
+# rather than being a no-op ping.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit keep-warm endpoint
+        run: curl -sf "https://mitrata.onrender.com/api/cron/keep-warm?secret=${{ secrets.CRON_SECRET }}"
