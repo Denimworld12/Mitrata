@@ -10,4 +10,10 @@ const client = process.env.POSTHOG_API_KEY
 export const track = (userId, event, properties = {}) => {
     if (!client || !userId) return;
     client.capture({ distinctId: userId.toString(), event, properties });
+    // posthog-node batches on a 5s timer by default — fine for high-volume
+    // events, but these are rare enough (auth, content creation) that
+    // waiting up to 5s just to see one in the dashboard isn't worth the
+    // ambiguity while debugging something real. Fire-and-forget: doesn't
+    // block the response, just sends the batch sooner.
+    client.flush().catch(() => {});
 };
