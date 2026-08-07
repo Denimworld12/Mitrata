@@ -6,30 +6,8 @@ import Post from "../models/posts.model.js";
 import Comment from "../models/comments.model.js";
 import { v2 as cloudinary } from "cloudinary";
 import ConnectionRequest from "../models/connection.model.js";
-import Notification from "../models/notification.model.js";
-import { sendPush } from "../utils/push.js";
 import { track } from "../utils/analytics.js";
-
-const ONE_HOUR_MS = 60 * 60 * 1000;
-
-// ponytail: naive per-hour dedupe per (userId, fromUser, type, target) so a
-// like/comment burst doesn't spam the notification list — move to a proper
-// digest job if volume grows.
-const notifyOnce = async ({ userId, fromUser, type, message, metadata }) => {
-  if (userId.toString() === fromUser.toString()) return; // never notify yourself
-  const recent = await Notification.findOne({
-    userId,
-    fromUser,
-    type,
-    read: false,
-    createdAt: { $gte: new Date(Date.now() - ONE_HOUR_MS) },
-    ...(metadata?.postId ? { "metadata.postId": metadata.postId } : {}),
-  });
-  if (recent) return;
-  await Notification.create({ userId, fromUser, type, message, metadata });
-  sendPush(userId, { title: "Mitrata", body: message, data: { type, ...metadata } })
-    .catch((err) => console.error("sendPush failed:", err.message));
-};
+import { notifyOnce } from "../utils/notify.js";
 
 export const REACTION_TYPES = ["like", "dislike", "flame", "handHeart", "lightbulb"];
 

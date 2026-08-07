@@ -1,8 +1,10 @@
 import * as Sentry from "@sentry/node";
 import Story from "../models/story.model.js";
 import ConnectionRequest from "../models/connection.model.js";
+import User from "../models/users.model.js";
 import { v2 as cloudinary } from "cloudinary";
 import { track } from "../utils/analytics.js";
+import { notifyOnce } from "../utils/notify.js";
 
 export const createStory = async (req, res) => {
     try {
@@ -78,7 +80,9 @@ export const getStories = async (req, res) => {
                 createdAt: story.createdAt,
                 expiresAt: story.expiresAt,
                 viewed,
-                isMine: key === userId.toString()
+                isMine: key === userId.toString(),
+                isLiked: story.likes.some((v) => v.toString() === userId.toString()),
+                likeCount: story.likes.length
             });
             if (!viewed && key !== userId.toString()) entry.allViewed = false;
         }
@@ -107,9 +111,43 @@ export const viewStory = async (req, res) => {
     }
 };
 
+// Toggle, not one-way like viewStory — a like can be undone. Notifies the
+// owner only on the add transition (notifyOnce also guards self-likes),
+// never on unlike, matching reactToComplaint's post-like convention.
+export const likeStory = async (req, res) => {
+    try {
+        const story = await Story.findById(req.params.id);
+        if (!story) return res.status(404).json({ message: "Story not found" });
+
+        const alreadyLiked = story.likes.some((v) => v.toString() === req.userId.toString());
+        if (alreadyLiked) {
+            await Story.findByIdAndUpdate(story._id, { $pull: { likes: req.userId } });
+            return res.status(200).json({ liked: false });
+        }
+
+        await Story.findByIdAndUpdate(story._id, { $addToSet: { likes: req.userId } });
+
+        const liker = await User.findById(req.userId);
+        await notifyOnce({
+            userId: story.userId,
+            fromUser: req.userId,
+            type: "like",
+            message: `${liker.name} liked your story`,
+            metadata: { storyId: story._id },
+        });
+
+        return res.status(200).json({ liked: true });
+    } catch (error) {
+        Sentry.captureException(error);
+        return res.status(500).json({ message: error.message });
+    }
+};
+
 // Owner-only "who's seen this" list — Instagram-style story insights.
 // $addToSet appends in first-seen order, so reversing gives most-recent-viewer-first
-// without needing a separate viewedAt timestamp per viewer.
+// without needing a separate viewedAt timestamp per viewer. Likes surfaced
+// alongside as a plain id set — the viewer list already tells the owner who
+// looked, this just flags which of those also liked it.
 export const getStoryViewers = async (req, res) => {
     try {
         const story = await Story.findById(req.params.id).populate("viewers", "name username profilePicture");
@@ -117,7 +155,12 @@ export const getStoryViewers = async (req, res) => {
         if (story.userId.toString() !== req.userId.toString()) {
             return res.status(403).json({ message: "Unauthorized — not your story" });
         }
-        return res.status(200).json({ viewers: [...story.viewers].reverse() });
+        const likedIds = new Set(story.likes.map((v) => v.toString()));
+        const viewers = [...story.viewers].reverse().map((v) => ({
+            ...v.toObject(),
+            liked: likedIds.has(v._id.toString()),
+        }));
+        return res.status(200).json({ viewers });
     } catch (error) {
         Sentry.captureException(error);
         return res.status(500).json({ message: error.message });
