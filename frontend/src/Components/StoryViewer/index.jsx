@@ -8,10 +8,9 @@ const IMAGE_DURATION_MS = 5000;
 // progress bars, tap-left/right or auto-advance between that author's own
 // stories, Esc/X/backdrop to close. Marks each story viewed on open.
 // Music (if attached) auto-plays/pauses with the story, gated by a local
-// mute toggle; a reply is sent as a DM to the story's owner. Liking is NOT
-// a DM — there's no backend story-like feature to persist it against, so
-// it's local-only visual feedback (a filled heart), same as it would be if
-// only a reply had ever gone through the messaging endpoint.
+// mute toggle; a reply is sent as a DM to the story's owner. Liking is a
+// separate, persisted toggle (POST /story/:id/like) — NOT a DM, so it no
+// longer shows up in the owner's chat the way a reply does.
 export default function StoryViewer({ groups, startIndex, onClose, onDeleted }) {
     const [groupIndex, setGroupIndex] = useState(startIndex);
     const [storyIndex, setStoryIndex] = useState(0);
@@ -60,7 +59,7 @@ export default function StoryViewer({ groups, startIndex, onClose, onDeleted }) 
         }
 
         setReplyText('');
-        setLiked(false);
+        setLiked(Boolean(story.isLiked));
         setViewersOpen(false);
         setViewers(null);
         setProgress(0);
@@ -131,6 +130,16 @@ export default function StoryViewer({ groups, startIndex, onClose, onDeleted }) 
             // silent, same failure convention as the rest of this overlay
         } finally {
             setSending(false);
+        }
+    };
+
+    const toggleLike = async () => {
+        const next = !liked;
+        setLiked(next); // optimistic — revert below if the request fails
+        try {
+            await clientServer.post(`/story/${story._id}/like`);
+        } catch {
+            setLiked(!next);
         }
     };
 
@@ -252,7 +261,7 @@ export default function StoryViewer({ groups, startIndex, onClose, onDeleted }) 
                                 style={{ background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.25)' }}
                             />
                             <button
-                                onClick={() => setLiked((l) => !l)}
+                                onClick={toggleLike}
                                 className="p-1.5"
                                 style={{ color: liked ? '#ef4444' : '#fff' }}
                                 title="Like"
@@ -306,7 +315,8 @@ export default function StoryViewer({ groups, startIndex, onClose, onDeleted }) 
                     {viewers?.map((v) => (
                         <div key={v._id} className="flex items-center gap-3 py-2">
                             <img src={v.profilePicture || '/default-avatar.svg'} alt="" className="size-8 rounded-full object-cover" />
-                            <span className="text-white text-sm">{v.username}</span>
+                            <span className="text-white text-sm flex-1">{v.username}</span>
+                            {v.liked && <Heart size={14} fill="#ef4444" color="#ef4444" />}
                         </div>
                     ))}
                 </div>
