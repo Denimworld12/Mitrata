@@ -28,6 +28,11 @@ export default function Document() {
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        {/* Backup to the DNS TXT record for Google Search Console ownership
+            verification — the DNS record is the primary method (works before
+            the domain even resolves), this just also covers a URL-prefix
+            property if one gets used instead. */}
+        <meta name="google-site-verification" content="DTgWMGYOw-xHLzaCS0AFJG60xYDub557q8fgvRhClX4" />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </Head>
       <body className="antialiased">
