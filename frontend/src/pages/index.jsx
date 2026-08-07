@@ -217,6 +217,7 @@ export default function Home({ trendingTags, totalUsers }) {
           <span className={styles.footerLogo}>mitrata</span>
           <span className={styles.footerTagline}>Made for friendship, not for engagement metrics.</span>
           <div className={styles.footerLinks}>
+            <a href="/about" className={styles.footerLink}>About</a>
             <a href="/privacy_policy" className={styles.footerLink}>Privacy</a>
           </div>
         </footer>
