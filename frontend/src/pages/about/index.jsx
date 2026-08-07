@@ -53,7 +53,7 @@ export default function About() {
 
             <div className={styles.container}>
                 <header className={styles.header}>
-                    <button className={styles.backBtn} onClick={() => router.back()}>
+                    <button className={styles.backBtn} onClick={() => router.push('/')}>
                         <ChevronLeft className={styles.backIcon} />
                         Back
                     </button>

@@ -153,7 +153,10 @@ export default function UserActivityPage() {
 
     const ActivityContent = (
         <div className={styles.activityContainer}>
-            <button className={`${styles.backBtn} mt-btn-lift`} onClick={() => router.back()}>
+            <button
+                className={`${styles.backBtn} mt-btn-lift`}
+                onClick={() => router.push(isOwner ? '/profile' : `/view_profile/${username}`)}
+            >
                 <ArrowLeft size={16} strokeWidth={2} />
                 Back to Profile
             </button>

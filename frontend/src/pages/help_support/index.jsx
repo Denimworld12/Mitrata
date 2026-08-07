@@ -37,7 +37,7 @@ export default function HelpSupport() {
     <DashboardLayout>
       <div className={styles.container}>
         <header className={styles.header}>
-          <button className={styles.backBtn} onClick={() => router.back()}>
+          <button className={styles.backBtn} onClick={() => router.push('/settings')}>
             <ChevronLeft className={styles.backIcon} />
             Back
           </button>
