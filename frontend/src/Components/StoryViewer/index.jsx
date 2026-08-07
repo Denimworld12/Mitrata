@@ -8,8 +8,10 @@ const IMAGE_DURATION_MS = 5000;
 // progress bars, tap-left/right or auto-advance between that author's own
 // stories, Esc/X/backdrop to close. Marks each story viewed on open.
 // Music (if attached) auto-plays/pauses with the story, gated by a local
-// mute toggle; replies/likes are sent as a DM to the story's owner, same
-// convention the mobile app uses instead of a separate comment system.
+// mute toggle; a reply is sent as a DM to the story's owner. Liking is NOT
+// a DM — there's no backend story-like feature to persist it against, so
+// it's local-only visual feedback (a filled heart), same as it would be if
+// only a reply had ever gone through the messaging endpoint.
 export default function StoryViewer({ groups, startIndex, onClose, onDeleted }) {
     const [groupIndex, setGroupIndex] = useState(startIndex);
     const [storyIndex, setStoryIndex] = useState(0);
@@ -17,6 +19,7 @@ export default function StoryViewer({ groups, startIndex, onClose, onDeleted }) 
     const [muted, setMuted] = useState(false);
     const [replyText, setReplyText] = useState('');
     const [sending, setSending] = useState(false);
+    const [liked, setLiked] = useState(false);
     const [viewersOpen, setViewersOpen] = useState(false);
     const [viewers, setViewers] = useState(null);
     const [viewersError, setViewersError] = useState(null);
@@ -57,6 +60,7 @@ export default function StoryViewer({ groups, startIndex, onClose, onDeleted }) 
         }
 
         setReplyText('');
+        setLiked(false);
         setViewersOpen(false);
         setViewers(null);
         setProgress(0);
@@ -247,8 +251,13 @@ export default function StoryViewer({ groups, startIndex, onClose, onDeleted }) 
                                 className="flex-1 h-11 rounded-full px-4 text-sm text-white placeholder-white/50 bg-transparent outline-none"
                                 style={{ background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.25)' }}
                             />
-                            <button onClick={() => sendToOwner('❤️')} className="text-white p-1.5" title="Like">
-                                <Heart size={20} />
+                            <button
+                                onClick={() => setLiked((l) => !l)}
+                                className="p-1.5"
+                                style={{ color: liked ? '#ef4444' : '#fff' }}
+                                title="Like"
+                            >
+                                <Heart size={20} fill={liked ? 'currentColor' : 'none'} />
                             </button>
                             <button onClick={() => sendToOwner(replyText)} className="text-white p-1.5" disabled={sending} title="Send">
                                 <Send size={20} />
