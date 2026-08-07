@@ -82,7 +82,10 @@ export default function PrivacyPolicy() {
         <UserLayout>
             <div className={styles.container}>
                 <header className={styles.header}>
-                    <button className={styles.backBtn} onClick={() => router.back()}>
+                    <button
+                        className={styles.backBtn}
+                        onClick={() => router.push(localStorage.getItem('token') ? '/settings' : '/')}
+                    >
                         <ChevronLeft className={styles.backIcon} />
                         Back
                     </button>
