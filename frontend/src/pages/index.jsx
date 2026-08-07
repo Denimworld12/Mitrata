@@ -1,8 +1,13 @@
 import { useRouter } from "next/router";
+import Head from "next/head";
 import styles from '../styles/Home.module.css'
 import { useEffect, useState } from "react";
 import { ArrowRight, Smartphone, LayoutList, PhoneCall, Search, UsersRound } from "lucide-react";
 import serverAxios from "@/config/serverAxios";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mitrata.vercel.app";
+const SITE_DESCRIPTION =
+  "Mitrata is a social home for real friendships — a feed worth scrolling, a network worth keeping, and voice calls that just work.";
 
 const FEATURES = [
   {
@@ -61,6 +66,37 @@ export default function Home({ trendingTags, totalUsers }) {
 
   return (
     <div className={styles.container}>
+        <Head>
+          <title>Mitrata — A social home for real friendships</title>
+          <meta name="description" content={SITE_DESCRIPTION} />
+          <link rel="canonical" href={SITE_URL} />
+
+          <meta property="og:type" content="website" />
+          <meta property="og:site_name" content="Mitrata" />
+          <meta property="og:title" content="Mitrata — A social home for real friendships" />
+          <meta property="og:description" content={SITE_DESCRIPTION} />
+          <meta property="og:url" content={SITE_URL} />
+          <meta property="og:image" content={`${SITE_URL}/images/connectPeople.png`} />
+
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content="Mitrata — A social home for real friendships" />
+          <meta name="twitter:description" content={SITE_DESCRIPTION} />
+          <meta name="twitter:image" content={`${SITE_URL}/images/connectPeople.png`} />
+
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                name: "Mitrata",
+                url: SITE_URL,
+                description: SITE_DESCRIPTION,
+              }),
+            }}
+          />
+        </Head>
+
         <div className={styles.orbTopLeft} />
         <div className={styles.orbBottomRight} />
 

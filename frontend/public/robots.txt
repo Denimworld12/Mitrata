@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /settings
+Disallow: /messaging
+Disallow: /notifications
+Disallow: /my_network
+Disallow: /activity
+Disallow: /help_support
+Disallow: /onboarding
+Disallow: /forgot-password
+
+Sitemap: https://mitrata.vercel.app/sitemap.xml
